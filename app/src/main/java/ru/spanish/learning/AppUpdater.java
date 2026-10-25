@@ -176,8 +176,8 @@ public final class AppUpdater {
                 return;
             }
             if (settings.getLong("blocked_version", -1) == version) {
-                setStatus(context, "blocked", "Предыдущая попытка обновления отменена. Повторных запросов для этой версии не будет.");
-                return;
+                settings.edit().remove("blocked_version").remove("retry_after").commit();
+                setStatus(context, "retrying", "Предыдущая попытка была отменена. Обновление запускается повторно.");
             }
             File apk = new File(directory(context), "update.apk");
             boolean staged = settings.getLong("staged_version", -1) == version
@@ -501,8 +501,10 @@ public final class AppUpdater {
                         .putLong("last_installed_version", attempted).remove("retry_after")
                         .remove("blocked_version").remove("staged_version").remove("staged_sha256");
             } else if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
-                edit.putLong("blocked_version", attempted).putString("state", "blocked")
-                        .putString("status", "Обновление отменено. Повторных запросов для этой версии не будет.");
+                edit.remove("blocked_version")
+                        .putLong("retry_after", System.currentTimeMillis() + RETRY_DELAY_MS)
+                        .putString("state", "failed")
+                        .putString("status", "Обновление было отменено. Приложение повторит попытку позже.");
             } else {
                 edit.putLong("retry_after", System.currentTimeMillis() + RETRY_DELAY_MS)
                         .putString("state", "failed").putString("status", "Android не установил обновление. Текущая версия продолжает работать.");
