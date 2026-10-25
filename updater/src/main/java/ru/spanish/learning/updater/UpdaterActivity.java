@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.icu.util.ULocale;
 import android.util.Log;
 import android.view.Gravity;
 import android.widget.LinearLayout;
@@ -181,16 +182,12 @@ public final class UpdaterActivity extends Activity {
     private void install(Candidate candidate) throws Exception {
         showFromWorker("Устанавливаю обновление…");
         PackageInstaller installer = getPackageManager().getPackageInstaller();
+        boolean installerOfRecord = isInstallerOfRecord();
         PackageInstaller.SessionParams params =
                 new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(TARGET);
         params.setSize(candidate.apk.length());
         if (Build.VERSION.SDK_INT >= 31) {
-            boolean installerOfRecord = false;
-            try {
-                InstallSourceInfo source = getPackageManager().getInstallSourceInfo(TARGET);
-                installerOfRecord = getPackageName().equals(source.getInstallingPackageName());
-            } catch (PackageManager.NameNotFoundException ignored) {}
             params.setRequireUserAction(installerOfRecord
                     ? PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
                     : PackageInstaller.SessionParams.USER_ACTION_REQUIRED);
@@ -198,7 +195,7 @@ public final class UpdaterActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33) params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE);
 
         int sessionId = installer.createSession(params);
-        boolean committed = false;
+        boolean handedOff = false;
         try (PackageInstaller.Session session = installer.openSession(sessionId)) {
             try (InputStream input = new FileInputStream(candidate.apk);
                  OutputStream output = session.openWrite("base.apk", 0, candidate.apk.length())) {
@@ -207,24 +204,67 @@ public final class UpdaterActivity extends Activity {
                 while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
                 session.fsync(output);
             }
-            Intent result = new Intent(this, InstallResultReceiver.class)
-                    .setAction(getPackageName() + ".INSTALL_RESULT." + sessionId)
-                    .putExtra(CALLBACK_SESSION, sessionId);
-            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (Build.VERSION.SDK_INT >= 31) flags |= PendingIntent.FLAG_MUTABLE;
-            PendingIntent callback = PendingIntent.getBroadcast(this, sessionId, result, flags);
-            session.commit(callback.getIntentSender());
-            committed = true;
+
+            if (Build.VERSION.SDK_INT >= 34 && !installerOfRecord) {
+                showFromWorker("Android попросит один раз подтвердить обновления.");
+                PackageInstaller.PreapprovalDetails details =
+                        new PackageInstaller.PreapprovalDetails.Builder()
+                                .setPackageName(TARGET)
+                                .setLabel("Изучение испанского")
+                                .setLocale(ULocale.getDefault())
+                                .build();
+                session.requestUserPreapproval(details, callbackFor(sessionId).getIntentSender());
+                handedOff = true;
+            } else {
+                session.commit(callbackFor(sessionId).getIntentSender());
+                handedOff = true;
+            }
         } finally {
-            if (!committed) {
+            if (!handedOff) {
                 try { installer.abandonSession(sessionId); } catch (RuntimeException ignored) {}
             }
         }
     }
 
+    private boolean isInstallerOfRecord() {
+        try {
+            InstallSourceInfo source = getPackageManager().getInstallSourceInfo(TARGET);
+            return getPackageName().equals(source.getInstallingPackageName());
+        } catch (PackageManager.NameNotFoundException ignored) {
+            return false;
+        }
+    }
+
+    private PendingIntent callbackFor(int sessionId) {
+        Intent result = new Intent(this, InstallResultReceiver.class)
+                .setAction(getPackageName() + ".INSTALL_RESULT." + sessionId)
+                .putExtra(CALLBACK_SESSION, sessionId);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= 31) flags |= PendingIntent.FLAG_MUTABLE;
+        return PendingIntent.getBroadcast(this, sessionId, result, flags);
+    }
+
+    private void commitPreapprovedSession(int sessionId) {
+        WORKER.execute(() -> {
+            try (PackageInstaller.Session session =
+                         getPackageManager().getPackageInstaller().openSession(sessionId)) {
+                showFromWorker("Подтверждение получено. Устанавливаю…");
+                session.commit(callbackFor(sessionId).getIntentSender());
+            } catch (Exception error) {
+                Log.e("SpanishUpdater", "Commit after preapproval failed", error);
+                RUNNING.set(false);
+                fail("Не удалось продолжить установку после подтверждения Android.");
+            }
+        });
+    }
+
     static void handleInstallResult(Context context, Intent result) {
         int statusCode = result.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
+        boolean preapproval = Build.VERSION.SDK_INT >= 34
+                && result.getBooleanExtra(PackageInstaller.EXTRA_PRE_APPROVAL, false);
+        int sessionId = result.getIntExtra(CALLBACK_SESSION, -1);
         UpdaterActivity activity = active.get();
+
         if (statusCode == PackageInstaller.STATUS_PENDING_USER_ACTION) {
             Intent confirmation;
             if (Build.VERSION.SDK_INT >= 33) confirmation = result.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
@@ -235,7 +275,9 @@ public final class UpdaterActivity extends Activity {
             if (confirmation != null && activity != null && !activity.isFinishing()) {
                 activity.runOnUiThread(() -> {
                     try {
-                        activity.show("Android просит подтвердить первый переход на новый установщик.");
+                        activity.show(preapproval
+                                ? "Подтвердите первый системный запрос Android."
+                                : "Android просит подтвердить установку.");
                         activity.startActivity(confirmation);
                     } catch (RuntimeException error) {
                         activity.fail("Не удалось открыть подтверждение Android.");
@@ -244,6 +286,25 @@ public final class UpdaterActivity extends Activity {
             }
             return;
         }
+
+        if (preapproval && statusCode == PackageInstaller.STATUS_SUCCESS) {
+            if (activity != null && !activity.isFinishing() && sessionId >= 0) {
+                activity.commitPreapprovedSession(sessionId);
+            } else {
+                RUNNING.set(false);
+            }
+            return;
+        }
+
+        if (preapproval && statusCode == PackageInstaller.STATUS_FAILURE_BLOCKED) {
+            if (activity != null && !activity.isFinishing() && sessionId >= 0) {
+                activity.commitPreapprovedSession(sessionId);
+            } else {
+                RUNNING.set(false);
+            }
+            return;
+        }
+
         if (statusCode == PackageInstaller.STATUS_SUCCESS) {
             RUNNING.set(false);
             if (activity != null && !activity.isFinishing()) {
@@ -251,11 +312,12 @@ public final class UpdaterActivity extends Activity {
             }
             return;
         }
+
         RUNNING.set(false);
         if (activity != null && !activity.isFinishing()) {
             String message = result.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
             if (message != null && message.contains("Permission denied")) {
-                activity.fail("Android не разрешил установку. Повторите обновление и подтвердите первый системный запрос.");
+                activity.fail("HyperOS заблокировал установку до системного подтверждения.");
             } else {
                 activity.fail(message == null || message.isBlank() ? "Android отменил установку." : message);
             }
