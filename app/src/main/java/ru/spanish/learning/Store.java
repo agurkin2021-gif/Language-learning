@@ -64,7 +64,7 @@ public final class Store extends SQLiteOpenHelper {
     }
 
     public void addCard(String spanish, String meaning, int kind) {
-        addCard(spanish, meaning, kind, 0);
+        addCard(spanish, meaning, kind, kind == 0 ? 1 : 0);
     }
 
     public void addCard(String spanish, String meaning, int kind, int category) {
