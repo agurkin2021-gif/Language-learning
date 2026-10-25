@@ -368,8 +368,11 @@ salir para|отправляться в, выходить к
         db.beginTransaction();
         try {
             seedGroup(db, VERBS, 0, 1);
+            seedPairs(db, DefaultVerbsExtra.DATA, 0, 1);
             seedGroup(db, NOUNS, 0, 2);
+            seedPairs(db, DefaultNounsExtra.DATA, 0, 2);
             seedGroup(db, ADJECTIVES, 0, 3);
+            seedPairs(db, DefaultAdjectivesExtra.DATA, 0, 3);
             seedGroup(db, EXPRESSIONS, 1, 0);
             db.setTransactionSuccessful();
         } finally { db.endTransaction(); }
@@ -380,6 +383,20 @@ salir para|отправляться в, выходить к
             int p = row.indexOf('|');
             if (p <= 0) continue;
             String es = row.substring(0, p), ru = row.substring(p + 1);
+            android.database.Cursor c = db.rawQuery("SELECT 1 FROM cards WHERE spanish=? AND meaning=? LIMIT 1", new String[]{es, ru});
+            boolean exists;
+            try { exists = c.moveToFirst(); } finally { c.close(); }
+            if (exists) continue;
+            ContentValues v = new ContentValues();
+            v.put("spanish", es); v.put("meaning", ru); v.put("kind", kind); v.put("category", category); v.put("mastered", 0);
+            db.insertOrThrow("cards", null, v);
+        }
+    }
+
+    private static void seedPairs(SQLiteDatabase db, String[][] rows, int kind, int category) {
+        for (String[] row : rows) {
+            if (row.length != 2) continue;
+            String es = row[0], ru = row[1];
             android.database.Cursor c = db.rawQuery("SELECT 1 FROM cards WHERE spanish=? AND meaning=? LIMIT 1", new String[]{es, ru});
             boolean exists;
             try { exists = c.moveToFirst(); } finally { c.close(); }
