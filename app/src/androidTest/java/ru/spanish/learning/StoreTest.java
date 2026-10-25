@@ -55,6 +55,27 @@ public class StoreTest extends AndroidTestCase {
         getContext().deleteDatabase("test-learning.db");
     }
 
+    public void testRemoteContentImportsOnceWithoutApkUpdate() {
+        String database = "test-remote-content.db";
+        getContext().deleteDatabase(database);
+        try (Store s = new Store(getContext(), database)) {
+            int words = s.cards(false, 0).size();
+            int phrases = s.cards(false, 1).size();
+            int stories = s.stories().size();
+
+            assertTrue(s.importRemoteCard("word-1", "barco", "лодка", 0, 2));
+            assertFalse(s.importRemoteCard("word-1", "barco", "лодка", 0, 2));
+            assertTrue(s.importRemoteCard("phrase-1", "tener ganas de", "хотеть, иметь желание", 1, 0));
+            assertTrue(s.importRemoteStory("story-1", "El pescador", "El pescador mira el mar. Vuelve a casa.", "Рыбак смотрит на море. Он возвращается домой."));
+
+            assertEquals(words + 1, s.cards(false, 0).size());
+            assertEquals(phrases + 1, s.cards(false, 1).size());
+            assertEquals(stories + 1, s.stories().size());
+            assertEquals("El pescador", s.stories().get(0).title());
+        }
+        getContext().deleteDatabase(database);
+    }
+
     public void testCustomCategoryAndWeakReviewSchedulePersist() {
         String database = "test-review-schedule.db";
         getContext().deleteDatabase(database);
