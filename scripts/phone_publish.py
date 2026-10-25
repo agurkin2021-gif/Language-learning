@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sign the tested APK and publish three files to the private phone-builds branch."""
+"""Sign the tested APK and publish three files to the public phone-builds branch."""
 
 import argparse
 import base64
@@ -254,7 +254,7 @@ def main():
         github.request("/git/refs/heads/" + CHANNEL, method="PATCH", data={"sha": commit["sha"], "force": False})
     else:
         github.request("/git/refs", method="POST", data={"ref": "refs/heads/" + CHANNEL, "sha": commit["sha"]})
-    report("published", "Опубликована версия " + expected["version_name"] + " в приватной ветке phone-builds. Постоянная подпись и SHA-256 проверены.\n\n"
+    report("published", "Опубликована версия " + expected["version_name"] + " в публичной ветке phone-builds. Постоянная подпись и SHA-256 проверены.\n\n"
            + "[APK для телефона](https://github.com/" + repository + "/raw/refs/heads/phone-builds/" + APK_NAME + ")", True)
 
 

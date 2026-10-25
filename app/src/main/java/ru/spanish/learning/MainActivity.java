@@ -8,6 +8,7 @@ import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.InputFilter;
 import android.view.View;
 import android.widget.*;
@@ -25,8 +26,13 @@ public final class MainActivity extends Activity {
     private String screen = "cards";
     private long storyId = -1;
     private boolean rendering;
+    private AlertDialog cardDialog;
+    private EditText draftSpanish, draftMeaning;
+    private int draftKind;
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        AppUpdater.setForeground(true);
+        AppUpdater.configureSchedule(this);
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
@@ -73,7 +79,7 @@ public final class MainActivity extends Activity {
         update.setText(R.string.update_button);
         update.setAllCaps(false);
         update.setTextSize(15);
-        update.setOnClickListener(v -> downloadUpdate());
+        update.setOnClickListener(v -> showAutoUpdates());
         updates.addView(update, new LinearLayout.LayoutParams(0, dp(60), 1));
         root.addView(updates);
         setContentView(root);
@@ -92,17 +98,30 @@ public final class MainActivity extends Activity {
                     String url = BuildConfig.BUILD_RUN_ID.isEmpty() ? base : base + "runs/" + BuildConfig.BUILD_RUN_ID;
                     openBrowser(url);
                 })
-                .setPositiveButton("Обновить", (dialog, which) -> downloadUpdate()).show();
+                .setPositiveButton("Автообновления", (dialog, which) -> showAutoUpdates()).show();
     }
-    private void downloadUpdate() {
+    private void showAutoUpdates() {
         player.pause();
+        remember();
         if (BuildConfig.DEBUG) {
             new AlertDialog.Builder(this).setTitle("Служебная сборка")
-                    .setMessage("Эта сборка предназначена для проверки. Первую версию с постоянной подписью нужно установить отдельно; обновление поверх старой тестовой сборки может быть несовместимо.")
+                    .setMessage("Эта сборка предназначена для проверки. Автообновления доступны в версии для телефона с постоянной подписью.")
                     .setPositiveButton("Понятно", null).show();
             return;
         }
-        openBrowser("https://github.com/agurkin2021-gif/Language-learning/raw/refs/heads/phone-builds/SpanishLearning.apk");
+        boolean allowed = getPackageManager().canRequestPackageInstalls();
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("Автоматические обновления")
+                .setMessage(AppUpdater.status(this) + "\n\nНовые версии загружаются сами. Установка происходит, когда вы переходите из приложения. После обновления откройте приложение снова.")
+                .setNegativeButton("Закрыть", null);
+        if (!allowed) {
+            dialog.setPositiveButton("Разрешить обновления", (d, w) -> {
+                try { startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()))); }
+                catch (ActivityNotFoundException e) { Toast.makeText(this, "Откройте разрешение установки для этого приложения в настройках Android", Toast.LENGTH_LONG).show(); }
+            });
+        } else if (AppUpdater.hasPendingConfirmation(this)) {
+            dialog.setPositiveButton("Подтвердить в Android", (d, w) -> AppUpdater.continuePending(this));
+        }
+        dialog.show();
     }
     private void openBrowser(String url) {
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
@@ -129,13 +148,31 @@ public final class MainActivity extends Activity {
     }
     private LinearLayout form() { LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(20),dp(8),dp(20),dp(8)); return box; }
     private void addCard() {
+        if (cardDialog != null && cardDialog.isShowing()) return;
         LinearLayout box = form(); EditText es = field(box, "По-испански", 500, false); EditText ru = field(box, "Русский смысл", 1000, true);
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(kind == 0 ? "Новое слово" : "Новое выражение").setView(box).setNegativeButton("Отмена", null).setPositiveButton("Сохранить", null).create();
+        boolean restoring = prefs.getBoolean("cardDraftOpen", false);
+        draftKind = restoring ? prefs.getInt("cardDraftKind", kind) : kind;
+        if (restoring) { es.setText(prefs.getString("cardDraftSpanish", "")); ru.setText(prefs.getString("cardDraftMeaning", "")); }
+        draftSpanish = es; draftMeaning = ru;
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(draftKind == 0 ? "Новое слово" : "Новое выражение").setView(box).setNegativeButton("Отмена", (d, w) -> clearCardDraft()).setPositiveButton("Сохранить", null).create();
+        cardDialog = dialog;
+        dialog.setOnCancelListener(d -> clearCardDraft());
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
             if (es.getText().toString().trim().isEmpty()) { es.setError("Введите испанский текст"); return; }
             if (ru.getText().toString().trim().isEmpty()) { ru.setError("Введите русский смысл"); return; }
-            store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), kind); dialog.dismiss(); render();
+            store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), draftKind); clearCardDraft(); dialog.dismiss(); render();
         })); dialog.show();
+    }
+    private void rememberCardDraft() {
+        if (cardDialog != null && cardDialog.isShowing() && draftSpanish != null && draftMeaning != null) {
+            prefs.edit().putBoolean("cardDraftOpen", true).putInt("cardDraftKind", draftKind)
+                    .putString("cardDraftSpanish", draftSpanish.getText().toString())
+                    .putString("cardDraftMeaning", draftMeaning.getText().toString()).commit();
+        }
+    }
+    private void clearCardDraft() {
+        prefs.edit().remove("cardDraftOpen").remove("cardDraftKind").remove("cardDraftSpanish").remove("cardDraftMeaning").commit();
+        draftSpanish = null; draftMeaning = null;
     }
     private void stories() {
         text("Библиотека сказок", 28);
@@ -180,6 +217,17 @@ public final class MainActivity extends Activity {
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
     }
     @Override public void onBackPressed() { if (screen.equals("player")) navigate("stories"); else super.onBackPressed(); }
-    @Override protected void onPause() { player.pause(); remember(); super.onPause(); }
+    @Override protected void onResume() {
+        super.onResume();
+        AppUpdater.setForeground(true);
+        if (prefs.getBoolean("cardDraftOpen", false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
+        AppUpdater.check(this);
+        if (!BuildConfig.DEBUG && !getPackageManager().canRequestPackageInstalls() && !prefs.getBoolean("autoUpdatePromptShown", false)) {
+            prefs.edit().putBoolean("autoUpdatePromptShown", true).apply();
+            showAutoUpdates();
+        }
+    }
+    @Override protected void onPause() { player.pause(); remember(); rememberCardDraft(); super.onPause(); }
+    @Override protected void onStop() { super.onStop(); if (!isChangingConfigurations()) AppUpdater.setForeground(false); }
     @Override protected void onDestroy() { player.close(); store.close(); super.onDestroy(); }
 }
