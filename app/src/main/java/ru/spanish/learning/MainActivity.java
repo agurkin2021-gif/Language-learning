@@ -22,8 +22,9 @@ public final class MainActivity extends Activity {
     private SpeechPlayer player;
     private SharedPreferences prefs;
     private LinearLayout content;
-    private TextView sentence, playbackStatus, voice;
-    private Button toggle, repeat, updateButton;
+    private TextView sentence, sentenceRu, playbackStatus;
+    private Button toggle, repeat;
+    private List<String> storyTranslations = new java.util.ArrayList<>();
     private boolean archive;
     private int kind;
     private int category;
@@ -79,7 +80,7 @@ public final class MainActivity extends Activity {
     }
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
     private void render() {
-        rendering = true; sentence = null; playbackStatus = null; voice = null; toggle = null; repeat = null;
+        rendering = true; sentence = null; sentenceRu = null; playbackStatus = null; toggle = null; repeat = null;
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(Color.rgb(245,243,237));
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
@@ -87,25 +88,56 @@ public final class MainActivity extends Activity {
             Button tab = new Button(this); tab.setText(label); tab.setAllCaps(false); tabs.addView(tab, new LinearLayout.LayoutParams(0, dp(56), 1));
             tab.setOnClickListener(v -> navigate(label.equals("Карточки") ? "cards" : "stories"));
         }
+        Button settingsButton = rowButton("⚙", this::showSettings);
+        settingsButton.setTextSize(24);
+        tabs.addView(settingsButton, new LinearLayout.LayoutParams(dp(64), dp(56)));
         root.addView(tabs);
         ScrollView scroll = new ScrollView(this); content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(24)); scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        LinearLayout updates = new LinearLayout(this);
-        Button buildInfo = new Button(this);
-        buildInfo.setText(getString(R.string.build_button, BuildConfig.VERSION_NAME));
-        buildInfo.setAllCaps(false);
-        buildInfo.setTextSize(13);
-        buildInfo.setOnClickListener(v -> showBuild());
-        updates.addView(buildInfo, new LinearLayout.LayoutParams(0, dp(60), 1));
-        updateButton = new Button(this);
-        updateButton.setText(R.string.update_button);
-        updateButton.setAllCaps(false);
-        updateButton.setTextSize(15);
-        updateButton.setOnClickListener(v -> startUpdateNow());
-        updates.addView(updateButton, new LinearLayout.LayoutParams(0, dp(60), 1));
-        root.addView(updates);
         setContentView(root);
         if (screen.equals("cards")) cards(); else if (screen.equals("player")) storyPlayer(); else stories();
         rendering = false; remember(); updatePlayer();
+    }
+    private void showSettings() {
+        player.pause();
+        String[] items = {
+                "Режим: " + (player.sentenceMode ? "по одному предложению" : "непрерывно"),
+                "Скорость произношения: " + player.speed + "×",
+                "Пауза между предложениями: " + player.pauseMs / 1000f + " с",
+                "Обновление",
+                "Версия / сборка"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Настройки")
+                .setItems(items, (dialog, which) -> {
+                    if (which == 0) {
+                        player.sentenceMode = !player.sentenceMode;
+                        remember();
+                        updatePlayer();
+                        showSettings();
+                    } else if (which == 1) {
+                        new AlertDialog.Builder(this).setTitle("Скорость произношения")
+                                .setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
+                                    player.pause();
+                                    player.speed = new float[]{.6f,.75f,.85f,1f,1.2f}[w];
+                                    remember();
+                                    updatePlayer();
+                                }).show();
+                    } else if (which == 2) {
+                        new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
+                                .setItems(new String[]{"0 с", "1 с", "1.5 с", "3 с", "5 с"}, (d,w) -> {
+                                    player.pause();
+                                    player.pauseMs = new int[]{0,1000,1500,3000,5000}[w];
+                                    remember();
+                                    updatePlayer();
+                                }).show();
+                    } else if (which == 3) {
+                        startUpdateNow();
+                    } else {
+                        showBuild();
+                    }
+                })
+                .setNegativeButton("Закрыть", null)
+                .show();
     }
     private void showBuild() {
         player.pause();
@@ -359,27 +391,43 @@ public final class MainActivity extends Activity {
         Store.Story selected = null; for(Store.Story s : store.stories()) if(s.id() == storyId) selected = s;
         if(selected == null) { text("Рассказ не найден", 22); return; }
         text(selected.title(), 25); text(selected.source(), 14);
-        voice = text(player.voiceDescription, 14);
+        storyTranslations = Sentences.split(selected.translation());
         sentence = text(player.current(), 27); sentence.setTextIsSelectable(true);
+        sentenceRu = text(currentTranslation(), 20); sentenceRu.setTextIsSelectable(true);
+        sentenceRu.setTextColor(Color.rgb(76, 90, 87));
         playbackStatus = text("", 16);
         toggle = button("Слушать", () -> { if(player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING)) player.pause(); else player.play(); });
         toggle.setTextSize(24); toggle.setMinHeight(dp(76));
         repeat = button("Повторить предложение", player::repeat);
-        text("Пауза останавливает речь сразу. Продолжение начинает остановленное предложение заново.", 14);
-        Switch mode = new Switch(this); mode.setText("По одному предложению"); mode.setTextSize(18); mode.setMinHeight(dp(56)); mode.setChecked(player.sentenceMode); content.addView(mode);
-        mode.setOnCheckedChangeListener((v, checked) -> { player.pause(); player.sentenceMode = checked; remember(); updatePlayer(); });
-        Button speedButton = button("Скорость произношения: " + player.speed + "×", () -> new AlertDialog.Builder(this).setTitle("Скорость произношения").setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> { player.pause(); player.speed = new float[]{.6f,.75f,.85f,1f,1.2f}[w]; render(); }).show());
-        button("Пауза между предложениями: " + player.pauseMs / 1000f + " с", () -> new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме").setItems(new String[]{"0 с", "1 с", "1.5 с", "3 с", "5 с"}, (d,w) -> { player.pause(); player.pauseMs = new int[]{0,1000,1500,3000,5000}[w]; render(); }).show());
-        text("В режиме по одному предложению ожидание не ограничено: нажмите «Продолжить».",14);
-        button("Читать весь рассказ", () -> { player.pause(); new AlertDialog.Builder(this).setTitle("Текст рассказа").setMessage(String.join("\n\n", Sentences.split(findBody()))).setPositiveButton("Закрыть",null).show(); });
+        button("Читать весь рассказ", () -> { player.pause(); new AlertDialog.Builder(this).setTitle("Текст рассказа").setMessage(fullStoryText()).setPositiveButton("Закрыть",null).show(); });
         button("← Библиотека", () -> navigate("stories"));
     }
     private String findBody() { for(Store.Story s : store.stories()) if(s.id() == storyId) return s.body(); return ""; }
+    private String currentTranslation() {
+        if (storyTranslations.isEmpty()) return "";
+        int i = Math.max(0, Math.min(player.state.index, storyTranslations.size() - 1));
+        return storyTranslations.get(i);
+    }
+    private String fullStoryText() {
+        for (Store.Story story : store.stories()) {
+            if (story.id() != storyId) continue;
+            List<String> spanish = Sentences.split(story.body());
+            List<String> russian = Sentences.split(story.translation());
+            StringBuilder out = new StringBuilder();
+            for (int i = 0; i < spanish.size(); i++) {
+                if (out.length() > 0) out.append("\n\n");
+                out.append(spanish.get(i));
+                if (i < russian.size() && !russian.get(i).trim().isEmpty()) out.append("\n").append(russian.get(i));
+            }
+            return out.toString();
+        }
+        return "";
+    }
     private void updatePlayer() {
         if (player == null || rendering) return;
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
         if (sentence == null) return;
-        sentence.setText(player.current()); voice.setText(player.voiceDescription);
+        sentence.setText(player.current()); if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
         toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.ready()); repeat.setEnabled(player.ready());
