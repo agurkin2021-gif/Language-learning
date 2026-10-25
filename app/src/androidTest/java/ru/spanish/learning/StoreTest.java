@@ -53,4 +53,38 @@ public class StoreTest extends AndroidTestCase {
         s.close();
         getContext().deleteDatabase("test-learning.db");
     }
+
+    public void testCustomCategoryAndWeakReviewSchedulePersist() {
+        String database = "test-review-schedule.db";
+        getContext().deleteDatabase(database);
+        long id = -1;
+        try (Store s = new Store(getContext(), database)) {
+            s.addCard("palabra personalizada", "слово для проверки", 0, 2);
+            for (Store.Card card : s.cards(false, 0, 2)) {
+                if ("palabra personalizada".equals(card.spanish())) {
+                    id = card.id();
+                    break;
+                }
+            }
+            assertTrue(id > 0);
+            s.review(id, 0, 5);
+        }
+
+        try (Store s = new Store(getContext(), database)) {
+            Store.Card found = null;
+            for (Store.Card card : s.cards(false, 0, 2)) if (card.id() == id) found = card;
+            assertNotNull(found);
+            assertEquals(0, found.lastResult());
+            assertEquals(1, found.reviewCount());
+            assertEquals(5, found.nextDue());
+            s.review(id, 2, 0);
+        }
+
+        try (Store s = new Store(getContext(), database)) {
+            boolean mastered = false;
+            for (Store.Card card : s.cards(true, 0, 2)) if (card.id() == id) mastered = true;
+            assertTrue(mastered);
+        }
+        getContext().deleteDatabase(database);
+    }
 }
