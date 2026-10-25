@@ -2,21 +2,18 @@ package ru.spanish.learning;
 
 import android.app.Activity;
 import android.graphics.Color;
-import android.net.http.SslError;
+import android.util.Base64;
 import android.view.View;
-import android.webkit.SslErrorHandler;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.Normalizer;
 import java.util.Locale;
 
 final class CardImageLoader {
-    private static final String BASE = "https://raw.githubusercontent.com/agurkin2021-gif/Language-learning/card-assets/card-images/";
-
     private CardImageLoader() {}
 
     static String key(String spanish) {
@@ -31,7 +28,18 @@ final class CardImageLoader {
     static void load(Activity activity, WebView target, View fallback, String spanish) {
         target.setVisibility(View.GONE);
         if (fallback != null) fallback.setVisibility(View.VISIBLE);
-        if (BuildConfig.DEBUG) return;
+
+        byte[] svg;
+        String asset = "card-images/" + key(spanish) + ".svg";
+        try (InputStream input = activity.getAssets().open(asset);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+            svg = output.toByteArray();
+        } catch (IOException missing) {
+            return;
+        }
 
         WebSettings settings = target.getSettings();
         settings.setJavaScriptEnabled(false);
@@ -48,40 +56,19 @@ final class CardImageLoader {
         target.setHorizontalScrollBarEnabled(false);
 
         target.setWebViewClient(new WebViewClient() {
-            private boolean failed;
-
-            private void fail() {
-                failed = true;
-                target.setVisibility(View.GONE);
-                if (fallback != null) fallback.setVisibility(View.VISIBLE);
-            }
-
-            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
-                if (request.isForMainFrame() && response.getStatusCode() >= 400) fail();
-            }
-
-            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame()) fail();
-            }
-
-            @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                handler.cancel();
-                fail();
-            }
-
             @Override public void onPageFinished(WebView view, String url) {
-                if (failed || activity.isFinishing() || activity.isDestroyed()) return;
+                if (activity.isFinishing() || activity.isDestroyed()) return;
                 target.setVisibility(View.VISIBLE);
                 if (fallback != null) fallback.setVisibility(View.GONE);
             }
         });
 
-        String imageUrl = BASE + key(spanish) + ".svg";
+        String data = Base64.encodeToString(svg, Base64.NO_WRAP);
         String html = "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
                 + "<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}"
                 + "body{display:flex;align-items:center;justify-content:center}"
                 + "img{display:block;width:100%;height:100%;object-fit:contain}</style></head>"
-                + "<body><img src=\"" + imageUrl + "\" alt=\"\"></body></html>";
-        target.loadDataWithBaseURL(BASE, html, "text/html", "UTF-8", null);
+                + "<body><img src=\"data:image/svg+xml;base64," + data + "\" alt=\"\"></body></html>";
+        target.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
     }
 }
