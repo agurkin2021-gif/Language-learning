@@ -249,6 +249,45 @@ jobs:
         with:
           name: SpanishLearning-unsigned-build-${{ github.run_number }}
           path: phone-unsigned
+      - name: Snapshot previous published phone build
+        id: previous
+        if: steps.signing.outputs.available == 'true'
+        env:
+          CURRENT_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          mkdir -p previous-phone-build
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.error, urllib.request
+          base = "https://raw.githubusercontent.com/" + os.environ["GITHUB_REPOSITORY"] + "/refs/heads/phone-builds/"
+          out = pathlib.Path("previous-phone-build")
+          try:
+              for name in ("SpanishLearning.apk", "build-info.json"):
+                  with urllib.request.urlopen(base + name, timeout=30) as response:
+                      (out / name).write_bytes(response.read())
+          except urllib.error.HTTPError as error:
+              if error.code == 404:
+                  with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                      output.write("available=false\n")
+                  raise SystemExit(0)
+              raise
+          metadata = json.loads((out / "build-info.json").read_text(encoding="utf-8"))
+          current = int(os.environ["CURRENT_RUN_NUMBER"])
+          if metadata.get("application_id") != "ru.spanish.learning":
+              raise SystemExit("Previous phone build has unexpected application_id")
+          if metadata.get("repository") != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("Previous phone build belongs to another repository")
+          if not isinstance(metadata.get("version_code"), int) or metadata["version_code"] >= 100 + current:
+              raise SystemExit("Previous phone build is not older than candidate")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("available=true\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: steps.previous.outputs.available == 'true'
+        with:
+          name: SpanishLearning-previous-phone-build-${{ github.run_number }}
+          path: previous-phone-build/
+          if-no-files-found: error
+          retention-days: 7
       - name: Sign, verify and publish APK for phone
         id: publish
         if: steps.signing.outputs.available == 'true'
@@ -266,3 +305,55 @@ jobs:
             phone-package/build-info.json
           if-no-files-found: error
           retention-days: 30
+
+  published-update-smoke:
+    needs: phone-publish
+    if: >-
+      needs.phone-publish.result == 'success' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.head.ref == 'codex/android-v1'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: SpanishLearning-previous-phone-build-${{ github.run_number }}
+          path: previous-phone-build
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash scripts/test_published_update_button.sh previous-phone-build/SpanishLearning.apk "$GITHUB_RUN_NUMBER" published-update-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-update-smoke-${{ github.run_number }}
+          path: published-update-smoke/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Published one-tap update summary
+        if: always()
+        env:
+          TEST_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Кнопка «Обновление» · публичный APK · $TEST_RESULT"
+            echo "На чистом Android 14 устанавливается предыдущий реальный подписанный APK, нажимается именно кнопка «Обновление», затем проверяется переход на текущий опубликованный versionCode."
+            echo "Тест падает, если открывается браузер/файловый менеджер, требуется второе нажатие установки или versionCode не меняется."
+          } >> "$GITHUB_STEP_SUMMARY"
