@@ -240,14 +240,20 @@ public final class MainActivity extends Activity {
             cardRevealed = false;
             render();
         });
-        cardActions.addView(masteredButton, new LinearLayout.LayoutParams(0, -2, 1));
-        if (!archive) {
-            Button addButton = rowButton("＋ Добавить", this::addCard);
-            LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(0, -2, 1);
-            addParams.setMarginStart(dp(6));
-            cardActions.addView(addButton, addParams);
-        }
+        cardActions.addView(masteredButton, new LinearLayout.LayoutParams(-1, -2));
         content.addView(cardActions, new LinearLayout.LayoutParams(-1, -2));
+
+        if (!archive) {
+            LinearLayout addActions = new LinearLayout(this);
+            addActions.setOrientation(LinearLayout.HORIZONTAL);
+            Button addWordButton = rowButton("＋ Слово", () -> addCard(0));
+            Button addPhraseButton = rowButton("＋ Устойчивое выражение", () -> addCard(1));
+            addActions.addView(addWordButton, new LinearLayout.LayoutParams(0, -2, 1));
+            LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, -2, 1);
+            phraseParams.setMarginStart(dp(6));
+            addActions.addView(addPhraseButton, phraseParams);
+            content.addView(addActions, new LinearLayout.LayoutParams(-1, -2));
+        }
 
         List<Store.Card> cards = archive
                 ? store.cards(true, kind, kind == 0 ? category : 0)
@@ -351,11 +357,12 @@ public final class MainActivity extends Activity {
         EditText e = new EditText(this); e.setHint(hint); e.setTextSize(18); e.setSingleLine(!multiline); e.setFilters(new InputFilter[]{new InputFilter.LengthFilter(max)}); if(multiline) e.setMinLines(3); box.addView(e); return e;
     }
     private LinearLayout form() { LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(20),dp(8),dp(20),dp(8)); return box; }
-    private void addCard() {
+    private void addCard() { addCard(kind); }
+    private void addCard(int requestedKind) {
         if (cardDialog != null && cardDialog.isShowing()) return;
         LinearLayout box = form(); EditText es = field(box, "По-испански", 500, false); EditText ru = field(box, "Русский смысл", 1000, true);
         boolean restoring = prefs.getBoolean("cardDraftOpen", false);
-        draftKind = restoring ? prefs.getInt("cardDraftKind", kind) : kind;
+        draftKind = restoring ? prefs.getInt("cardDraftKind", requestedKind) : requestedKind;
         int defaultCategory = category >= 1 && category <= 3 ? category : 1;
         draftCategory = restoring ? prefs.getInt("cardDraftCategory", defaultCategory) : defaultCategory;
         if (restoring) { es.setText(prefs.getString("cardDraftSpanish", "")); ru.setText(prefs.getString("cardDraftMeaning", "")); }
@@ -373,7 +380,7 @@ public final class MainActivity extends Activity {
             draftCategorySpinner.setSelection(Math.max(0, Math.min(2, draftCategory - 1)));
             box.addView(draftCategorySpinner);
         }
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(draftKind == 0 ? "Новое слово" : "Новое выражение").setView(box).setNegativeButton("Отмена", (d, w) -> clearCardDraft()).setPositiveButton("Сохранить", null).create();
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(draftKind == 0 ? "Новое слово" : "Новое устойчивое выражение").setView(box).setNegativeButton("Отмена", (d, w) -> clearCardDraft()).setPositiveButton("Сохранить", null).create();
         cardDialog = dialog;
         dialog.setOnCancelListener(d -> clearCardDraft());
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
@@ -381,6 +388,10 @@ public final class MainActivity extends Activity {
             if (ru.getText().toString().trim().isEmpty()) { ru.setError("Введите русский смысл"); return; }
             draftCategory = draftKind == 0 && draftCategorySpinner != null ? draftCategorySpinner.getSelectedItemPosition() + 1 : 0;
             store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), draftKind, draftCategory);
+            kind = draftKind;
+            if (kind == 1) category = 0;
+            reviewIndex = 0;
+            cardRevealed = false;
             clearCardDraft(); dialog.dismiss(); render();
         })); dialog.show();
     }
