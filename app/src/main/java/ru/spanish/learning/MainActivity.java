@@ -100,7 +100,7 @@ public final class MainActivity extends Activity {
     private void showSettings() {
         player.pause();
         String[] items = {
-                "Режим: " + (player.sentenceMode ? "по одному предложению" : "непрерывно"),
+                "Прослушивание: " + (player.sentenceMode ? "по одному предложению" : "весь рассказ без остановок"),
                 "Скорость произношения: " + player.speed + "×",
                 "Пауза между предложениями: " + player.pauseMs / 1000f + " с",
                 "Обновление",
@@ -110,10 +110,13 @@ public final class MainActivity extends Activity {
                 .setTitle("Настройки")
                 .setItems(items, (dialog, which) -> {
                     if (which == 0) {
-                        player.sentenceMode = !player.sentenceMode;
-                        remember();
-                        updatePlayer();
-                        showSettings();
+                        new AlertDialog.Builder(this).setTitle("Режим прослушивания")
+                                .setItems(new String[]{"Весь рассказ без остановок", "По одному предложению"}, (d,w) -> {
+                                    player.pause();
+                                    player.sentenceMode = w == 1;
+                                    remember();
+                                    updatePlayer();
+                                }).show();
                     } else if (which == 1) {
                         new AlertDialog.Builder(this).setTitle("Скорость произношения")
                                 .setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
@@ -398,6 +401,11 @@ public final class MainActivity extends Activity {
         playbackStatus = text("", 16);
         toggle = button("Слушать", () -> { if(player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING)) player.pause(); else player.play(); });
         toggle.setTextSize(24); toggle.setMinHeight(dp(76));
+        button("▶ Весь рассказ с начала", () -> {
+            player.playAllFromStart();
+            remember();
+            updatePlayer();
+        });
         repeat = button("Повторить предложение", player::repeat);
         button("Читать весь рассказ", () -> { player.pause(); new AlertDialog.Builder(this).setTitle("Текст рассказа").setMessage(fullStoryText()).setPositiveButton("Закрыть",null).show(); });
         button("← Библиотека", () -> navigate("stories"));
