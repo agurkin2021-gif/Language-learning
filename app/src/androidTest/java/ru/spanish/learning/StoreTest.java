@@ -9,8 +9,11 @@ public class StoreTest extends AndroidTestCase {
 
         int wordsBefore = s.cards(false, 0).size();
         int expressionsBefore = s.cards(false, 1).size();
-        assertTrue(wordsBefore >= 900);
-        assertTrue(expressionsBefore >= 50);
+        assertEquals(300, s.cards(false, 0, 1).size());
+        assertEquals(300, s.cards(false, 0, 2).size());
+        assertEquals(300, s.cards(false, 0, 3).size());
+        assertEquals(900, wordsBefore);
+        assertEquals(50, expressionsBefore);
 
         s.addCard("mate personalizado", "мате — пользовательская карточка", 0);
         s.addCard("por favor personalizado", "пожалуйста — пользовательская карточка", 1);
