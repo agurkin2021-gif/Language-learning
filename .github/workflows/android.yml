@@ -372,54 +372,71 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  published-update-smoke:
-    needs: phone-publish
+
+  updater-publish:
+    needs: [build, updater-installer-test]
     if: >-
-      needs.phone-publish.result == 'success' &&
+      needs.build.result == 'success' && needs.updater-installer-test.result == 'success' &&
       ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
        (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.pull_request.head.ref == 'codex/android-v1'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: updater-publish-${{ github.repository }}
+      cancel-in-progress: false
     steps:
+      - name: Check permanent signing secret
+        id: signing
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+        run: |
+          if [ -z "$ANDROID_SIGNING_CONFIG" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Updater ждёт ANDROID_SIGNING_CONFIG." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.signing.outputs.available == 'true'
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: android-actions/setup-android@v3
+        if: steps.signing.outputs.available == 'true'
         with:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
+      - name: Install signing tools
+        if: steps.signing.outputs.available == 'true'
+        run: sdkmanager 'build-tools;35.0.0'
       - uses: actions/download-artifact@v4
+        if: steps.signing.outputs.available == 'true'
         with:
-          name: SpanishLearning-previous-phone-build-${{ github.run_number }}
-          path: previous-phone-build
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          target: google_apis
-          disable-animations: true
-          script: bash scripts/test_published_update_button.sh previous-phone-build/SpanishLearning.apk "$GITHUB_RUN_NUMBER" published-update-smoke
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: published-update-smoke-${{ github.run_number }}
-          path: published-update-smoke/
-          if-no-files-found: warn
-          retention-days: 30
-      - name: Published one-tap update summary
-        if: always()
+          name: SpanishLearningUpdater-unsigned-build-${{ github.run_number }}
+          path: updater-unsigned
+      - name: Sign, verify and publish Updater APK
+        id: publish
+        if: steps.signing.outputs.available == 'true'
         env:
-          TEST_RESULT: ${{ job.status }}
-        run: |
-          {
-            echo "## Кнопка «Обновление» · публичный APK · $TEST_RESULT"
-            echo "На чистом Android 14 устанавливается предыдущий реальный подписанный APK, нажимается именно кнопка «Обновление», затем проверяется переход на текущий опубликованный versionCode."
-            echo "Тест падает, если открывается браузер/файловый менеджер, требуется второе нажатие установки или versionCode не меняется."
-          } >> "$GITHUB_STEP_SUMMARY"
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/updater_publish.py --unsigned-apk updater-unsigned/updater-release-unsigned.apk --output-dir updater-package
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.publish.outputs.artifact_ready == 'true'
+        with:
+          name: SpanishLearningUpdater-phone-build-${{ github.run_number }}
+          path: |
+            updater-package/SpanishLearningUpdater.apk
+            updater-package/SHA256SUMS.txt
+            updater-package/build-info.json
+          if-no-files-found: error
+          retention-days: 30
