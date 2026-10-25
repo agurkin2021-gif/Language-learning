@@ -46,29 +46,52 @@ clear_completed_first_installer_ui() {
 }
 
 tap_main_update() {
-  for _ in $(seq 1 20); do
+  local opened_settings=no
+  for _ in $(seq 1 30); do
     dump_ui > "$reports/main-ui.xml"
     if python3 - "$reports/main-ui.xml" <<'PY' > "$reports/main-tap.txt"
 import re, sys, xml.etree.ElementTree as ET
 root = ET.parse(sys.argv[1]).getroot()
-for node in root.iter("node"):
-    if node.attrib.get("text") != "Обновление":
-        continue
-    m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds",""))
-    if not m:
-        continue
-    x1,y1,x2,y2 = map(int,m.groups())
-    # Keep the tap safely above Android's bottom gesture/navigation area.
-    y = min(y2 - 8, y1 + max(10, min(18, (y2 - y1) // 3)))
-    print((x1+x2)//2, y)
+
+def point_for(text):
+    for node in root.iter("node"):
+        if node.attrib.get("text") != text:
+            continue
+        m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds",""))
+        if not m:
+            continue
+        x1,y1,x2,y2 = map(int,m.groups())
+        y = min(y2 - 8, y1 + max(10, min(18, (y2 - y1) // 3)))
+        return (x1+x2)//2, y
+    return None
+
+update = point_for("Обновление")
+if update:
+    print("update", *update)
+    raise SystemExit(0)
+gear = point_for("⚙")
+if gear:
+    print("gear", *gear)
     raise SystemExit(0)
 raise SystemExit(1)
 PY
     then
-      read -r x y < "$reports/main-tap.txt"
+      read -r action x y < "$reports/main-tap.txt"
+      if [[ $action == gear ]]; then
+        if [[ $opened_settings == yes ]]; then
+          echo "Settings opened but update action did not become available." >&2
+          return 1
+        fi
+        echo "STAGE open settings at $x,$y"
+        adb shell input tap "$x" "$y"
+        opened_settings=yes
+        sleep 1
+        continue
+      fi
+
       before=$(installed_version)
       for attempt in 1 2 3; do
-        echo "STAGE tap main update attempt $attempt at $x,$y"
+        echo "STAGE tap settings update attempt $attempt at $x,$y"
         adb shell input tap "$x" "$y"
         sleep 1
         focus=$(adb shell dumpsys activity activities | grep -E -m1 'topResumedActivity|mResumedActivity' || true)
@@ -78,12 +101,12 @@ PY
           return 0
         fi
       done
-      echo "Main update button was visible but did not launch Updater." >&2
+      echo "Settings update action was visible but did not launch Updater." >&2
       return 1
     fi
     sleep 1
   done
-  echo "Main update button did not become available." >&2
+  echo "Settings update action did not become available." >&2
   return 1
 }
 
