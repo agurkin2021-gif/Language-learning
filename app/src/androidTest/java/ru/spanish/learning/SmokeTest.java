@@ -25,6 +25,7 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull(find(root, "＋ Устойчивое выражение"));
             assertNotNull(find(root, "Обновление"));
             assertNotNull(find(root, "Версия / сборка"));
+            assertNull(find(root, "⚙"));
         });
         tap("Освоенное"); tap("← К изучению");
         tap("Сказки");
