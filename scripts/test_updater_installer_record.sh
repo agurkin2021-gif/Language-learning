@@ -22,12 +22,12 @@ collect() {
 trap collect EXIT
 
 installed_version() {
-  adb shell dumpsys package "$target" | python3 -c 'import re,sys; m=re.search(r"versionCode=(\d+)",sys.stdin.read()); print(m.group(1) if m else "0")'
+  timeout 10s adb shell dumpsys package "$target" | python3 -c 'import re,sys; m=re.search(r"versionCode=(\d+)",sys.stdin.read()); print(m.group(1) if m else "0")'
 }
 
 dump_ui() {
-  adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
-  adb exec-out cat /sdcard/window.xml 2>/dev/null || true
+  timeout 10s adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
+  timeout 10s adb exec-out cat /sdcard/window.xml 2>/dev/null || true
 }
 
 clear_completed_first_installer_ui() {
@@ -111,7 +111,7 @@ copy_candidate() {
 start_updater() {
   local appdir
   appdir=$(adb shell run-as "$updater" pwd | tr -d '\r')
-  adb shell am start -W -n "$updater/.UpdaterActivity" --es test_apk_path "$appdir/files/candidate.apk" >/dev/null
+  timeout 20s adb shell am start -W -n "$updater/.UpdaterActivity" --es test_apk_path "$appdir/files/candidate.apk" >/dev/null
 }
 
 wait_for_version() {
@@ -153,8 +153,9 @@ installer_line() {
   adb shell dumpsys package "$target" | grep -E -m1 'installerPackageName=|Installer package name:' || true
 }
 
-adb install -r "$base_apk" >/dev/null
-adb install -r "$updater_apk" >/dev/null
+echo "STAGE install base and updater"
+timeout 30s adb install -r "$base_apk" >/dev/null
+timeout 30s adb install -r "$updater_apk" >/dev/null
 adb shell appops set "$updater" REQUEST_INSTALL_PACKAGES allow
 
 base_version=$(installed_version)
@@ -165,6 +166,7 @@ if [[ -z $first_version || -z $second_version || $base_version -ge $first_versio
   exit 1
 fi
 
+echo "STAGE first approved updater handoff"
 copy_candidate "$first_apk"
 start_updater
 wait_for_version "$first_version" yes
@@ -176,17 +178,19 @@ if ! grep -q "$updater" <<<"$first_installer"; then
   exit 1
 fi
 
+echo "STAGE second updater handoff through main app"
 adb shell am force-stop "$updater"
 copy_candidate "$second_apk"
 updater_appdir=$(adb shell run-as "$updater" pwd | tr -d '\r')
 adb logcat -c
 clear_completed_first_installer_ui
-adb shell am start -W -n "$target/.MainActivity" --es updater_test_path "$updater_appdir/files/candidate.apk" >/dev/null
+timeout 20s adb shell am start -W -n "$target/.MainActivity" --es updater_test_path "$updater_appdir/files/candidate.apk" >/dev/null
 sleep 1
 tap_main_update
 sleep 1
 adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' > "$reports/focus-after-main-button.txt" || true
 wait_for_version "$second_version" no
+echo "STAGE second updater handoff completed"
 sleep 2
 second_installer=$(installer_line)
 printf '%s\n' "$second_installer" > "$reports/installer-after-second.txt"
