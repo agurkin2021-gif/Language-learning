@@ -154,14 +154,8 @@ public final class ChatGptAssistant {
                     }
 
                     executedAny = true;
+                    for (JSONObject outputItem : turn.outputItems) input.put(outputItem);
                     for (ToolCall call : turn.calls) {
-                        JSONObject callItem = new JSONObject();
-                        callItem.put("type", "function_call");
-                        callItem.put("call_id", call.callId);
-                        callItem.put("name", call.name);
-                        callItem.put("arguments", call.arguments);
-                        input.put(callItem);
-
                         String result = executeTool(store, call);
                         try {
                             if (new JSONObject(result).optBoolean("ok", false)) toolSucceeded = true;
@@ -484,6 +478,7 @@ public final class ChatGptAssistant {
 
         StringBuilder text = new StringBuilder();
         List<ToolCall> calls = new ArrayList<>();
+        List<JSONObject> outputItems = new ArrayList<>();
         boolean completed = false;
         String failure = "";
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
@@ -491,7 +486,7 @@ public final class ChatGptAssistant {
             for (String line; (line = reader.readLine()) != null; ) {
                 if (line.isEmpty()) {
                     if (data.length() > 0) {
-                        EventResult result = processEvent(data.toString(), text, calls);
+                        EventResult result = processEvent(data.toString(), text, calls, outputItems);
                         completed |= result.completed;
                         if (!result.failure.isEmpty()) failure = result.failure;
                         data.setLength(0);
@@ -501,7 +496,7 @@ public final class ChatGptAssistant {
                 }
             }
             if (data.length() > 0) {
-                EventResult result = processEvent(data.toString(), text, calls);
+                EventResult result = processEvent(data.toString(), text, calls, outputItems);
                 completed |= result.completed;
                 if (!result.failure.isEmpty()) failure = result.failure;
             }
@@ -510,10 +505,10 @@ public final class ChatGptAssistant {
         }
         if (!failure.isEmpty()) throw new IllegalStateException(failure);
         if (!completed) throw new IllegalStateException("Ответ ChatGPT оборвался до завершения");
-        return new ResponseTurn(text.toString(), calls);
+        return new ResponseTurn(text.toString(), calls, outputItems);
     }
 
-    private EventResult processEvent(String data, StringBuilder text, List<ToolCall> calls) {
+    private EventResult processEvent(String data, StringBuilder text, List<ToolCall> calls, List<JSONObject> outputItems) {
         if (data.isEmpty() || "[DONE]".equals(data)) return new EventResult(false, "");
         try {
             JSONObject event = new JSONObject(data);
@@ -522,11 +517,14 @@ public final class ChatGptAssistant {
                 text.append(event.optString("delta"));
             } else if ("response.output_item.done".equals(type)) {
                 JSONObject item = event.optJSONObject("item");
-                if (item != null && "function_call".equals(item.optString("type"))) {
-                    calls.add(new ToolCall(
-                            item.optString("call_id"),
-                            item.optString("name"),
-                            item.optString("arguments")));
+                if (item != null) {
+                    outputItems.add(new JSONObject(item.toString()));
+                    if ("function_call".equals(item.optString("type"))) {
+                        calls.add(new ToolCall(
+                                item.optString("call_id"),
+                                item.optString("name"),
+                                item.optString("arguments")));
+                    }
                 }
             } else if ("response.completed".equals(type)) {
                 return new EventResult(true, "");
@@ -810,6 +808,6 @@ public final class ChatGptAssistant {
                            String scope, String email, long expiresAt) {}
     private record CallbackData(String code, String state, String clientId, String error) {}
     private record ToolCall(String callId, String name, String arguments) {}
-    private record ResponseTurn(String text, List<ToolCall> calls) {}
+    private record ResponseTurn(String text, List<ToolCall> calls, List<JSONObject> outputItems) {}
     private record EventResult(boolean completed, String failure) {}
 }
