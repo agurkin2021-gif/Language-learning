@@ -1,5 +1,5 @@
 {
-  "format": 1,
+  "format": 2,
   "count": 950,
   "counts": {
     "verbs": 300,
@@ -196,7 +196,7 @@
       "spanish": "llamar",
       "meaning": "звать, звонить",
       "key": "llamar-1gu17ml",
-      "visual": "🌊",
+      "visual": "📱",
       "kind": 0,
       "category": 1
     },
@@ -228,7 +228,7 @@
       "spanish": "volver",
       "meaning": "возвращаться",
       "key": "volver-1lmc0z4",
-      "visual": "👀",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -236,7 +236,7 @@
       "spanish": "tomar",
       "meaning": "брать, пить",
       "key": "tomar-1ttblv",
-      "visual": "🌊",
+      "visual": "🥤",
       "kind": 0,
       "category": 1
     },
@@ -556,7 +556,7 @@
       "spanish": "convertir",
       "meaning": "превращать",
       "key": "convertir-1t8w4d8",
-      "visual": "👀",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -572,7 +572,7 @@
       "spanish": "formar",
       "meaning": "формировать",
       "key": "formar-1e1ppth",
-      "visual": "🌊",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -668,7 +668,7 @@
       "spanish": "reconocer",
       "meaning": "узнавать, признавать",
       "key": "reconocer-gdj434",
-      "visual": "🧠",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -820,7 +820,7 @@
       "spanish": "amar",
       "meaning": "любить",
       "key": "amar-1s8yl",
-      "visual": "🌊",
+      "visual": "❤️",
       "kind": 0,
       "category": 1
     },
@@ -940,7 +940,7 @@
       "spanish": "firmar",
       "meaning": "подписывать",
       "key": "firmar-1dyey9b",
-      "visual": "🌊",
+      "visual": "📄",
       "kind": 0,
       "category": 1
     },
@@ -972,7 +972,7 @@
       "spanish": "mandar",
       "meaning": "посылать, приказывать",
       "key": "mandar-1h597nf",
-      "visual": "🚶",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -980,7 +980,7 @@
       "spanish": "mover",
       "meaning": "двигать",
       "key": "mover-1pyy81",
-      "visual": "👀",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1124,7 +1124,7 @@
       "spanish": "descargar",
       "meaning": "скачивать, разгружать",
       "key": "descargar-ojsoba",
-      "visual": "🔋",
+      "visual": "⬇️",
       "kind": 0,
       "category": 1
     },
@@ -1180,7 +1180,7 @@
       "spanish": "confirmar",
       "meaning": "подтверждать",
       "key": "confirmar-1lqd71t",
-      "visual": "🌊",
+      "visual": "⌛",
       "kind": 0,
       "category": 1
     },
@@ -1220,7 +1220,7 @@
       "spanish": "devolver",
       "meaning": "возвращать",
       "key": "devolver-ifup4h",
-      "visual": "👀",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1252,7 +1252,7 @@
       "spanish": "enfermar",
       "meaning": "заболевать",
       "key": "enfermar-tkpd5g",
-      "visual": "🌊",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1356,7 +1356,7 @@
       "spanish": "sonreír",
       "meaning": "улыбаться",
       "key": "sonreir-11hhsfe",
-      "visual": "😂",
+      "visual": "😊",
       "kind": 0,
       "category": 1
     },
@@ -1412,7 +1412,7 @@
       "spanish": "casarse",
       "meaning": "жениться, выходить замуж",
       "key": "casarse-96b060",
-      "visual": "🏠",
+      "visual": "🚶",
       "kind": 0,
       "category": 1
     },
@@ -1420,7 +1420,7 @@
       "spanish": "separarse",
       "meaning": "расставаться",
       "key": "separarse-snoiqa",
-      "visual": "🛑",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1604,7 +1604,7 @@
       "spanish": "comparar",
       "meaning": "сравнивать",
       "key": "comparar-1p413g1",
-      "visual": "🛑",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1628,7 +1628,7 @@
       "spanish": "sumar",
       "meaning": "складывать",
       "key": "sumar-1tdcxo",
-      "visual": "🌊",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1796,7 +1796,7 @@
       "spanish": "informar",
       "meaning": "информировать",
       "key": "informar-2yh3dm",
-      "visual": "🌊",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1964,7 +1964,7 @@
       "spanish": "divertir",
       "meaning": "развлекать",
       "key": "divertir-5yxmn3",
-      "visual": "👀",
+      "visual": "🎬",
       "kind": 0,
       "category": 1
     },
@@ -1972,7 +1972,7 @@
       "spanish": "disfrutar",
       "meaning": "наслаждаться",
       "key": "disfrutar-1yhq2ga",
-      "visual": "🛣️",
+      "visual": "⌛",
       "kind": 0,
       "category": 1
     },
@@ -2012,7 +2012,7 @@
       "spanish": "reparar",
       "meaning": "ремонтировать",
       "key": "reparar-i3g6yn",
-      "visual": "🛑",
+      "visual": "🛠️",
       "kind": 0,
       "category": 1
     },
@@ -2084,7 +2084,7 @@
       "spanish": "filmar",
       "meaning": "снимать видео",
       "key": "filmar-1dyb4c5",
-      "visual": "🌊",
+      "visual": "👩‍👧",
       "kind": 0,
       "category": 1
     },
@@ -2108,7 +2108,7 @@
       "spanish": "programar",
       "meaning": "программировать",
       "key": "programar-1j0br1x",
-      "visual": "🌊",
+      "visual": "💻",
       "kind": 0,
       "category": 1
     },
@@ -2524,7 +2524,7 @@
       "spanish": "trabajo",
       "meaning": "работа",
       "key": "trabajo-1hdl887",
-      "visual": "🧄",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -2700,7 +2700,7 @@
       "spanish": "fruta",
       "meaning": "фрукт",
       "key": "fruta-1m6amu",
-      "visual": "🛣️",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -2708,7 +2708,7 @@
       "spanish": "verdura",
       "meaning": "овощ",
       "key": "verdura-5t2un7",
-      "visual": "👀",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -3116,7 +3116,7 @@
       "spanish": "pantalón",
       "meaning": "брюки",
       "key": "pantalon-hrhvzx",
-      "visual": "🍞",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -3388,7 +3388,7 @@
       "spanish": "primavera",
       "meaning": "весна",
       "key": "primavera-14kcl5l",
-      "visual": "👀",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -3396,7 +3396,7 @@
       "spanish": "verano",
       "meaning": "лето",
       "key": "verano-1lgxhlr",
-      "visual": "👀",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -3428,7 +3428,7 @@
       "spanish": "martes",
       "meaning": "вторник",
       "key": "martes-1h5c3k4",
-      "visual": "🌊",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -3492,7 +3492,7 @@
       "spanish": "marzo",
       "meaning": "март",
       "key": "marzo-1ppxxv",
-      "visual": "🌊",
+      "visual": "🖼️",
       "kind": 0,
       "category": 2
     },
@@ -4932,7 +4932,7 @@
       "spanish": "bajo",
       "meaning": "низкий",
       "key": "bajo-1sn9g",
-      "visual": "🧄",
+      "visual": "🐢",
       "kind": 0,
       "category": 3
     },
@@ -5060,7 +5060,7 @@
       "spanish": "verde",
       "meaning": "зелёный",
       "key": "verde-1uqmp0",
-      "visual": "👀",
+      "visual": "🟢",
       "kind": 0,
       "category": 3
     },
@@ -5076,7 +5076,7 @@
       "spanish": "amarillo",
       "meaning": "жёлтый",
       "key": "amarillo-13hsr0j",
-      "visual": "🌊",
+      "visual": "🟡",
       "kind": 0,
       "category": 3
     },
@@ -5092,7 +5092,7 @@
       "spanish": "frío",
       "meaning": "холодный",
       "key": "frio-1vmy6",
-      "visual": "🏞️",
+      "visual": "🧊",
       "kind": 0,
       "category": 3
     },
@@ -5332,7 +5332,7 @@
       "spanish": "verdadero",
       "meaning": "истинный",
       "key": "verdadero-14j336m",
-      "visual": "👀",
+      "visual": "🎭",
       "kind": 0,
       "category": 3
     },
@@ -5540,7 +5540,7 @@
       "spanish": "amargo",
       "meaning": "горький",
       "key": "amargo-1bn39qd",
-      "visual": "🌊",
+      "visual": "☕",
       "kind": 0,
       "category": 3
     },
@@ -5668,7 +5668,7 @@
       "spanish": "divertido",
       "meaning": "весёлый",
       "key": "divertido-170qdoe",
-      "visual": "👀",
+      "visual": "😄",
       "kind": 0,
       "category": 3
     },
@@ -6172,7 +6172,7 @@
       "spanish": "vertical",
       "meaning": "вертикальный",
       "key": "vertical-127t0mu",
-      "visual": "👀",
+      "visual": "🎭",
       "kind": 0,
       "category": 3
     },
@@ -6268,7 +6268,7 @@
       "spanish": "remoto",
       "meaning": "удалённый",
       "key": "remoto-1jko3m8",
-      "visual": "🏍️",
+      "visual": "🗑️",
       "kind": 0,
       "category": 3
     },
@@ -6524,7 +6524,7 @@
       "spanish": "descargado",
       "meaning": "разряженный",
       "key": "descargado-1eqkdpj",
-      "visual": "🔋",
+      "visual": "🎭",
       "kind": 0,
       "category": 3
     },
@@ -6596,7 +6596,7 @@
       "spanish": "auténtico",
       "meaning": "подлинный",
       "key": "autentico-efq45i",
-      "visual": "🍵",
+      "visual": "📏",
       "kind": 0,
       "category": 3
     },
@@ -7012,7 +7012,7 @@
       "spanish": "solo",
       "meaning": "одинокий, один",
       "key": "solo-23sgv",
-      "visual": "☀️",
+      "visual": "🎭",
       "kind": 0,
       "category": 3
     },
@@ -7028,7 +7028,7 @@
       "spanish": "casado",
       "meaning": "женатый, замужняя",
       "key": "casado-1cew4hj",
-      "visual": "🏠",
+      "visual": "🎭",
       "kind": 0,
       "category": 3
     },
@@ -7036,7 +7036,7 @@
       "spanish": "soltero",
       "meaning": "неженатый, незамужняя",
       "key": "soltero-11gfe9q",
-      "visual": "☀️",
+      "visual": "🎭",
       "kind": 0,
       "category": 3
     },
@@ -7324,7 +7324,7 @@
       "spanish": "la verdad es que",
       "meaning": "правда в том, что",
       "key": "la-verdad-es-que-f7lksg",
-      "visual": "👀",
+      "visual": "💬",
       "kind": 1,
       "category": 0
     },
@@ -7452,7 +7452,7 @@
       "spanish": "estoy seguro de",
       "meaning": "я уверен в",
       "key": "estoy-seguro-de-1szgbbo",
-      "visual": "🛡️",
+      "visual": "💬",
       "kind": 1,
       "category": 0
     },
@@ -7460,7 +7460,7 @@
       "spanish": "no estoy seguro",
       "meaning": "я не уверен",
       "key": "no-estoy-seguro-1i1r8ks",
-      "visual": "🛡️",
+      "visual": "💬",
       "kind": 1,
       "category": 0
     },
@@ -7508,7 +7508,7 @@
       "spanish": "volver a",
       "meaning": "снова сделать",
       "key": "volver-a-144bbch",
-      "visual": "👀",
+      "visual": "🆕",
       "kind": 1,
       "category": 0
     },
