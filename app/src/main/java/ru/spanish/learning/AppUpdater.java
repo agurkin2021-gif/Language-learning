@@ -54,6 +54,7 @@ public final class AppUpdater {
     private static final Object INSTALL_LOCK = new Object();
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     private static final AtomicBoolean CHECK_QUEUED = new AtomicBoolean();
+    private static final AtomicBoolean USER_UPDATE_QUEUED = new AtomicBoolean();
     private static volatile Context application;
     private static volatile boolean foreground;
     private static volatile WeakReference<Activity> interactiveActivity = new WeakReference<>(null);
@@ -103,14 +104,22 @@ public final class AppUpdater {
         });
     }
 
-    /** Explicit user action: check, download and start PackageInstaller while the Activity is visible. */
+    /** One explicit tap: check, download and start PackageInstaller. Duplicate taps do not enqueue duplicate sessions. */
     public static void updateNow(Activity activity) {
         Context app = remember(activity);
         if (BuildConfig.DEBUG) return;
         interactiveActivity = new WeakReference<>(activity);
+        if (hasPendingConfirmation(activity)) {
+            continuePending(activity);
+            return;
+        }
+        if (!USER_UPDATE_QUEUED.compareAndSet(false, true)) return;
         prefs(app).edit().remove("retry_after").remove("blocked_version").commit();
         setStatus(app, "checking", "Проверяется новая версия приложения…");
-        WORKER.execute(() -> perform(app, true, () -> false, true));
+        WORKER.execute(() -> {
+            try { perform(app, true, () -> false, true); }
+            finally { USER_UPDATE_QUEUED.set(false); }
+        });
     }
 
     public static String state(Context context) {
