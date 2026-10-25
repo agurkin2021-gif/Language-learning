@@ -22,5 +22,12 @@ public class PlaybackStateTest {
         PlaybackState s=new PlaybackState(); s.load(3,0); String old=s.play(); s.load(2,1);
         assertFalse(s.complete(old)); assertEquals(1,s.index);
     }
+    @Test public void continuousSequenceCanRunFromFirstToLastWithoutManualAdvance() {
+        PlaybackState s=new PlaybackState(); s.load(3,2);
+        s.load(3,0);
+        assertTrue(s.complete(s.play())); assertEquals(1,s.index); assertEquals(PlaybackState.Phase.WAITING,s.phase);
+        assertTrue(s.complete(s.play())); assertEquals(2,s.index); assertEquals(PlaybackState.Phase.WAITING,s.phase);
+        assertTrue(s.complete(s.play())); assertEquals(PlaybackState.Phase.FINISHED,s.phase);
+    }
     @Test public void emptyCannotSpeak() { PlaybackState s=new PlaybackState(); s.load(0,0); assertNull(s.play()); }
 }
