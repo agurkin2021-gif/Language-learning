@@ -120,6 +120,11 @@ public final class MainActivity extends Activity {
         remember();
         Intent updateIntent = new Intent("ru.spanish.learning.updater.UPDATE")
                 .setPackage("ru.spanish.learning.updater");
+        if (BuildConfig.DEBUG) {
+            String testPath = getIntent().getStringExtra("updater_test_path");
+            if (testPath != null && !testPath.isEmpty())
+                updateIntent.putExtra("test_apk_path", testPath);
+        }
         try {
             startActivity(updateIntent);
         } catch (ActivityNotFoundException e) {
