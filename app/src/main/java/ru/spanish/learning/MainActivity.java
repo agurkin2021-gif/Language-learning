@@ -397,6 +397,7 @@ public final class MainActivity extends Activity {
     }
 
     private void cards() {
+        player.pause();
         text(archive ? "Освоенное" : "Карточки", 28);
 
         LinearLayout maintenance = new LinearLayout(this);
