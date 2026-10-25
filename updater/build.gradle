@@ -1,0 +1,22 @@
+plugins { id 'com.android.application' }
+def buildNumberText = providers.gradleProperty('buildNumber').orElse('0').get()
+if (!(buildNumberText ==~ /[0-9]{1,8}/)) throw new GradleException('buildNumber must be numeric')
+def buildNumber = buildNumberText.toInteger()
+def revision = providers.gradleProperty('sourceRevision').orElse('local').get()
+if (!(revision ==~ /local|[a-f0-9]{7,40}/)) throw new GradleException('sourceRevision must be a Git SHA or local')
+android {
+    namespace 'ru.spanish.learning.updater'
+    compileSdk 35
+    buildToolsVersion "35.0.0"
+    defaultConfig {
+        applicationId 'ru.spanish.learning.updater'
+        minSdk 31
+        targetSdk 35
+        versionCode 1000 + buildNumber
+        versionName buildNumber == 0 ? '1.0-local' : "1.0.${buildNumber}"
+        buildConfigField 'String', 'SOURCE_REVISION', "\"${revision}\""
+    }
+    buildFeatures { buildConfig true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { abortOnError true }
+}
