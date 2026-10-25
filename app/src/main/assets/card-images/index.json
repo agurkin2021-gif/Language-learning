@@ -1,0 +1,7612 @@
+{
+  "format": 2,
+  "count": 950,
+  "counts": {
+    "verbs": 300,
+    "nouns": 300,
+    "adjectives": 300,
+    "expressions": 50
+  },
+  "cards": [
+    {
+      "spanish": "ser",
+      "meaning": "быть",
+      "key": "ser-2fs0",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "estar",
+      "meaning": "быть, находиться",
+      "key": "estar-1ln3uf",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "tener",
+      "meaning": "иметь",
+      "key": "tener-1tmykq",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "hacer",
+      "meaning": "делать",
+      "key": "hacer-1myncn",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "poder",
+      "meaning": "мочь",
+      "key": "poder-1rlynm",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "decir",
+      "meaning": "говорить, сказать",
+      "key": "decir-1ku10r",
+      "visual": "🗣️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ir",
+      "meaning": "идти, ехать",
+      "key": "ir-2ll",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ver",
+      "meaning": "видеть",
+      "key": "ver-2i03",
+      "visual": "👀",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "dar",
+      "meaning": "давать",
+      "key": "dar-24k5",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "saber",
+      "meaning": "знать",
+      "key": "saber-1t0d4x",
+      "visual": "🧠",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "querer",
+      "meaning": "хотеть, любить",
+      "key": "querer-1jca4ou",
+      "visual": "❤️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "llegar",
+      "meaning": "прибывать",
+      "key": "llegar-1gu3n4j",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pasar",
+      "meaning": "проходить, проводить",
+      "key": "pasar-1rdbv7",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "deber",
+      "meaning": "быть должным",
+      "key": "deber-1ku06m",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "poner",
+      "meaning": "класть, ставить",
+      "key": "poner-1rm62k",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "parecer",
+      "meaning": "казаться",
+      "key": "parecer-1lwr10s",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "quedar",
+      "meaning": "оставаться",
+      "key": "quedar-1jc9u7o",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "creer",
+      "meaning": "верить, считать",
+      "key": "creer-1kikn7",
+      "visual": "📖",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "hablar",
+      "meaning": "говорить",
+      "key": "hablar-1ertlro",
+      "visual": "🗣️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "llevar",
+      "meaning": "нести, носить",
+      "key": "llevar-1gu3y8y",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "dejar",
+      "meaning": "оставлять, позволять",
+      "key": "dejar-1ku60q",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "seguir",
+      "meaning": "следовать, продолжать",
+      "key": "seguir-1k1m0a1",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "encontrar",
+      "meaning": "находить",
+      "key": "encontrar-p3oo2w",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "llamar",
+      "meaning": "звать, звонить",
+      "key": "llamar-1gu17ml",
+      "visual": "📱",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "venir",
+      "meaning": "приходить, приезжать",
+      "key": "venir-1uqjuw",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pensar",
+      "meaning": "думать",
+      "key": "pensar-1imlkbv",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "salir",
+      "meaning": "выходить",
+      "key": "salir-1t0knb",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "volver",
+      "meaning": "возвращаться",
+      "key": "volver-1lmc0z4",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "tomar",
+      "meaning": "брать, пить",
+      "key": "tomar-1ttblv",
+      "visual": "🥤",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "conocer",
+      "meaning": "знать, быть знакомым",
+      "key": "conocer-fqfd37",
+      "visual": "🧠",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "vivir",
+      "meaning": "жить",
+      "key": "vivir-1ut9qk",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "sentir",
+      "meaning": "чувствовать",
+      "key": "sentir-1k1qgg1",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "tratar",
+      "meaning": "пытаться, обращаться",
+      "key": "tratar-1kpp3j6",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "mirar",
+      "meaning": "смотреть",
+      "key": "mirar-1pv18n",
+      "visual": "👀",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "contar",
+      "meaning": "считать, рассказывать",
+      "key": "contar-1cmifvn",
+      "visual": "📖",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "empezar",
+      "meaning": "начинать",
+      "key": "empezar-1862d0u",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "esperar",
+      "meaning": "ждать, надеяться",
+      "key": "esperar-1b0bxgg",
+      "visual": "⌛",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "buscar",
+      "meaning": "искать",
+      "key": "buscar-1c8ufdg",
+      "visual": "🔎",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "existir",
+      "meaning": "существовать",
+      "key": "existir-1d9ygrk",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "entrar",
+      "meaning": "входить",
+      "key": "entrar-1dk5oig",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "trabajar",
+      "meaning": "работать",
+      "key": "trabajar-kzotdl",
+      "visual": "💼",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "escribir",
+      "meaning": "писать",
+      "key": "escribir-upf7z3",
+      "visual": "✍️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "perder",
+      "meaning": "терять",
+      "key": "perder-1imnt90",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "producir",
+      "meaning": "производить",
+      "key": "producir-1ifhyj2",
+      "visual": "🚘",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ocurrir",
+      "meaning": "происходить",
+      "key": "ocurrir-188bzey",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "entender",
+      "meaning": "понимать",
+      "key": "entender-1079c59",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pedir",
+      "meaning": "просить, заказывать",
+      "key": "pedir-1rfkvs",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "recibir",
+      "meaning": "получать",
+      "key": "recibir-hwfngy",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "recordar",
+      "meaning": "помнить",
+      "key": "recordar-1lt9p36",
+      "visual": "🧠",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "terminar",
+      "meaning": "заканчивать",
+      "key": "terminar-1fhtshu",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "permitir",
+      "meaning": "позволять",
+      "key": "permitir-78g2v8",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "aparecer",
+      "meaning": "появляться",
+      "key": "aparecer-chssx7",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "conseguir",
+      "meaning": "получать, добиваться",
+      "key": "conseguir-1rtk92j",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "comenzar",
+      "meaning": "начинать",
+      "key": "comenzar-1oy7toh",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "servir",
+      "meaning": "служить, подавать",
+      "key": "servir-1k1t1vj",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "sacar",
+      "meaning": "доставать, вынимать",
+      "key": "sacar-1t0ds6",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "necesitar",
+      "meaning": "нуждаться",
+      "key": "necesitar-1o92evq",
+      "visual": "⌛",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "mantener",
+      "meaning": "поддерживать",
+      "key": "mantener-2bt0ts",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "resultar",
+      "meaning": "оказываться",
+      "key": "resultar-1th6wwe",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "leer",
+      "meaning": "читать",
+      "key": "leer-1z3za",
+      "visual": "📖",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "caer",
+      "meaning": "падать",
+      "key": "caer-1ta4r",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cambiar",
+      "meaning": "менять",
+      "key": "cambiar-930ohz",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "presentar",
+      "meaning": "представлять",
+      "key": "presentar-1js7lt8",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "crear",
+      "meaning": "создавать",
+      "key": "crear-1kikjr",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "abrir",
+      "meaning": "открывать",
+      "key": "abrir-1j51ei",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "considerar",
+      "meaning": "считать, рассматривать",
+      "key": "considerar-1qgne7e",
+      "visual": "📖",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "oír",
+      "meaning": "слышать",
+      "key": "oir-2g2c",
+      "visual": "👂",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "acabar",
+      "meaning": "заканчивать",
+      "key": "acabar-1bhkzsk",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "convertir",
+      "meaning": "превращать",
+      "key": "convertir-1t8w4d8",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ganar",
+      "meaning": "выигрывать, зарабатывать",
+      "key": "ganar-1mf2th",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "formar",
+      "meaning": "формировать",
+      "key": "formar-1e1ppth",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "traer",
+      "meaning": "приносить",
+      "key": "traer-1tuzrk",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "partir",
+      "meaning": "уходить, делить",
+      "key": "partir-1ikgyu4",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "morir",
+      "meaning": "умирать",
+      "key": "morir-1pyvcp",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "aceptar",
+      "meaning": "принимать, соглашаться",
+      "key": "aceptar-1fla81k",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "realizar",
+      "meaning": "осуществлять",
+      "key": "realizar-1ktdry8",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "suponer",
+      "meaning": "предполагать",
+      "key": "suponer-14ctafu",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "comprender",
+      "meaning": "понимать",
+      "key": "comprender-1sx1z6t",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "lograr",
+      "meaning": "достигать",
+      "key": "lograr-1gvsj1b",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "explicar",
+      "meaning": "объяснять",
+      "key": "explicar-134kx8a",
+      "visual": "🗣️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "preguntar",
+      "meaning": "спрашивать",
+      "key": "preguntar-1ecguko",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "tocar",
+      "meaning": "трогать, играть",
+      "key": "tocar-1tt46x",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "reconocer",
+      "meaning": "узнавать, признавать",
+      "key": "reconocer-gdj434",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "estudiar",
+      "meaning": "учиться, изучать",
+      "key": "estudiar-12sr4it",
+      "visual": "🎓",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "alcanzar",
+      "meaning": "достигать",
+      "key": "alcanzar-pi8ojq",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "nacer",
+      "meaning": "рождаться",
+      "key": "nacer-1q9ewt",
+      "visual": "⌛",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "dirigir",
+      "meaning": "руководить, направлять",
+      "key": "dirigir-rmncgk",
+      "visual": "🚘",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "correr",
+      "meaning": "бежать",
+      "key": "correr-1cmkyft",
+      "visual": "🏃",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "utilizar",
+      "meaning": "использовать",
+      "key": "utilizar-c305r8",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pagar",
+      "meaning": "платить",
+      "key": "pagar-1rd2yv",
+      "visual": "💰",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ayudar",
+      "meaning": "помогать",
+      "key": "ayudar-1bu1a2g",
+      "visual": "🤝",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "gustar",
+      "meaning": "нравиться",
+      "key": "gustar-1em2vy8",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "jugar",
+      "meaning": "играть",
+      "key": "jugar-1of359",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "escuchar",
+      "meaning": "слушать",
+      "key": "escuchar-uqyw3a",
+      "visual": "👂",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cumplir",
+      "meaning": "выполнять, исполнять",
+      "key": "cumplir-ik64m8",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ofrecer",
+      "meaning": "предлагать",
+      "key": "ofrecer-19lkurq",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "descubrir",
+      "meaning": "обнаруживать",
+      "key": "descubrir-ouikql",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "levantar",
+      "meaning": "поднимать",
+      "key": "levantar-zpufrv",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "intentar",
+      "meaning": "пытаться",
+      "key": "intentar-9fjg7h",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "usar",
+      "meaning": "использовать",
+      "key": "usar-2555b",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "andar",
+      "meaning": "ходить",
+      "key": "andar-1jceo8",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "amar",
+      "meaning": "любить",
+      "key": "amar-1s8yl",
+      "visual": "❤️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "aprender",
+      "meaning": "учиться",
+      "key": "aprender-kcktj9",
+      "visual": "🎓",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "bailar",
+      "meaning": "танцевать",
+      "key": "bailar-1bxocb7",
+      "visual": "💃",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "beber",
+      "meaning": "пить",
+      "key": "beber-1jqezw",
+      "visual": "🥤",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cerrar",
+      "meaning": "закрывать",
+      "key": "cerrar-1ch30er",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cocinar",
+      "meaning": "готовить",
+      "key": "cocinar-fka0p9",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "comer",
+      "meaning": "есть",
+      "key": "comer-1kgtm6",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "comprar",
+      "meaning": "покупать",
+      "key": "comprar-fpwiic",
+      "visual": "🛒",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "conducir",
+      "meaning": "водить",
+      "key": "conducir-1petnix",
+      "visual": "🚘",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cortar",
+      "meaning": "резать",
+      "key": "cortar-1cmkztr",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "dormir",
+      "meaning": "спать",
+      "key": "dormir-1d3mh7z",
+      "visual": "😴",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "elegir",
+      "meaning": "выбирать",
+      "key": "elegir-1disak2",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "enseñar",
+      "meaning": "обучать, показывать",
+      "key": "ensenar-18ottfr",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "enviar",
+      "meaning": "отправлять",
+      "key": "enviar-1dk6rt9",
+      "visual": "📨",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "faltar",
+      "meaning": "не хватать, отсутствовать",
+      "key": "faltar-1dtwws4",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "firmar",
+      "meaning": "подписывать",
+      "key": "firmar-1dyey9b",
+      "visual": "📄",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "guardar",
+      "meaning": "хранить, сохранять",
+      "key": "guardar-622s9i",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "lavar",
+      "meaning": "мыть",
+      "key": "lavar-1p67pu",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "limpiar",
+      "meaning": "чистить",
+      "key": "limpiar-2wz1iy",
+      "visual": "✨",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "mandar",
+      "meaning": "посылать, приказывать",
+      "key": "mandar-1h597nf",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "mover",
+      "meaning": "двигать",
+      "key": "mover-1pyy81",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "nadar",
+      "meaning": "плавать",
+      "key": "nadar-1q9fk2",
+      "visual": "🏊",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "olvidar",
+      "meaning": "забывать",
+      "key": "olvidar-1ci4c3p",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "parar",
+      "meaning": "останавливаться",
+      "key": "parar-1rdb4i",
+      "visual": "🛑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "preparar",
+      "meaning": "готовить",
+      "key": "preparar-1dvaswf",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "quitar",
+      "meaning": "убирать, снимать",
+      "key": "quitar-1jccq0w",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "romper",
+      "meaning": "ломать",
+      "key": "romper-1jq61xp",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "sentarse",
+      "meaning": "садиться",
+      "key": "sentarse-kvqdi3",
+      "visual": "🪑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "subir",
+      "meaning": "подниматься",
+      "key": "subir-1td4yx",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "bajar",
+      "meaning": "спускаться",
+      "key": "bajar-1jo0vw",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "viajar",
+      "meaning": "путешествовать",
+      "key": "viajar-1litzkd",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "visitar",
+      "meaning": "посещать",
+      "key": "visitar-7pwam4",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "vender",
+      "meaning": "продавать",
+      "key": "vender-1lguzo2",
+      "visual": "🏷️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "alquilar",
+      "meaning": "арендовать",
+      "key": "alquilar-wfrsmb",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "arreglar",
+      "meaning": "чинить, улаживать",
+      "key": "arreglar-1dp92wq",
+      "visual": "🛠️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "apagar",
+      "meaning": "выключать",
+      "key": "apagar-1boqf7q",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "encender",
+      "meaning": "включать",
+      "key": "encender-s5hrfy",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cargar",
+      "meaning": "заряжать, загружать",
+      "key": "cargar-1cevlvo",
+      "visual": "🔋",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "descargar",
+      "meaning": "скачивать, разгружать",
+      "key": "descargar-ojsoba",
+      "visual": "⬇️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "borrar",
+      "meaning": "удалять, стирать",
+      "key": "borrar-1c5jby6",
+      "visual": "🗑️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "copiar",
+      "meaning": "копировать",
+      "key": "copiar-1cmjhp2",
+      "visual": "📋",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pegar",
+      "meaning": "приклеивать, вставлять",
+      "key": "pegar-1rfmwz",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "imprimir",
+      "meaning": "печатать",
+      "key": "imprimir-1s34q5v",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "reservar",
+      "meaning": "бронировать",
+      "key": "reservar-1t8i2t6",
+      "visual": "📅",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cancelar",
+      "meaning": "отменять",
+      "key": "cancelar-1wzs0ff",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "confirmar",
+      "meaning": "подтверждать",
+      "key": "confirmar-1lqd71t",
+      "visual": "⌛",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cobrar",
+      "meaning": "получать оплату, взимать",
+      "key": "cobrar-1cmaqjx",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "gastar",
+      "meaning": "тратить",
+      "key": "gastar-1eb3030",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ahorrar",
+      "meaning": "экономить",
+      "key": "ahorrar-1i41ift",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "prestar",
+      "meaning": "одалживать",
+      "key": "prestar-1trmkc5",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "devolver",
+      "meaning": "возвращать",
+      "key": "devolver-ifup4h",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cuidar",
+      "meaning": "заботиться",
+      "key": "cuidar-1cppon2",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "curar",
+      "meaning": "лечить",
+      "key": "curar-1kkr5d",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "doler",
+      "meaning": "болеть",
+      "key": "doler-1l0lgu",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "enfermar",
+      "meaning": "заболевать",
+      "key": "enfermar-tkpd5g",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "mejorar",
+      "meaning": "улучшать",
+      "key": "mejorar-fnj02u",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "empeorar",
+      "meaning": "ухудшать",
+      "key": "empeorar-jmphm9",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "descansar",
+      "meaning": "отдыхать",
+      "key": "descansar-ojqd9i",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "despertar",
+      "meaning": "будить, просыпаться",
+      "key": "despertar-url7ga",
+      "visual": "⏰",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "levantarse",
+      "meaning": "вставать",
+      "key": "levantarse-h04nhp",
+      "visual": "⏰",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "acostarse",
+      "meaning": "ложиться",
+      "key": "acostarse-5q631t",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "ducharse",
+      "meaning": "принимать душ",
+      "key": "ducharse-v2ylmh",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "vestirse",
+      "meaning": "одеваться",
+      "key": "vestirse-12ouykr",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "desvestirse",
+      "meaning": "раздеваться",
+      "key": "desvestirse-1cyynbx",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "afeitarse",
+      "meaning": "бриться",
+      "key": "afeitarse-bpqi1a",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "peinarse",
+      "meaning": "причёсываться",
+      "key": "peinarse-2zg4rh",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cepillar",
+      "meaning": "чистить щёткой",
+      "key": "cepillar-1lprklo",
+      "visual": "✨",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "sonreír",
+      "meaning": "улыбаться",
+      "key": "sonreir-11hhsfe",
+      "visual": "😊",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "reír",
+      "meaning": "смеяться",
+      "key": "reir-2315k",
+      "visual": "😂",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "llorar",
+      "meaning": "плакать",
+      "key": "llorar-1gua95g",
+      "visual": "😢",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "gritar",
+      "meaning": "кричать",
+      "key": "gritar-1ek94av",
+      "visual": "📣",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "callar",
+      "meaning": "молчать",
+      "key": "callar-1cervnz",
+      "visual": "🤫",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "besar",
+      "meaning": "целовать",
+      "key": "besar-1jqri9",
+      "visual": "💋",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "abrazar",
+      "meaning": "обнимать",
+      "key": "abrazar-1fb4h0b",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "casarse",
+      "meaning": "жениться, выходить замуж",
+      "key": "casarse-96b060",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "separarse",
+      "meaning": "расставаться",
+      "key": "separarse-snoiqa",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "divorciarse",
+      "meaning": "разводиться",
+      "key": "divorciarse-1xnqehp",
+      "visual": "🚘",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "crecer",
+      "meaning": "расти",
+      "key": "crecer-1cnzq9m",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "envejecer",
+      "meaning": "стареть",
+      "key": "envejecer-f1uk9p",
+      "visual": "🕰️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "matar",
+      "meaning": "убивать",
+      "key": "matar-1ppytt",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "salvar",
+      "meaning": "спасать",
+      "key": "salvar-1jzi1e1",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "proteger",
+      "meaning": "защищать",
+      "key": "proteger-1io0j3q",
+      "visual": "🛡️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "atacar",
+      "meaning": "нападать",
+      "key": "atacar-1bqxime",
+      "visual": "🥊",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "defender",
+      "meaning": "защищать",
+      "key": "defender-apnpib",
+      "visual": "🛡️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pelear",
+      "meaning": "драться",
+      "key": "pelear-1imjzz3",
+      "visual": "🥊",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "discutir",
+      "meaning": "спорить",
+      "key": "discutir-4ir38d",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "acordar",
+      "meaning": "договариваться",
+      "key": "acordar-1fqt434",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "decidir",
+      "meaning": "решать",
+      "key": "decidir-pi7vra",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "preferir",
+      "meaning": "предпочитать",
+      "key": "preferir-1dpvf3t",
+      "visual": "📖",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "odiar",
+      "meaning": "ненавидеть",
+      "key": "odiar-1qv8th",
+      "visual": "👀",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "desear",
+      "meaning": "желать",
+      "key": "desear-1cy505g",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "soñar",
+      "meaning": "мечтать",
+      "key": "sonar-1tc8w6",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "imaginar",
+      "meaning": "представлять",
+      "key": "imaginar-1kteo9s",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "acordarse",
+      "meaning": "вспоминать",
+      "key": "acordarse-50br5u",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "notar",
+      "meaning": "замечать",
+      "key": "notar-1qip8k",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "observar",
+      "meaning": "наблюдать",
+      "key": "observar-5rjuxm",
+      "visual": "👀",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "mostrar",
+      "meaning": "показывать",
+      "key": "mostrar-kj0kao",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "señalar",
+      "meaning": "указывать",
+      "key": "senalar-yqrta3",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "comparar",
+      "meaning": "сравнивать",
+      "key": "comparar-1p413g1",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "medir",
+      "meaning": "измерять",
+      "key": "medir-1ps73p",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pesar",
+      "meaning": "весить",
+      "key": "pesar-1rfvtb",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "sumar",
+      "meaning": "складывать",
+      "key": "sumar-1tdcxo",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "restar",
+      "meaning": "вычитать",
+      "key": "restar-1jks0sl",
+      "visual": "📖",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "multiplicar",
+      "meaning": "умножать",
+      "key": "multiplicar-9axwlc",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "dividir",
+      "meaning": "делить",
+      "key": "dividir-rouglx",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "calcular",
+      "meaning": "вычислять",
+      "key": "calcular-1w1yzfh",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "comprobar",
+      "meaning": "проверять",
+      "key": "comprobar-1bxb4zr",
+      "visual": "✅",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "probar",
+      "meaning": "пробовать",
+      "key": "probar-1itr6fa",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "revisar",
+      "meaning": "проверять, пересматривать",
+      "key": "revisar-i6w35q",
+      "visual": "✅",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "corregir",
+      "meaning": "исправлять",
+      "key": "corregir-1rif4l3",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "traducir",
+      "meaning": "переводить",
+      "key": "traducir-l151aw",
+      "visual": "🚘",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pronunciar",
+      "meaning": "произносить",
+      "key": "pronunciar-xv6vgx",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "repetir",
+      "meaning": "повторять",
+      "key": "repetir-i3isl1",
+      "visual": "🔁",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "practicar",
+      "meaning": "практиковать",
+      "key": "practicar-1or5xy3",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "memorizar",
+      "meaning": "запоминать",
+      "key": "memorizar-sjpnru",
+      "visual": "🧠",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "contestar",
+      "meaning": "отвечать",
+      "key": "contestar-1satidh",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "responder",
+      "meaning": "отвечать",
+      "key": "responder-12m4agy",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "preguntarse",
+      "meaning": "задаваться вопросом",
+      "key": "preguntarse-as2vbu",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "expresar",
+      "meaning": "выражать",
+      "key": "expresar-137tgpg",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "significar",
+      "meaning": "значить",
+      "key": "significar-1krd9ph",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pronosticar",
+      "meaning": "прогнозировать",
+      "key": "pronosticar-150nbru",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "anunciar",
+      "meaning": "объявлять",
+      "key": "anunciar-1rksecd",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "informar",
+      "meaning": "информировать",
+      "key": "informar-2yh3dm",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "avisar",
+      "meaning": "предупреждать",
+      "key": "avisar-1bs6jkg",
+      "visual": "⌛",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "comunicar",
+      "meaning": "сообщать",
+      "key": "comunicar-1e889et",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "publicar",
+      "meaning": "публиковать",
+      "key": "publicar-le6ct6",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "compartir",
+      "meaning": "делиться",
+      "key": "compartir-1bo0xel",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "encontrarse",
+      "meaning": "встречаться, находиться",
+      "key": "encontrarse-17wcabe",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "reunirse",
+      "meaning": "встречаться, собираться",
+      "key": "reunirse-1ubdnif",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "acompañar",
+      "meaning": "сопровождать",
+      "key": "acompanar-2trs29",
+      "visual": "⌛",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "invitar",
+      "meaning": "приглашать",
+      "key": "invitar-wey9e5",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "celebrar",
+      "meaning": "праздновать",
+      "key": "celebrar-1jr7n8c",
+      "visual": "🆕",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "regalar",
+      "meaning": "дарить",
+      "key": "regalar-hyhx68",
+      "visual": "🎁",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "agradecer",
+      "meaning": "благодарить",
+      "key": "agradecer-e831x6",
+      "visual": "🙏",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "perdonar",
+      "meaning": "прощать",
+      "key": "perdonar-73lmt3",
+      "visual": "🙏",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "disculparse",
+      "meaning": "извиняться",
+      "key": "disculparse-3x8wg7",
+      "visual": "🙏",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "molestar",
+      "meaning": "беспокоить",
+      "key": "molestar-1sl1sh9",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "preocupar",
+      "meaning": "беспокоить",
+      "key": "preocupar-1hv1wzn",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "preocuparse",
+      "meaning": "беспокоиться",
+      "key": "preocuparse-1fg5s5x",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "sorprender",
+      "meaning": "удивлять",
+      "key": "sorprender-eyyrw0",
+      "visual": "😲",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "asustar",
+      "meaning": "пугать",
+      "key": "asustar-1neust1",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "asustarse",
+      "meaning": "пугаться",
+      "key": "asustarse-1lqqzjb",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "aburrir",
+      "meaning": "надоедать",
+      "key": "aburrir-1fd2jtp",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "divertir",
+      "meaning": "развлекать",
+      "key": "divertir-5yxmn3",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "disfrutar",
+      "meaning": "наслаждаться",
+      "key": "disfrutar-1yhq2ga",
+      "visual": "⌛",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "interesar",
+      "meaning": "интересовать",
+      "key": "interesar-8b8p4r",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "importar",
+      "meaning": "иметь значение",
+      "key": "importar-1s1n89i",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "funcionar",
+      "meaning": "работать, функционировать",
+      "key": "funcionar-1wjh5o5",
+      "visual": "💼",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "fallar",
+      "meaning": "сбоить, ошибаться",
+      "key": "fallar-1dtwquk",
+      "visual": "❌",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "reparar",
+      "meaning": "ремонтировать",
+      "key": "reparar-i3g6yn",
+      "visual": "🛠️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "construir",
+      "meaning": "строить",
+      "key": "construir-1s206tr",
+      "visual": "🏗️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "destruir",
+      "meaning": "разрушать",
+      "key": "destruir-h3km6m",
+      "visual": "💥",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "dibujar",
+      "meaning": "рисовать",
+      "key": "dibujar-re2cub",
+      "visual": "🍚",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pintar",
+      "meaning": "красить, рисовать",
+      "key": "pintar-1iosrg0",
+      "visual": "🍚",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cantar",
+      "meaning": "петь",
+      "key": "cantar-1cetbkl",
+      "visual": "🎵",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "actuar",
+      "meaning": "действовать, выступать",
+      "key": "actuar-1bhxims",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "grabar",
+      "meaning": "записывать",
+      "key": "grabar-1ek3n25",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "fotografiar",
+      "meaning": "фотографировать",
+      "key": "fotografiar-123gsqu",
+      "visual": "📷",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "filmar",
+      "meaning": "снимать видео",
+      "key": "filmar-1dyb4c5",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "editar",
+      "meaning": "редактировать",
+      "key": "editar-1degr7f",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "diseñar",
+      "meaning": "проектировать",
+      "key": "disenar-rn7f8r",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "programar",
+      "meaning": "программировать",
+      "key": "programar-1j0br1x",
+      "visual": "💻",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "instalar",
+      "meaning": "устанавливать",
+      "key": "instalar-96i9ya",
+      "visual": "⬇️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "actualizar",
+      "meaning": "обновлять",
+      "key": "actualizar-1m1qnqo",
+      "visual": "⬇️",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "conectar",
+      "meaning": "подключать",
+      "key": "conectar-1pf2arp",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "desconectar",
+      "meaning": "отключать",
+      "key": "desconectar-o1xjr",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "reiniciar",
+      "meaning": "перезапускать",
+      "key": "reiniciar-wusmlk",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "encajar",
+      "meaning": "подходить, помещаться",
+      "key": "encajar-18fvrw4",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "llenar",
+      "meaning": "наполнять",
+      "key": "llenar-1gu3sbe",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "vaciar",
+      "meaning": "опустошать",
+      "key": "vaciar-1legw1u",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cubrir",
+      "meaning": "покрывать",
+      "key": "cubrir-1cpliaz",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "esconder",
+      "meaning": "прятать",
+      "key": "esconder-unv2il",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "recoger",
+      "meaning": "забирать, собирать",
+      "key": "recoger-hwjl05",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "entregar",
+      "meaning": "доставлять, вручать",
+      "key": "entregar-10e8z3u",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "repartir",
+      "meaning": "распределять",
+      "key": "repartir-1rr5zyn",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "transportar",
+      "meaning": "перевозить",
+      "key": "transportar-16p350a",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "cruzar",
+      "meaning": "пересекать",
+      "key": "cruzar-1coaf0l",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "girar",
+      "meaning": "поворачивать",
+      "key": "girar-1mk9oh",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "doblar",
+      "meaning": "поворачивать, сгибать",
+      "key": "doblar-1d3c8hy",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "frenar",
+      "meaning": "тормозить",
+      "key": "frenar-1e34tie",
+      "visual": "🛑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "acelerar",
+      "meaning": "ускорять",
+      "key": "acelerar-10kvazr",
+      "visual": "⚡",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "aparcar",
+      "meaning": "парковать",
+      "key": "aparcar-1lop25w",
+      "visual": "🌳",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "estacionar",
+      "meaning": "парковать",
+      "key": "estacionar-1jgst8x",
+      "visual": "🌳",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "volar",
+      "meaning": "летать",
+      "key": "volar-1uww1w",
+      "visual": "🛫",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "aterrizar",
+      "meaning": "приземляться",
+      "key": "aterrizar-1sbd4s4",
+      "visual": "🛬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "despegar",
+      "meaning": "взлетать",
+      "key": "despegar-h14uep",
+      "visual": "🛫",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "embarcar",
+      "meaning": "садиться на транспорт",
+      "key": "embarcar-cxx7k9",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "desembarcar",
+      "meaning": "высаживаться",
+      "key": "desembarcar-n80wbf",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "caminar",
+      "meaning": "ходить пешком",
+      "key": "caminar-935945",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "saltar",
+      "meaning": "прыгать",
+      "key": "saltar-1jzhzwn",
+      "visual": "🤸",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "subirse",
+      "meaning": "садиться, забираться",
+      "key": "subirse-1450fi3",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "bajarse",
+      "meaning": "выходить, спускаться",
+      "key": "bajarse-1te2mku",
+      "visual": "🚶",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "aprovechar",
+      "meaning": "использовать с пользой",
+      "key": "aprovechar-usfepd",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "evitar",
+      "meaning": "избегать",
+      "key": "evitar-1dod1vx",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "depender",
+      "meaning": "зависеть",
+      "key": "depender-fg3xg9",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "pertenecer",
+      "meaning": "принадлежать",
+      "key": "pertenecer-l6b1rf",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "incluir",
+      "meaning": "включать",
+      "key": "incluir-w4k40g",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "excluir",
+      "meaning": "исключать",
+      "key": "excluir-1d6j91e",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "añadir",
+      "meaning": "добавлять",
+      "key": "anadir-1dnntq4",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 1
+    },
+    {
+      "spanish": "tiempo",
+      "meaning": "время",
+      "key": "tiempo-1kktdb0",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "año",
+      "meaning": "год",
+      "key": "ano-25rz",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "día",
+      "meaning": "день",
+      "key": "dia-27w8",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "vez",
+      "meaning": "раз",
+      "key": "vez-2i0b",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cosa",
+      "meaning": "вещь",
+      "key": "cosa-1tku2",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "hombre",
+      "meaning": "мужчина",
+      "key": "hombre-1ezpjwv",
+      "visual": "👨",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mujer",
+      "meaning": "женщина",
+      "key": "mujer-1q2j8v",
+      "visual": "👩",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "vida",
+      "meaning": "жизнь",
+      "key": "vida-25ks0",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mano",
+      "meaning": "рука",
+      "key": "mano-1zo7p",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "parte",
+      "meaning": "часть",
+      "key": "parte-1rdbki",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mundo",
+      "meaning": "мир",
+      "key": "mundo-1q2m6p",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "caso",
+      "meaning": "случай",
+      "key": "caso-1tagq",
+      "visual": "🍵",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "país",
+      "meaning": "страна",
+      "key": "pais-21o7r",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "lugar",
+      "meaning": "место",
+      "key": "lugar-1piobz",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "trabajo",
+      "meaning": "работа",
+      "key": "trabajo-1hdl887",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "persona",
+      "meaning": "человек",
+      "key": "persona-1nt6pik",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "casa",
+      "meaning": "дом",
+      "key": "casa-1tagc",
+      "visual": "🏠",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "agua",
+      "meaning": "вода",
+      "key": "agua-1s4z6",
+      "visual": "💧",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "padre",
+      "meaning": "отец",
+      "key": "padre-1rd152",
+      "visual": "👨‍👧",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "madre",
+      "meaning": "мать",
+      "key": "madre-1ppncz",
+      "visual": "👩‍👧",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "hijo",
+      "meaning": "сын",
+      "key": "hijo-1wn46",
+      "visual": "👦",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "hija",
+      "meaning": "дочь",
+      "key": "hija-1wn3s",
+      "visual": "👧",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "amigo",
+      "meaning": "друг",
+      "key": "amigo-1jbvj9",
+      "visual": "🫂",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "familia",
+      "meaning": "семья",
+      "key": "familia-1h4c2h9",
+      "visual": "👨‍👩‍👧‍👦",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ciudad",
+      "meaning": "город",
+      "key": "ciudad-1cjbtco",
+      "visual": "🏙️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "calle",
+      "meaning": "улица",
+      "key": "calle-1k7v7r",
+      "visual": "🛣️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "coche",
+      "meaning": "машина",
+      "key": "coche-1kgm9g",
+      "visual": "🚗",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "puerta",
+      "meaning": "дверь",
+      "key": "puerta-1iv8in3",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mesa",
+      "meaning": "стол",
+      "key": "mesa-1zrae",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "silla",
+      "meaning": "стул",
+      "key": "silla-1t5oln",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "comida",
+      "meaning": "еда",
+      "key": "comida-1cmhksl",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "café",
+      "meaning": "кофе",
+      "key": "cafe-1ta8x",
+      "visual": "☕",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "leche",
+      "meaning": "молоко",
+      "key": "leche-1p8dqf",
+      "visual": "🥛",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pan",
+      "meaning": "хлеб",
+      "key": "pan-2dgd",
+      "visual": "🍞",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "carne",
+      "meaning": "мясо",
+      "key": "carne-1k7zpn",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pescado",
+      "meaning": "рыба",
+      "key": "pescado-1ntfzpj",
+      "visual": "🐟",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "fruta",
+      "meaning": "фрукт",
+      "key": "fruta-1m6amu",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "verdura",
+      "meaning": "овощ",
+      "key": "verdura-5t2un7",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "dinero",
+      "meaning": "деньги",
+      "key": "dinero-1d08zzt",
+      "visual": "💰",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "precio",
+      "meaning": "цена",
+      "key": "precio-1itkthi",
+      "visual": "💰",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tienda",
+      "meaning": "магазин",
+      "key": "tienda-1kktdqz",
+      "visual": "🏪",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mercado",
+      "meaning": "рынок",
+      "key": "mercado-frpcg3",
+      "visual": "🏪",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "escuela",
+      "meaning": "школа",
+      "key": "escuela-1atgk56",
+      "visual": "🏫",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "libro",
+      "meaning": "книга",
+      "key": "libro-1pax6q",
+      "visual": "📖",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "palabra",
+      "meaning": "слово",
+      "key": "palabra-1ltdp2j",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pregunta",
+      "meaning": "вопрос",
+      "key": "pregunta-1dqpcru",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "respuesta",
+      "meaning": "ответ",
+      "key": "respuesta-12p9mm8",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "problema",
+      "meaning": "проблема",
+      "key": "problema-1ie8o0y",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "idea",
+      "meaning": "идея",
+      "key": "idea-1x69j",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "historia",
+      "meaning": "история",
+      "key": "historia-1d1dk65",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "noche",
+      "meaning": "ночь",
+      "key": "noche-1qicsf",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mañana",
+      "meaning": "утро",
+      "key": "manana-1h7kt07",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tarde",
+      "meaning": "вечер, вторая половина дня",
+      "key": "tarde-1tkhk6",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "semana",
+      "meaning": "неделя",
+      "key": "semana-1k1pfh5",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mes",
+      "meaning": "месяц",
+      "key": "mes-2bbv",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "hora",
+      "meaning": "час",
+      "key": "hora-1wrqu",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "minuto",
+      "meaning": "минута",
+      "key": "minuto-1h9nxge",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "momento",
+      "meaning": "момент",
+      "key": "momento-kfg5f3",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cabeza",
+      "meaning": "голова",
+      "key": "cabeza-1celd6w",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cara",
+      "meaning": "лицо",
+      "key": "cara-1tafh",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ojo",
+      "meaning": "глаз",
+      "key": "ojo-2cxg",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "boca",
+      "meaning": "рот",
+      "key": "boca-1sxgr",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pie",
+      "meaning": "ступня",
+      "key": "pie-2dn0",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "corazón",
+      "meaning": "сердце",
+      "key": "corazon-fse63e",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cuerpo",
+      "meaning": "тело",
+      "key": "cuerpo-1cpnffi",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "nombre",
+      "meaning": "имя",
+      "key": "nombre-1htzaa1",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "número",
+      "meaning": "номер, число",
+      "key": "numero-1jyeqzl",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "forma",
+      "meaning": "форма, способ",
+      "key": "forma-1m4ba5",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "fin",
+      "meaning": "конец",
+      "key": "fin-268b",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "principio",
+      "meaning": "начало",
+      "key": "principio-1529pux",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "lado",
+      "meaning": "сторона",
+      "key": "lado-1z0zk",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "camino",
+      "meaning": "дорога, путь",
+      "key": "camino-1cesgqj",
+      "visual": "🛣️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "puente",
+      "meaning": "мост",
+      "key": "puente-1iv8fof",
+      "visual": "🌉",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "plaza",
+      "meaning": "площадь",
+      "key": "plaza-1rjzyk",
+      "visual": "⛲",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "parque",
+      "meaning": "парк",
+      "key": "parque-1ikgww0",
+      "visual": "🌳",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "playa",
+      "meaning": "пляж",
+      "key": "playa-1rjzxp",
+      "visual": "🏖️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "río",
+      "meaning": "река",
+      "key": "rio-2iac",
+      "visual": "🏞️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mar",
+      "meaning": "море",
+      "key": "mar-2b8e",
+      "visual": "🌊",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "montaña",
+      "meaning": "гора",
+      "key": "montana-kg9c5l",
+      "visual": "⛰️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cielo",
+      "meaning": "небо",
+      "key": "cielo-1kctxe",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "sol",
+      "meaning": "солнце",
+      "key": "sol-2g0g",
+      "visual": "☀️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "lluvia",
+      "meaning": "дождь",
+      "key": "lluvia-1gue67t",
+      "visual": "🌧️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "viento",
+      "meaning": "ветер",
+      "key": "viento-1liwmxj",
+      "visual": "💨",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "fuego",
+      "meaning": "огонь",
+      "key": "fuego-1m7vfi",
+      "visual": "🔥",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "aire",
+      "meaning": "воздух",
+      "key": "aire-1s6e3",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ropa",
+      "meaning": "одежда",
+      "key": "ropa-235ke",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "zapato",
+      "meaning": "обувь, туфля",
+      "key": "zapato-1naviz7",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "camisa",
+      "meaning": "рубашка",
+      "key": "camisa-1cesgug",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pantalón",
+      "meaning": "брюки",
+      "key": "pantalon-hrhvzx",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "teléfono",
+      "meaning": "телефон",
+      "key": "telefono-1ejonso",
+      "visual": "📱",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "computadora",
+      "meaning": "компьютер",
+      "key": "computadora-3i5rxp",
+      "visual": "💻",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "internet",
+      "meaning": "интернет",
+      "key": "internet-9flvsx",
+      "visual": "🌐",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "música",
+      "meaning": "музыка",
+      "key": "musica-1jhh141",
+      "visual": "🎵",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "película",
+      "meaning": "фильм",
+      "key": "pelicula-6cg7bx",
+      "visual": "🎬",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "foto",
+      "meaning": "фотография",
+      "key": "foto-1vhtw",
+      "visual": "📷",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "viaje",
+      "meaning": "путешествие",
+      "key": "viaje-1usu6h",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "hotel",
+      "meaning": "отель",
+      "key": "hotel-1n7xro",
+      "visual": "🏨",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "restaurante",
+      "meaning": "ресторан",
+      "key": "restaurante-eoqrbc",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tren",
+      "meaning": "поезд",
+      "key": "tren-24hif",
+      "visual": "🚆",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "avión",
+      "meaning": "самолёт",
+      "key": "avion-1jhprj",
+      "visual": "✈️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "perro",
+      "meaning": "собака",
+      "key": "perro-1rfvh6",
+      "visual": "🐕",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "gato",
+      "meaning": "кот",
+      "key": "gato-1vufp",
+      "visual": "🐈",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "animal",
+      "meaning": "животное",
+      "key": "animal-1bns2d8",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pájaro",
+      "meaning": "птица",
+      "key": "pajaro-1kip50l",
+      "visual": "🐦",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "caballo",
+      "meaning": "лошадь",
+      "key": "caballo-8wydgy",
+      "visual": "🐎",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "vaca",
+      "meaning": "корова",
+      "key": "vaca-25etl",
+      "visual": "🐄",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "árbol",
+      "meaning": "дерево",
+      "key": "arbol-3hslf2",
+      "visual": "🌳",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "flor",
+      "meaning": "цветок",
+      "key": "flor-1vfhl",
+      "visual": "🌷",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "bosque",
+      "meaning": "лес",
+      "key": "bosque-1c5jynv",
+      "visual": "🌲",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "campo",
+      "meaning": "поле",
+      "key": "campo-1k7w26",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "jardín",
+      "meaning": "сад",
+      "key": "jardin-1fq6zre",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tierra",
+      "meaning": "земля",
+      "key": "tierra-1kkth1t",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "piedra",
+      "meaning": "камень",
+      "key": "piedra-1iomp3b",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "arena",
+      "meaning": "песок",
+      "key": "arena-1jeznr",
+      "visual": "🧃",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "isla",
+      "meaning": "остров",
+      "key": "isla-1xhjz",
+      "visual": "🌶️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "lago",
+      "meaning": "озеро",
+      "key": "lago-1z125",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "nube",
+      "meaning": "облако",
+      "key": "nube-20pqi",
+      "visual": "☁️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "nieve",
+      "meaning": "снег",
+      "key": "nieve-1qekop",
+      "visual": "❄️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tormenta",
+      "meaning": "буря",
+      "key": "tormenta-1k7hz9o",
+      "visual": "⛈️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "clima",
+      "meaning": "климат",
+      "key": "clima-1ketv8",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "temperatura",
+      "meaning": "температура",
+      "key": "temperatura-5bj69c",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "estación",
+      "meaning": "станция, сезон",
+      "key": "estacion-12hqp5o",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "primavera",
+      "meaning": "весна",
+      "key": "primavera-14kcl5l",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "verano",
+      "meaning": "лето",
+      "key": "verano-1lgxhlr",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "otoño",
+      "meaning": "осень",
+      "key": "otono-1r5oi0",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "invierno",
+      "meaning": "зима",
+      "key": "invierno-afo3ba",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "lunes",
+      "meaning": "понедельник",
+      "key": "lunes-1pitmb",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "martes",
+      "meaning": "вторник",
+      "key": "martes-1h5c3k4",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "miércoles",
+      "meaning": "среда",
+      "key": "miercoles-1b8cs95",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "jueves",
+      "meaning": "четверг",
+      "key": "jueves-1g0yuwa",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "viernes",
+      "meaning": "пятница",
+      "key": "viernes-7icsu4",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "sábado",
+      "meaning": "суббота",
+      "key": "sabado-1lxovyw",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "domingo",
+      "meaning": "воскресенье",
+      "key": "domingo-ue68zz",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "enero",
+      "meaning": "январь",
+      "key": "enero-1ljm6x",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "febrero",
+      "meaning": "февраль",
+      "key": "febrero-1iumfg3",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "marzo",
+      "meaning": "март",
+      "key": "marzo-1ppxxv",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "abril",
+      "meaning": "апрель",
+      "key": "abril-1j51ec",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mayo",
+      "meaning": "май",
+      "key": "mayo-1zoh6",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "junio",
+      "meaning": "июнь",
+      "key": "junio-1of8ix",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "julio",
+      "meaning": "июль",
+      "key": "julio-1of71j",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "agosto",
+      "meaning": "август",
+      "key": "agosto-1bk1h1h",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "septiembre",
+      "meaning": "сентябрь",
+      "key": "septiembre-qkjoxm",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "octubre",
+      "meaning": "октябрь",
+      "key": "octubre-187ts4g",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "noviembre",
+      "meaning": "ноябрь",
+      "key": "noviembre-1osho6x",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "diciembre",
+      "meaning": "декабрь",
+      "key": "diciembre-1dyjrfm",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "desayuno",
+      "meaning": "завтрак",
+      "key": "desayuno-gt8zxo",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "almuerzo",
+      "meaning": "обед",
+      "key": "almuerzo-ujiw51",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cena",
+      "meaning": "ужин",
+      "key": "cena-1tdat",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "bebida",
+      "meaning": "напиток",
+      "key": "bebida-1bzqzlz",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cerveza",
+      "meaning": "пиво",
+      "key": "cerveza-b2auee",
+      "visual": "🍺",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "vino",
+      "meaning": "вино",
+      "key": "vino-25l10",
+      "visual": "🍷",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "jugo",
+      "meaning": "сок",
+      "key": "jugo-1y5wz",
+      "visual": "🧃",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "té",
+      "meaning": "чай",
+      "key": "te-2yd",
+      "visual": "🍵",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "azúcar",
+      "meaning": "сахар",
+      "key": "azucar-1bwxz6b",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "sal",
+      "meaning": "соль",
+      "key": "sal-2foe",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "queso",
+      "meaning": "сыр",
+      "key": "queso-1s9m8t",
+      "visual": "🧀",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "huevo",
+      "meaning": "яйцо",
+      "key": "huevo-1nbgz5",
+      "visual": "🥚",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "arroz",
+      "meaning": "рис",
+      "key": "arroz-1jf9cc",
+      "visual": "🍚",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pasta",
+      "meaning": "макароны",
+      "key": "pasta-1rdcb3",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "sopa",
+      "meaning": "суп",
+      "key": "sopa-23sjx",
+      "visual": "🍲",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ensalada",
+      "meaning": "салат",
+      "key": "ensalada-znz755",
+      "visual": "🥗",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pollo",
+      "meaning": "курица",
+      "key": "pollo-1rm4r4",
+      "visual": "🍗",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cerdo",
+      "meaning": "свинина",
+      "key": "cerdo-1kajff",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tomate",
+      "meaning": "помидор",
+      "key": "tomate-1ko8zy8",
+      "visual": "🍅",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "papa",
+      "meaning": "картофель",
+      "key": "papa-21l7m",
+      "visual": "🥔",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cebolla",
+      "meaning": "лук",
+      "key": "cebolla-atdsuq",
+      "visual": "🧅",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ajo",
+      "meaning": "чеснок",
+      "key": "ajo-22jq",
+      "visual": "🧄",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "manzana",
+      "meaning": "яблоко",
+      "key": "manzana-dtqdf8",
+      "visual": "🍎",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "banana",
+      "meaning": "банан",
+      "key": "banana-1bxrbdx",
+      "visual": "🍌",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "naranja",
+      "meaning": "апельсин",
+      "key": "naranja-sjw4w3",
+      "visual": "🍊",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "limón",
+      "meaning": "лимон",
+      "key": "limon-1pb8ff",
+      "visual": "🍋",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "botella",
+      "meaning": "бутылка",
+      "key": "botella-155ndv",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "vaso",
+      "meaning": "стакан",
+      "key": "vaso-25f7r",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "taza",
+      "meaning": "чашка",
+      "key": "taza-245ec",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "plato",
+      "meaning": "тарелка",
+      "key": "plato-1rjzts",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cuchillo",
+      "meaning": "нож",
+      "key": "cuchillo-29h3ul",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tenedor",
+      "meaning": "вилка",
+      "key": "tenedor-1bf7g4f",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cuchara",
+      "meaning": "ложка",
+      "key": "cuchara-ieiuu1",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cocina",
+      "meaning": "кухня",
+      "key": "cocina-1cmb75x",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "baño",
+      "meaning": "ванная",
+      "key": "bano-1sqhp",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "habitación",
+      "meaning": "комната",
+      "key": "habitacion-1c8ohpq",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "dormitorio",
+      "meaning": "спальня",
+      "key": "dormitorio-fnmnwa",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cama",
+      "meaning": "кровать",
+      "key": "cama-1tab6",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "sofá",
+      "meaning": "диван",
+      "key": "sofa-23sev",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ventana",
+      "meaning": "окно",
+      "key": "ventana-5r5h4v",
+      "visual": "🏷️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pared",
+      "meaning": "стена",
+      "key": "pared-1rdb7k",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "techo",
+      "meaning": "потолок",
+      "key": "techo-1tmqhl",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "piso",
+      "meaning": "пол, этаж",
+      "key": "piso-21r85",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "llave",
+      "meaning": "ключ",
+      "key": "llave-1pcths",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "luz",
+      "meaning": "свет",
+      "key": "luz-2az5",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "electricidad",
+      "meaning": "электричество",
+      "key": "electricidad-1t16syj",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "gas",
+      "meaning": "газ",
+      "key": "gas-26s9",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "calefacción",
+      "meaning": "отопление",
+      "key": "calefaccion-txgbyq",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "heladera",
+      "meaning": "холодильник",
+      "key": "heladera-1lqxqxu",
+      "visual": "🧊",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "horno",
+      "meaning": "духовка",
+      "key": "horno-1n7wi4",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "microondas",
+      "meaning": "микроволновка",
+      "key": "microondas-mnrehf",
+      "visual": "🆕",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "lavadora",
+      "meaning": "стиральная машина",
+      "key": "lavadora-1c16voa",
+      "visual": "🚗",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "toalla",
+      "meaning": "полотенце",
+      "key": "toalla-1ko1k2j",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "jabón",
+      "meaning": "мыло",
+      "key": "jabon-1o2b6u",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "champú",
+      "meaning": "шампунь",
+      "key": "champu-1cifg63",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cepillo",
+      "meaning": "щётка",
+      "key": "cepillo-b0z390",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "espejo",
+      "meaning": "зеркало",
+      "key": "espejo-1dmtu3s",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "reloj",
+      "meaning": "часы",
+      "key": "reloj-1sjc50",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "bolsa",
+      "meaning": "сумка, пакет",
+      "key": "bolsa-1jx0lp",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mochila",
+      "meaning": "рюкзак",
+      "key": "mochila-ka00jb",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "billetera",
+      "meaning": "кошелёк",
+      "key": "billetera-u69lem",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "documento",
+      "meaning": "документ",
+      "key": "documento-flrees",
+      "visual": "📄",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pasaporte",
+      "meaning": "паспорт",
+      "key": "pasaporte-1b1uw6d",
+      "visual": "🛂",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tarjeta",
+      "meaning": "карта",
+      "key": "tarjeta-19lbcp9",
+      "visual": "💳",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cuenta",
+      "meaning": "счёт",
+      "key": "cuenta-1cpncjs",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "banco",
+      "meaning": "банк",
+      "key": "banco-1jo3wb",
+      "visual": "🏦",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cajero",
+      "meaning": "банкомат",
+      "key": "cajero-1ceqgwm",
+      "visual": "🏦",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "moneda",
+      "meaning": "монета, валюта",
+      "key": "moneda-1hcycra",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "billete",
+      "meaning": "банкнота, билет",
+      "key": "billete-1x7py5r",
+      "visual": "🏦",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "compra",
+      "meaning": "покупка",
+      "key": "compra-1cmhqbi",
+      "visual": "🛒",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "venta",
+      "meaning": "продажа",
+      "key": "venta-1uqk3w",
+      "visual": "🏷️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cliente",
+      "meaning": "клиент",
+      "key": "cliente-e8ddkq",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "vendedor",
+      "meaning": "продавец",
+      "key": "vendedor-102rap3",
+      "visual": "🏷️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "oferta",
+      "meaning": "предложение, скидка",
+      "key": "oferta-1i5xzch",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "descuento",
+      "meaning": "скидка",
+      "key": "descuento-oukezs",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "factura",
+      "meaning": "счёт, фактура",
+      "key": "factura-1gz1cag",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "recibo",
+      "meaning": "чек, квитанция",
+      "key": "recibo-1jkhkva",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "empresa",
+      "meaning": "компания",
+      "key": "empresa-186a8p5",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "oficina",
+      "meaning": "офис",
+      "key": "oficina-19glk3v",
+      "visual": "🏢",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "jefe",
+      "meaning": "начальник",
+      "key": "jefe-1xu0q",
+      "visual": "🧑‍💼",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "empleado",
+      "meaning": "сотрудник",
+      "key": "empleado-jqdbd7",
+      "visual": "🧑‍💼",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "reunión",
+      "meaning": "встреча",
+      "key": "reunion-i6fdko",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "proyecto",
+      "meaning": "проект",
+      "key": "proyecto-1iqrfgl",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tarea",
+      "meaning": "задача",
+      "key": "tarea-1tkhkx",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "contrato",
+      "meaning": "договор",
+      "key": "contrato-1pnkeu4",
+      "visual": "🗣️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "sueldo",
+      "meaning": "зарплата",
+      "key": "sueldo-1kad904",
+      "visual": "💰",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "negocio",
+      "meaning": "бизнес",
+      "key": "negocio-ua9ll6",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "servicio",
+      "meaning": "услуга",
+      "key": "servicio-mt58t2",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "producto",
+      "meaning": "товар, продукт",
+      "key": "producto-1ifhysg",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pedido",
+      "meaning": "заказ",
+      "key": "pedido-1imez45",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "envío",
+      "meaning": "отправка",
+      "key": "envio-1lk1qn",
+      "visual": "📨",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "correo",
+      "meaning": "почта",
+      "key": "correo-1cmkyfq",
+      "visual": "📨",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mensaje",
+      "meaning": "сообщение",
+      "key": "mensaje-fpsdzz",
+      "visual": "💬",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "llamada",
+      "meaning": "звонок",
+      "key": "llamada-45gar6",
+      "visual": "📱",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "dirección",
+      "meaning": "адрес, направление",
+      "key": "direccion-1j3pmi4",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "mapa",
+      "meaning": "карта",
+      "key": "mapa-1zo91",
+      "visual": "💳",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ruta",
+      "meaning": "маршрут",
+      "key": "ruta-23a40",
+      "visual": "🛣️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tráfico",
+      "meaning": "дорожное движение",
+      "key": "trafico-1jc1lw2",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "semáforo",
+      "meaning": "светофор",
+      "key": "semaforo-m2pgh8",
+      "visual": "🚦",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "esquina",
+      "meaning": "угол",
+      "key": "esquina-1b15rgq",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "avenida",
+      "meaning": "проспект",
+      "key": "avenida-1ol3jgo",
+      "visual": "🛣️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "barrio",
+      "meaning": "район",
+      "key": "barrio-1bxu7tx",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "edificio",
+      "meaning": "здание",
+      "key": "edificio-qahcjg",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "departamento",
+      "meaning": "квартира",
+      "key": "departamento-1dxuxvo",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "ascensor",
+      "meaning": "лифт",
+      "key": "ascensor-1la3nng",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "escalera",
+      "meaning": "лестница",
+      "key": "escalera-ug4p9w",
+      "visual": "🌲",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "garaje",
+      "meaning": "гараж",
+      "key": "garaje-1eb1z7o",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "aeropuerto",
+      "meaning": "аэропорт",
+      "key": "aeropuerto-1unuha",
+      "visual": "✈️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "terminal",
+      "meaning": "терминал",
+      "key": "terminal-1fhtsho",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "parada",
+      "meaning": "остановка",
+      "key": "parada-1ikgkm5",
+      "visual": "🚏",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "colectivo",
+      "meaning": "автобус",
+      "key": "colectivo-rt9g5o",
+      "visual": "🚌",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "subte",
+      "meaning": "метро",
+      "key": "subte-1td581",
+      "visual": "🚇",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "taxi",
+      "meaning": "такси",
+      "key": "taxi-245cu",
+      "visual": "🚕",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "bicicleta",
+      "meaning": "велосипед",
+      "key": "bicicleta-12ojl4s",
+      "visual": "🚲",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "moto",
+      "meaning": "мотоцикл",
+      "key": "moto-1zyql",
+      "visual": "🏍️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "barco",
+      "meaning": "корабль",
+      "key": "barco-1jo6v3",
+      "visual": "🚢",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pasajero",
+      "meaning": "пассажир",
+      "key": "pasajero-juffav",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "conductor",
+      "meaning": "водитель",
+      "key": "conductor-1kym23r",
+      "visual": "🧑‍✈️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "boleto",
+      "meaning": "билет",
+      "key": "boleto-1c5f8u9",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "equipaje",
+      "meaning": "багаж",
+      "key": "equipaje-9qm5gs",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "valija",
+      "meaning": "чемодан",
+      "key": "valija-1lemn4v",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "reserva",
+      "meaning": "бронь",
+      "key": "reserva-i5656g",
+      "visual": "📅",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "recepción",
+      "meaning": "стойка регистрации",
+      "key": "recepcion-bnz1bw",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "médico",
+      "meaning": "врач",
+      "key": "medico-1j7uy8d",
+      "visual": "🧑‍⚕️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "hospital",
+      "meaning": "больница",
+      "key": "hospital-1u0c8je",
+      "visual": "🏥",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "farmacia",
+      "meaning": "аптека",
+      "key": "farmacia-fg10q8",
+      "visual": "💊",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "medicina",
+      "meaning": "лекарство",
+      "key": "medicina-1k4utrq",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "dolor",
+      "meaning": "боль",
+      "key": "dolor-1l0lpg",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "salud",
+      "meaning": "здоровье",
+      "key": "salud-1t0kx9",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "enfermedad",
+      "meaning": "болезнь",
+      "key": "enfermedad-9c4g6d",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "fiebre",
+      "meaning": "температура, жар",
+      "key": "fiebre-1dy6fo3",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "sangre",
+      "meaning": "кровь",
+      "key": "sangre-1jzj0my",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "diente",
+      "meaning": "зуб",
+      "key": "diente-1d03ftr",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "espalda",
+      "meaning": "спина",
+      "key": "espalda-1b0994a",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "brazo",
+      "meaning": "рука",
+      "key": "brazo-1jypl2",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pierna",
+      "meaning": "нога",
+      "key": "pierna-1iomzdl",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "dedo",
+      "meaning": "палец",
+      "key": "dedo-1u024",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "nariz",
+      "meaning": "нос",
+      "key": "nariz-1q9q4w",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "oreja",
+      "meaning": "ухо",
+      "key": "oreja-1r43vd",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cuello",
+      "meaning": "шея",
+      "key": "cuello-1cpnavw",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "estómago",
+      "meaning": "желудок",
+      "key": "estomago-14q6sdl",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "piel",
+      "meaning": "кожа",
+      "key": "piel-21qw0",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "pelo",
+      "meaning": "волосы",
+      "key": "pelo-21o3c",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "campera",
+      "meaning": "куртка",
+      "key": "campera-939jqr",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "vestido",
+      "meaning": "платье",
+      "key": "vestido-5twlt0",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "falda",
+      "meaning": "юбка",
+      "key": "falda-1lv8su",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "gorra",
+      "meaning": "кепка",
+      "key": "gorra-1mo3zt",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "media",
+      "meaning": "носок",
+      "key": "media-1ps738",
+      "visual": "🧃",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "talle",
+      "meaning": "размер одежды",
+      "key": "talle-1tkdaw",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "color",
+      "meaning": "цвет",
+      "key": "color-1kgt43",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "tamaño",
+      "meaning": "размер",
+      "key": "tamano-1kgjyn3",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "peso",
+      "meaning": "вес",
+      "key": "peso-21o9d",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "altura",
+      "meaning": "высота, рост",
+      "key": "altura-1bmvod7",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "edad",
+      "meaning": "возраст",
+      "key": "edad-1um82",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "cumpleaños",
+      "meaning": "день рождения",
+      "key": "cumpleanos-os6u02",
+      "visual": "🖼️",
+      "kind": 0,
+      "category": 2
+    },
+    {
+      "spanish": "bueno",
+      "meaning": "хороший",
+      "key": "bueno-1k0p83",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "malo",
+      "meaning": "плохой",
+      "key": "malo-1zo5z",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "grande",
+      "meaning": "большой",
+      "key": "grande-1ek3w0p",
+      "visual": "🐘",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "pequeño",
+      "meaning": "маленький",
+      "key": "pequeno-1nso2mi",
+      "visual": "🐭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "nuevo",
+      "meaning": "новый",
+      "key": "nuevo-1qm8jb",
+      "visual": "🆕",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "viejo",
+      "meaning": "старый",
+      "key": "viejo-1usx5j",
+      "visual": "🕰️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "joven",
+      "meaning": "молодой",
+      "key": "joven-1obkfu",
+      "visual": "🌱",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "importante",
+      "meaning": "важный",
+      "key": "importante-z5k2v7",
+      "visual": "⭐",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "diferente",
+      "meaning": "другой, различный",
+      "key": "diferente-l9gjbc",
+      "visual": "🫂",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "mismo",
+      "meaning": "тот же самый",
+      "key": "mismo-1pv29l",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "primero",
+      "meaning": "первый",
+      "key": "primero-1ttpm2k",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "último",
+      "meaning": "последний",
+      "key": "ultimo-1d1njpl",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "mejor",
+      "meaning": "лучший",
+      "key": "mejor-1psbp1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "peor",
+      "meaning": "худший",
+      "key": "peor-21o60",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "alto",
+      "meaning": "высокий",
+      "key": "alto-1s8o6",
+      "visual": "🧃",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "bajo",
+      "meaning": "низкий",
+      "key": "bajo-1sn9g",
+      "visual": "🐢",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "largo",
+      "meaning": "длинный",
+      "key": "largo-1p64w5",
+      "visual": "📏",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "corto",
+      "meaning": "короткий",
+      "key": "corto-1kgxoh",
+      "visual": "✂️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "fácil",
+      "meaning": "лёгкий",
+      "key": "facil-1o4skr",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "difícil",
+      "meaning": "трудный",
+      "key": "dificil-rie0my",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "rápido",
+      "meaning": "быстрый",
+      "key": "rapido-1lgwdbn",
+      "visual": "⚡",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "lento",
+      "meaning": "медленный",
+      "key": "lento-1p8m6o",
+      "visual": "🐢",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "fuerte",
+      "meaning": "сильный",
+      "key": "fuerte-1e4sap9",
+      "visual": "💪",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "débil",
+      "meaning": "слабый",
+      "key": "debil-1n6ajk",
+      "visual": "🪶",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "feliz",
+      "meaning": "счастливый",
+      "key": "feliz-1lxsvy",
+      "visual": "😄",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "triste",
+      "meaning": "грустный",
+      "key": "triste-1kpu74p",
+      "visual": "😔",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "claro",
+      "meaning": "ясный, светлый",
+      "key": "claro-1keo2d",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "oscuro",
+      "meaning": "тёмный",
+      "key": "oscuro-1id239v",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "blanco",
+      "meaning": "белый",
+      "key": "blanco-1c3l0gz",
+      "visual": "⚪",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "negro",
+      "meaning": "чёрный",
+      "key": "negro-1qc24t",
+      "visual": "⚫",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "rojo",
+      "meaning": "красный",
+      "key": "rojo-235fm",
+      "visual": "🔴",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "verde",
+      "meaning": "зелёный",
+      "key": "verde-1uqmp0",
+      "visual": "🟢",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "azul",
+      "meaning": "синий",
+      "key": "azul-1sj2o",
+      "visual": "🔵",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "amarillo",
+      "meaning": "жёлтый",
+      "key": "amarillo-13hsr0j",
+      "visual": "🟡",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "caliente",
+      "meaning": "горячий",
+      "key": "caliente-1w4zl4l",
+      "visual": "🔥",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "frío",
+      "meaning": "холодный",
+      "key": "frio-1vmy6",
+      "visual": "🧊",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "limpio",
+      "meaning": "чистый",
+      "key": "limpio-1gslk3q",
+      "visual": "✨",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sucio",
+      "meaning": "грязный",
+      "key": "sucio-1td5pj",
+      "visual": "🧹",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "lleno",
+      "meaning": "полный",
+      "key": "lleno-1pcw9y",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "vacío",
+      "meaning": "пустой",
+      "key": "vacio-1unuwq",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "abierto",
+      "meaning": "открытый",
+      "key": "abierto-1f68q4w",
+      "visual": "🔓",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cerrado",
+      "meaning": "закрытый",
+      "key": "cerrado-b286yy",
+      "visual": "🔒",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "caro",
+      "meaning": "дорогой",
+      "key": "caro-1tafv",
+      "visual": "💎",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "barato",
+      "meaning": "дешёвый",
+      "key": "barato-1bxtvhl",
+      "visual": "🏷️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "rico",
+      "meaning": "богатый, вкусный",
+      "key": "rico-230tf",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "pobre",
+      "meaning": "бедный",
+      "key": "pobre-1rlxh2",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "bonito",
+      "meaning": "красивый",
+      "key": "bonito-1c5gls3",
+      "visual": "🌸",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "feo",
+      "meaning": "некрасивый",
+      "key": "feo-264w",
+      "visual": "🌸",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "amable",
+      "meaning": "добрый, любезный",
+      "key": "amable-1bn2xza",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "serio",
+      "meaning": "серьёзный",
+      "key": "serio-1t391i",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "tranquilo",
+      "meaning": "спокойный",
+      "key": "tranquilo-hdw5vh",
+      "visual": "😌",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "nervioso",
+      "meaning": "нервный",
+      "key": "nervioso-kr98l9",
+      "visual": "😰",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cansado",
+      "meaning": "уставший",
+      "key": "cansado-93v609",
+      "visual": "🥱",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ocupado",
+      "meaning": "занятый",
+      "key": "ocupado-188acpp",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "libre",
+      "meaning": "свободный",
+      "key": "libre-1pax6g",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "listo",
+      "meaning": "готовый, сообразительный",
+      "key": "listo-1pb9u9",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "seguro",
+      "meaning": "безопасный, уверенный",
+      "key": "seguro-1k1m0hp",
+      "visual": "⚠️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "peligroso",
+      "meaning": "опасный",
+      "key": "peligroso-1r91he6",
+      "visual": "⚠️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "posible",
+      "meaning": "возможный",
+      "key": "posible-1sk02hy",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "imposible",
+      "meaning": "невозможный",
+      "key": "imposible-1vlbf9e",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "necesario",
+      "meaning": "необходимый",
+      "key": "necesario-1o8x9ox",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "útil",
+      "meaning": "полезный",
+      "key": "util-4i3bx",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "inútil",
+      "meaning": "бесполезный",
+      "key": "inutil-1fips02",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "correcto",
+      "meaning": "правильный",
+      "key": "correcto-1rif1vp",
+      "visual": "✅",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "equivocado",
+      "meaning": "ошибочный",
+      "key": "equivocado-1lhf3du",
+      "visual": "❌",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "verdadero",
+      "meaning": "истинный",
+      "key": "verdadero-14j336m",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "falso",
+      "meaning": "ложный",
+      "key": "falso-1lv965",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "normal",
+      "meaning": "нормальный",
+      "key": "normal-1hu2oyv",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "especial",
+      "meaning": "особенный",
+      "key": "especial-10nragk",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "general",
+      "meaning": "общий",
+      "key": "general-1xpe76w",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "principal",
+      "meaning": "главный",
+      "key": "principal-1529pny",
+      "visual": "⭐",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "personal",
+      "meaning": "личный",
+      "key": "personal-7bujpc",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "público",
+      "meaning": "общественный",
+      "key": "publico-1n2v16p",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "privado",
+      "meaning": "частный",
+      "key": "privado-1ttv9nh",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "local",
+      "meaning": "местный",
+      "key": "local-1perfv",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "nacional",
+      "meaning": "национальный",
+      "key": "nacional-ps2asj",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "internacional",
+      "meaning": "международный",
+      "key": "internacional-q3kdfj",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "natural",
+      "meaning": "естественный",
+      "key": "natural-slckkp",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "real",
+      "meaning": "реальный",
+      "key": "real-22xsu",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "simple",
+      "meaning": "простой",
+      "key": "simple-1k3wwxe",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "completo",
+      "meaning": "полный",
+      "key": "completo-1p47v43",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "común",
+      "meaning": "обычный, общий",
+      "key": "comun-1kgx6d",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "raro",
+      "meaning": "редкий, странный",
+      "key": "raro-22v8s",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "igual",
+      "meaning": "одинаковый",
+      "key": "igual-1nmn42",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "distinto",
+      "meaning": "отличающийся",
+      "key": "distinto-4rvtae",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cercano",
+      "meaning": "близкий",
+      "key": "cercano-b1ymen",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "lejano",
+      "meaning": "далёкий",
+      "key": "lejano-1gqc5rl",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "temprano",
+      "meaning": "ранний",
+      "key": "temprano-1d6ejus",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "tardío",
+      "meaning": "поздний",
+      "key": "tardio-1kgn7pd",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "dulce",
+      "meaning": "сладкий",
+      "key": "dulce-1l4fbx",
+      "visual": "🍯",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "salado",
+      "meaning": "солёный",
+      "key": "salado-1jzhlvy",
+      "visual": "🧂",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "amargo",
+      "meaning": "горький",
+      "key": "amargo-1bn39qd",
+      "visual": "☕",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "suave",
+      "meaning": "мягкий",
+      "key": "suave-1td4j2",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "duro",
+      "meaning": "твёрдый, тяжёлый",
+      "key": "duro-1uc9a",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "seco",
+      "meaning": "сухой",
+      "key": "seco-23ku6",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "húmedo",
+      "meaning": "влажный",
+      "key": "humedo-1h450ad",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ancho",
+      "meaning": "широкий",
+      "key": "ancho-1jce3h",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "estrecho",
+      "meaning": "узкий",
+      "key": "estrecho-12r49g1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "pesado",
+      "meaning": "тяжёлый",
+      "key": "pesado-1imodzi",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ligero",
+      "meaning": "лёгкий",
+      "key": "ligero-1gshi8o",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "contento",
+      "meaning": "довольный",
+      "key": "contento-1pncdna",
+      "visual": "😄",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "enojado",
+      "meaning": "злой",
+      "key": "enojado-18mmvag",
+      "visual": "😠",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "enfadado",
+      "meaning": "сердитый",
+      "key": "enfadado-ti904s",
+      "visual": "😠",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "preocupado",
+      "meaning": "обеспокоенный",
+      "key": "preocupado-101250a",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sorprendido",
+      "meaning": "удивлённый",
+      "key": "sorprendido-11x9rf5",
+      "visual": "😲",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "asustado",
+      "meaning": "испуганный",
+      "key": "asustado-1u0pfd4",
+      "visual": "😨",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "aburrido",
+      "meaning": "скучающий, скучный",
+      "key": "aburrido-tkpuv4",
+      "visual": "🥱",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "divertido",
+      "meaning": "весёлый",
+      "key": "divertido-170qdoe",
+      "visual": "😄",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "interesante",
+      "meaning": "интересный",
+      "key": "interesante-wmkqg8",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "interesado",
+      "meaning": "заинтересованный",
+      "key": "interesado-18l5gwy",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cómodo",
+      "meaning": "удобный",
+      "key": "comodo-1en2jkt",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "incómodo",
+      "meaning": "неудобный",
+      "key": "incomodo-3jtx4y",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "fresco",
+      "meaning": "свежий, прохладный",
+      "key": "fresco-1e34x9i",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "tibio",
+      "meaning": "тёплый",
+      "key": "tibio-1tp9pv",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "helado",
+      "meaning": "ледяной",
+      "key": "helado-1eu6xx9",
+      "visual": "🧊",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "mojado",
+      "meaning": "мокрый",
+      "key": "mojado-1hcvpus",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "delgado",
+      "meaning": "худой, тонкий",
+      "key": "delgado-pn4os0",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "gordo",
+      "meaning": "толстый",
+      "key": "gordo-1mo3o5",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "flaco",
+      "meaning": "худой",
+      "key": "flaco-1m21hj",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "musculoso",
+      "meaning": "мускулистый",
+      "key": "musculoso-3wc4kc",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "hermoso",
+      "meaning": "красивый",
+      "key": "hermoso-df0nwz",
+      "visual": "🌸",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "lindo",
+      "meaning": "милый, красивый",
+      "key": "lindo-1pb5r0",
+      "visual": "🌸",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "precioso",
+      "meaning": "прекрасный",
+      "key": "precioso-1doajaa",
+      "visual": "💰",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "horrible",
+      "meaning": "ужасный",
+      "key": "horrible-1tkdu8p",
+      "visual": "🌩️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "perfecto",
+      "meaning": "идеальный",
+      "key": "perfecto-74imf6",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "excelente",
+      "meaning": "отличный",
+      "key": "excelente-ofnqc1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "terrible",
+      "meaning": "ужасный",
+      "key": "terrible-1fkkitf",
+      "visual": "🌩️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "famoso",
+      "meaning": "известный",
+      "key": "famoso-1dtxghl",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "desconocido",
+      "meaning": "неизвестный",
+      "key": "desconocido-tjne8",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "popular",
+      "meaning": "популярный",
+      "key": "popular-1sikjq1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "moderno",
+      "meaning": "современный",
+      "key": "moderno-kai2wg",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "antiguo",
+      "meaning": "древний, старинный",
+      "key": "antiguo-1l0w97j",
+      "visual": "🕰️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "actual",
+      "meaning": "текущий, современный",
+      "key": "actual-1bhximm",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "futuro",
+      "meaning": "будущий",
+      "key": "futuro-1e51xot",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "pasado",
+      "meaning": "прошлый",
+      "key": "pasado-1ikh7m2",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "diario",
+      "meaning": "ежедневный",
+      "key": "diario-1d00yl8",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "semanal",
+      "meaning": "еженедельный",
+      "key": "semanal-wq70fn",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "mensual",
+      "meaning": "ежемесячный",
+      "key": "mensual-fpssmb",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "anual",
+      "meaning": "ежегодный",
+      "key": "anual-1jcr9v",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "habitual",
+      "meaning": "обычный, привычный",
+      "key": "habitual-1tgpc30",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "frecuente",
+      "meaning": "частый",
+      "key": "frecuente-1r8si3p",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ocasional",
+      "meaning": "случайный",
+      "key": "ocasional-kv9ejx",
+      "visual": "🍵",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "constante",
+      "meaning": "постоянный",
+      "key": "constante-1s1p741",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "temporal",
+      "meaning": "временный",
+      "key": "temporal-1d6cz6q",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "permanente",
+      "meaning": "постоянный",
+      "key": "permanente-1mlkx2v",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "urgente",
+      "meaning": "срочный",
+      "key": "urgente-1w5cguc",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "inmediato",
+      "meaning": "немедленный",
+      "key": "inmediato-1bf1w9m",
+      "visual": "🐢",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "próximo",
+      "meaning": "ближайший, следующий",
+      "key": "proximo-1vxsbno",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "anterior",
+      "meaning": "предыдущий",
+      "key": "anterior-1qz27qw",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "posterior",
+      "meaning": "последующий",
+      "key": "posterior-x7s0bj",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "inicial",
+      "meaning": "начальный",
+      "key": "inicial-w7ovlh",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "final",
+      "meaning": "финальный",
+      "key": "final-1m0e46",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "mínimo",
+      "meaning": "минимальный",
+      "key": "minimo-1ja8ipp",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "máximo",
+      "meaning": "максимальный",
+      "key": "maximo-1j3tdgn",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "medio",
+      "meaning": "средний",
+      "key": "medio-1ps73m",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "entero",
+      "meaning": "целый",
+      "key": "entero-1dk5f9z",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "doble",
+      "meaning": "двойной",
+      "key": "doble-1l0e7k",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "único",
+      "meaning": "единственный",
+      "key": "unico-3vh17l",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "varios",
+      "meaning": "несколько",
+      "key": "varios-1leqh6u",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "suficiente",
+      "meaning": "достаточный",
+      "key": "suficiente-j8erz9",
+      "visual": "✅",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "demasiado",
+      "meaning": "чрезмерный",
+      "key": "demasiado-6u67kx",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "escaso",
+      "meaning": "скудный, недостаточный",
+      "key": "escaso-1dmlgiw",
+      "visual": "✅",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "abundante",
+      "meaning": "обильный",
+      "key": "abundante-1qcwex4",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "profundo",
+      "meaning": "глубокий",
+      "key": "profundo-1iglrr1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "superficial",
+      "meaning": "поверхностный",
+      "key": "superficial-19od0un",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "plano",
+      "meaning": "плоский",
+      "key": "plano-1rjzom",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "redondo",
+      "meaning": "круглый",
+      "key": "redondo-hx3irf",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cuadrado",
+      "meaning": "квадратный",
+      "key": "cuadrado-19c77z",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "recto",
+      "meaning": "прямой",
+      "key": "recto-1sj5l7",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "curvo",
+      "meaning": "изогнутый",
+      "key": "curvo-1kkrnd",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "vertical",
+      "meaning": "вертикальный",
+      "key": "vertical-127t0mu",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "horizontal",
+      "meaning": "горизонтальный",
+      "key": "horizontal-my5pus",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "central",
+      "meaning": "центральный",
+      "key": "central-b02n3p",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "lateral",
+      "meaning": "боковой",
+      "key": "lateral-1y9dubb",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "interior",
+      "meaning": "внутренний",
+      "key": "interior-9flsc0",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "exterior",
+      "meaning": "внешний",
+      "key": "exterior-14x2qbi",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "superior",
+      "meaning": "верхний, превосходящий",
+      "key": "superior-17cvr1t",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "inferior",
+      "meaning": "нижний",
+      "key": "inferior-2sz2ta",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "izquierdo",
+      "meaning": "левый",
+      "key": "izquierdo-xgv3l8",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "derecho",
+      "meaning": "правый",
+      "key": "derecho-pqe7xy",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "delantero",
+      "meaning": "передний",
+      "key": "delantero-1r4c4iu",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "trasero",
+      "meaning": "задний",
+      "key": "trasero-1hdw65u",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "remoto",
+      "meaning": "удалённый",
+      "key": "remoto-1jko3m8",
+      "visual": "🗑️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "urbano",
+      "meaning": "городской",
+      "key": "urbano-1l6qz4t",
+      "visual": "🏙️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "rural",
+      "meaning": "сельский",
+      "key": "rural-1sto1m",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "doméstico",
+      "meaning": "домашний",
+      "key": "domestico-4b6gp9",
+      "visual": "🏠",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "salvaje",
+      "meaning": "дикий",
+      "key": "salvaje-uttvk4",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "vivo",
+      "meaning": "живой",
+      "key": "vivo-25l7w",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "muerto",
+      "meaning": "мёртвый",
+      "key": "muerto-1hg3ngw",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sano",
+      "meaning": "здоровый",
+      "key": "sano-23i4v",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "enfermo",
+      "meaning": "больной",
+      "key": "enfermo-18hlvu4",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "embarazada",
+      "meaning": "беременная",
+      "key": "embarazada-745d8a",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "despierto",
+      "meaning": "бодрствующий",
+      "key": "despierto-utk1yr",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "dormido",
+      "meaning": "спящий",
+      "key": "dormido-ugzo4u",
+      "visual": "😴",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "hambriento",
+      "meaning": "голодный",
+      "key": "hambriento-1cmryi1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sediento",
+      "meaning": "испытывающий жажду",
+      "key": "sediento-fzaw1n",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sabroso",
+      "meaning": "вкусный",
+      "key": "sabroso-uo9oa5",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "delicioso",
+      "meaning": "очень вкусный",
+      "key": "delicioso-1uqgjqf",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "insípido",
+      "meaning": "безвкусный",
+      "key": "insipido-b1aweb",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "picante",
+      "meaning": "острый",
+      "key": "picante-1pgsru0",
+      "visual": "🌶️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ácido",
+      "meaning": "кислый",
+      "key": "acido-3hj5jm",
+      "visual": "🍋",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "grasoso",
+      "meaning": "жирный",
+      "key": "grasoso-4mysni",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "crudo",
+      "meaning": "сырой",
+      "key": "crudo-1kiwhd",
+      "visual": "🧀",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cocido",
+      "meaning": "приготовленный",
+      "key": "cocido-1cmb6xp",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "maduro",
+      "meaning": "спелый, зрелый",
+      "key": "maduro-1h536si",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "podrido",
+      "meaning": "гнилой",
+      "key": "podrido-1sbx1hj",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "usado",
+      "meaning": "подержанный",
+      "key": "usado-1uffbi",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "roto",
+      "meaning": "сломанный",
+      "key": "roto-235o8",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "arreglado",
+      "meaning": "починенный",
+      "key": "arreglado-1d3gcg3",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "encendido",
+      "meaning": "включённый",
+      "key": "encendido-kcy1qr",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "apagado",
+      "meaning": "выключенный",
+      "key": "apagado-1lohzw7",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "conectado",
+      "meaning": "подключённый",
+      "key": "conectado-1l61u8o",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "desconectado",
+      "meaning": "отключённый",
+      "key": "desconectado-kpnvra",
+      "visual": "🔑",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cargado",
+      "meaning": "заряженный, насыщенный",
+      "key": "cargado-95uojd",
+      "visual": "🔋",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "descargado",
+      "meaning": "разряженный",
+      "key": "descargado-1eqkdpj",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "disponible",
+      "meaning": "доступный",
+      "key": "disponible-1limrir",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "agotado",
+      "meaning": "распроданный, исчерпанный",
+      "key": "agotado-1hn0thd",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "reservado",
+      "meaning": "зарезервированный",
+      "key": "reservado-xgevk3",
+      "visual": "📅",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "gratis",
+      "meaning": "бесплатный",
+      "key": "gratis-1ek40lk",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "pago",
+      "meaning": "платный",
+      "key": "pago-21l09",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "económico",
+      "meaning": "экономичный, недорогой",
+      "key": "economico-rsrc0u",
+      "visual": "💎",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "costoso",
+      "meaning": "дорогостоящий",
+      "key": "costoso-ft9s7y",
+      "visual": "💎",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "valioso",
+      "meaning": "ценный",
+      "key": "valioso-3too0z",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "auténtico",
+      "meaning": "подлинный",
+      "key": "autentico-efq45i",
+      "visual": "📏",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "original",
+      "meaning": "оригинальный",
+      "key": "original-mt1p01",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "legal",
+      "meaning": "законный",
+      "key": "legal-1p8gjd",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ilegal",
+      "meaning": "незаконный",
+      "key": "ilegal-1feyrxs",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "oficial",
+      "meaning": "официальный",
+      "key": "oficial-19gljsz",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "informal",
+      "meaning": "неформальный",
+      "key": "informal-2yh3dg",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "formal",
+      "meaning": "формальный",
+      "key": "formal-1e1pptb",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "profesional",
+      "meaning": "профессиональный",
+      "key": "profesional-inbah8",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "aficionado",
+      "meaning": "любительский",
+      "key": "aficionado-u8hsv7",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "experto",
+      "meaning": "опытный, экспертный",
+      "key": "experto-1ddk1vp",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "principiante",
+      "meaning": "начинающий",
+      "key": "principiante-f66b8k",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "capaz",
+      "meaning": "способный",
+      "key": "capaz-1k7xxn",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "incapaz",
+      "meaning": "неспособный",
+      "key": "incapaz-w4cz9i",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "inteligente",
+      "meaning": "умный",
+      "key": "inteligente-haylhq",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "tonto",
+      "meaning": "глупый",
+      "key": "tonto-1ttcsu",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sabio",
+      "meaning": "мудрый",
+      "key": "sabio-1t0d8a",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ignorante",
+      "meaning": "невежественный",
+      "key": "ignorante-7cbh01",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "educado",
+      "meaning": "воспитанный",
+      "key": "educado-13zcxzz",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "maleducado",
+      "meaning": "невоспитанный",
+      "key": "maleducado-1559rrb",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "honesto",
+      "meaning": "честный",
+      "key": "honesto-i34okw",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "mentiroso",
+      "meaning": "лживый",
+      "key": "mentiroso-19gjfs4",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sincero",
+      "meaning": "искренний",
+      "key": "sincero-ymyebb",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "fiel",
+      "meaning": "верный",
+      "key": "fiel-1vd0q",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "leal",
+      "meaning": "преданный",
+      "key": "leal-1z3vo",
+      "visual": "🍽️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "responsable",
+      "meaning": "ответственный",
+      "key": "responsable-ujwyym",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "irresponsable",
+      "meaning": "безответственный",
+      "key": "irresponsable-1cjo8c5",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "puntual",
+      "meaning": "пунктуальный",
+      "key": "puntual-1vbq8l1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "impuntual",
+      "meaning": "непунктуальный",
+      "key": "impuntual-1yd1lch",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ordenado",
+      "meaning": "организованный",
+      "key": "ordenado-kesx7m",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "desordenado",
+      "meaning": "неорганизованный",
+      "key": "desordenado-uowlys",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cuidadoso",
+      "meaning": "осторожный",
+      "key": "cuidadoso-e560wr",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "descuidado",
+      "meaning": "небрежный",
+      "key": "descuidado-1o2gral",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "paciente",
+      "meaning": "терпеливый",
+      "key": "paciente-ce0tip",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "impaciente",
+      "meaning": "нетерпеливый",
+      "key": "impaciente-zhor6d",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "generoso",
+      "meaning": "щедрый",
+      "key": "generoso-txuub2",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "tacaño",
+      "meaning": "скупой",
+      "key": "tacano-1kgdkrt",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "humilde",
+      "meaning": "скромный",
+      "key": "humilde-kwx0pw",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "orgulloso",
+      "meaning": "гордый",
+      "key": "orgulloso-191wkre",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "valiente",
+      "meaning": "смелый",
+      "key": "valiente-1biy5he",
+      "visual": "😂",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "cobarde",
+      "meaning": "трусливый",
+      "key": "cobarde-fjl78o",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "simpático",
+      "meaning": "приятный, симпатичный",
+      "key": "simpatico-11owxt5",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "antipático",
+      "meaning": "неприятный",
+      "key": "antipatico-1n7qbuc",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "amigable",
+      "meaning": "дружелюбный",
+      "key": "amigable-173yobo",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "agresivo",
+      "meaning": "агрессивный",
+      "key": "agresivo-ubboiw",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "calmado",
+      "meaning": "спокойный",
+      "key": "calmado-92nqwd",
+      "visual": "😌",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ruidoso",
+      "meaning": "шумный",
+      "key": "ruidoso-pkdga5",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "silencioso",
+      "meaning": "тихий",
+      "key": "silencioso-2e0jq",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "alegre",
+      "meaning": "весёлый",
+      "key": "alegre-1bmlt6o",
+      "visual": "😄",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "sereno",
+      "meaning": "безмятежный",
+      "key": "sereno-1k1spdy",
+      "visual": "😌",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "ansioso",
+      "meaning": "тревожный",
+      "key": "ansioso-1l0cmi0",
+      "visual": "😰",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "relajado",
+      "meaning": "расслабленный",
+      "key": "relajado-1puu0a2",
+      "visual": "🪶",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "estresado",
+      "meaning": "в стрессе",
+      "key": "estresado-1sv5bma",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "solo",
+      "meaning": "одинокий, один",
+      "key": "solo-23sgv",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "acompañado",
+      "meaning": "в сопровождении",
+      "key": "acompanado-glt3po",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "casado",
+      "meaning": "женатый, замужняя",
+      "key": "casado-1cew4hj",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "soltero",
+      "meaning": "неженатый, незамужняя",
+      "key": "soltero-11gfe9q",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "divorciado",
+      "meaning": "разведённый",
+      "key": "divorciado-1nj2y8i",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "viudo",
+      "meaning": "овдовевший",
+      "key": "viudo-1ut8vh",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "masculino",
+      "meaning": "мужской",
+      "key": "masculino-1upv0jz",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "femenino",
+      "meaning": "женский",
+      "key": "femenino-n42c3",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "adulto",
+      "meaning": "взрослый",
+      "key": "adulto-1bihrzp",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "infantil",
+      "meaning": "детский",
+      "key": "infantil-2qpki1",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "mayor",
+      "meaning": "старший, больший",
+      "key": "mayor-1pq2vc",
+      "visual": "🐘",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "menor",
+      "meaning": "младший, меньший",
+      "key": "menor-1psent",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "exacto",
+      "meaning": "точный",
+      "key": "exacto-1dpb70w",
+      "visual": "✅",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "aproximado",
+      "meaning": "приблизительный",
+      "key": "aproximado-vsw2m4",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "preciso",
+      "meaning": "точный, аккуратный",
+      "key": "preciso-1trc4th",
+      "visual": "✅",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "incorrecto",
+      "meaning": "неправильный",
+      "key": "incorrecto-1kpyyqy",
+      "visual": "✅",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "complejo",
+      "meaning": "сложный",
+      "key": "complejo-1p47uvh",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "básico",
+      "meaning": "базовый",
+      "key": "basico-1dw8by9",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "avanzado",
+      "meaning": "продвинутый",
+      "key": "avanzado-th8n4k",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "flexible",
+      "meaning": "гибкий",
+      "key": "flexible-surruz",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "rígido",
+      "meaning": "жёсткий",
+      "key": "rigido-1lnc5k8",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "estable",
+      "meaning": "стабильный",
+      "key": "estable-1b2g89s",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "inestable",
+      "meaning": "нестабильный",
+      "key": "inestable-7wa04b",
+      "visual": "🎭",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "seguro",
+      "meaning": "надёжный, безопасный",
+      "key": "seguro-1k1m0hp",
+      "visual": "⚠️",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "arriesgado",
+      "meaning": "рискованный",
+      "key": "arriesgado-h61q63",
+      "visual": "🍚",
+      "kind": 0,
+      "category": 3
+    },
+    {
+      "spanish": "tener ganas de",
+      "meaning": "хотеть, иметь желание",
+      "key": "tener-ganas-de-svsy41",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "darse cuenta de",
+      "meaning": "осознавать, замечать",
+      "key": "darse-cuenta-de-57lhk0",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "tener en cuenta",
+      "meaning": "принимать во внимание",
+      "key": "tener-en-cuenta-17yifex",
+      "visual": "👩‍👧",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "por supuesto",
+      "meaning": "конечно",
+      "key": "por-supuesto-1ou5wsd",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "de acuerdo",
+      "meaning": "согласен, договорились",
+      "key": "de-acuerdo-194i1kc",
+      "visual": "🗣️",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "no pasa nada",
+      "meaning": "ничего страшного",
+      "key": "no-pasa-nada-3abh3m",
+      "visual": "😨",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "qué onda",
+      "meaning": "как дела, что происходит",
+      "key": "que-onda-15y3g5z",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "más o menos",
+      "meaning": "более или менее",
+      "key": "mas-o-menos-1pftafc",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "por ahora",
+      "meaning": "пока что",
+      "key": "por-ahora-1dqc37u",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "a veces",
+      "meaning": "иногда",
+      "key": "a-veces-k4eocj",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "de vez en cuando",
+      "meaning": "время от времени",
+      "key": "de-vez-en-cuando-1de2ox9",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "todo el tiempo",
+      "meaning": "всё время",
+      "key": "todo-el-tiempo-163l8t7",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "al final",
+      "meaning": "в конце концов",
+      "key": "al-final-1svzl8h",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "en serio",
+      "meaning": "серьёзно",
+      "key": "en-serio-1vo4swf",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "la verdad es que",
+      "meaning": "правда в том, что",
+      "key": "la-verdad-es-que-f7lksg",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "por ejemplo",
+      "meaning": "например",
+      "key": "por-ejemplo-1bq0lbt",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "es decir",
+      "meaning": "то есть",
+      "key": "es-decir-1xsqy0p",
+      "visual": "🍽️",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "o sea",
+      "meaning": "то есть",
+      "key": "o-sea-1po17i",
+      "visual": "🍽️",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "sin embargo",
+      "meaning": "однако",
+      "key": "sin-embargo-rz1kjv",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "además de",
+      "meaning": "кроме того",
+      "key": "ademas-de-snzgqs",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "a pesar de",
+      "meaning": "несмотря на",
+      "key": "a-pesar-de-eajq6p",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "en vez de",
+      "meaning": "вместо",
+      "key": "en-vez-de-13b3re5",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "por eso",
+      "meaning": "поэтому",
+      "key": "por-eso-1si5q9g",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "así que",
+      "meaning": "так что",
+      "key": "asi-que-1p7d2cc",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "ya está",
+      "meaning": "всё, готово",
+      "key": "ya-esta-1ap0oqb",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "ya fue",
+      "meaning": "ладно, проехали",
+      "key": "ya-fue-1msexcu",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "ni idea",
+      "meaning": "без понятия",
+      "key": "ni-idea-v3avr0",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "me parece que",
+      "meaning": "мне кажется, что",
+      "key": "me-parece-que-4rpbov",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "creo que",
+      "meaning": "я думаю, что",
+      "key": "creo-que-ua1lyy",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "supongo que",
+      "meaning": "я полагаю, что",
+      "key": "supongo-que-1qmu8vq",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "estoy seguro de",
+      "meaning": "я уверен в",
+      "key": "estoy-seguro-de-1szgbbo",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "no estoy seguro",
+      "meaning": "я не уверен",
+      "key": "no-estoy-seguro-1i1r8ks",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "qué lástima",
+      "meaning": "как жаль",
+      "key": "que-lastima-a58dfw",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "qué suerte",
+      "meaning": "как повезло",
+      "key": "que-suerte-12n9jln",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "tengo que",
+      "meaning": "мне нужно, я должен",
+      "key": "tengo-que-177ct7q",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "hay que",
+      "meaning": "нужно, следует",
+      "key": "hay-que-blbm0x",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "acabar de",
+      "meaning": "только что сделать",
+      "key": "acabar-de-4zzrhp",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "volver a",
+      "meaning": "снова сделать",
+      "key": "volver-a-144bbch",
+      "visual": "🆕",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "dejar de",
+      "meaning": "перестать делать",
+      "key": "dejar-de-cjo67b",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "seguir + gerundio",
+      "meaning": "продолжать делать",
+      "key": "seguir-gerundio-z2wjmx",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "estar por",
+      "meaning": "собираться, быть на грани",
+      "key": "estar-por-1kz2e3u",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "estar de acuerdo",
+      "meaning": "быть согласным",
+      "key": "estar-de-acuerdo-1hfp439",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "tener razón",
+      "meaning": "быть правым",
+      "key": "tener-razon-npdcfk",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "no tener razón",
+      "meaning": "быть неправым",
+      "key": "no-tener-razon-1ibamvl",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "echar de menos",
+      "meaning": "скучать по",
+      "key": "echar-de-menos-1rht4ww",
+      "visual": "🥱",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "hacer falta",
+      "meaning": "быть нужным, не хватать",
+      "key": "hacer-falta-bn5uhh",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "dar igual",
+      "meaning": "быть безразличным",
+      "key": "dar-igual-51bjnb",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "qué tal",
+      "meaning": "как дела, как",
+      "key": "que-tal-ct5i6c",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "para siempre",
+      "meaning": "навсегда",
+      "key": "para-siempre-fej8kl",
+      "visual": "💬",
+      "kind": 1,
+      "category": 0
+    },
+    {
+      "spanish": "salir para",
+      "meaning": "отправляться в, выходить к",
+      "key": "salir-para-envk61",
+      "visual": "📨",
+      "kind": 1,
+      "category": 0
+    }
+  ]
+}
