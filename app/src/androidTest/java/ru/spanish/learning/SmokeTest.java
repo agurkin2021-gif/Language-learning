@@ -23,9 +23,18 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             View root = getActivity().getWindow().getDecorView();
             assertNotNull(find(root, "＋ Слово"));
             assertNotNull(find(root, "＋ Устойчивое выражение"));
+            assertNotNull(find(root, "Обновление"));
+            assertNotNull(find(root, "Версия / сборка"));
         });
         tap("Освоенное"); tap("← К изучению");
-        tap("Сказки"); tap("Открыть и слушать");
+        tap("Сказки");
+        getInstrumentation().runOnMainSync(() -> {
+            View root = getActivity().getWindow().getDecorView();
+            assertNull(find(root, "Обновление"));
+            assertNull(find(root, "Версия / сборка"));
+            assertNotNull(find(root, "⚙"));
+        });
+        tap("Открыть и слушать");
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();
             assertNotNull(find(root, "Лусия живёт в маленьком доме."));
