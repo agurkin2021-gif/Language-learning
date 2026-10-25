@@ -770,7 +770,7 @@ public final class ChatGptAssistant {
 
     private String readable(Exception e) {
         String message = e.getMessage();
-        if (message == null || message.isBlank()) return e.getClass().getSimpleName();
+        if (message == null || message.trim().isEmpty()) return e.getClass().getSimpleName();
         if (message.contains("subscription_sharing_user_not_eligible"))
             return "Этот ChatGPT-аккаунт сейчас не поддерживает использование плана внутри приложения.";
         if (message.contains("subscription_sharing_usage_limit_exceeded"))
