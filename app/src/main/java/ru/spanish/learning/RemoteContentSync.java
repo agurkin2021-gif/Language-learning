@@ -83,7 +83,7 @@ public final class RemoteContentSync {
                     if (total > MAX_BYTES) throw new IllegalStateException("Контент слишком большой");
                     out.write(buffer, 0, n);
                 }
-                return out.toString(StandardCharsets.UTF_8);
+                return new String(out.toByteArray(), StandardCharsets.UTF_8);
             }
         } finally {
             connection.disconnect();
