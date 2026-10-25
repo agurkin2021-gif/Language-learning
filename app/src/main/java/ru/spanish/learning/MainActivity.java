@@ -91,9 +91,11 @@ public final class MainActivity extends Activity {
             Button tab = new Button(this); tab.setText(label); tab.setAllCaps(false); tabs.addView(tab, new LinearLayout.LayoutParams(0, dp(56), 1));
             tab.setOnClickListener(v -> navigate(label.equals("Карточки") ? "cards" : "stories"));
         }
-        Button settingsButton = rowButton("⚙", this::showSettings);
-        settingsButton.setTextSize(24);
-        tabs.addView(settingsButton, new LinearLayout.LayoutParams(dp(64), dp(56)));
+        if (!screen.equals("cards")) {
+            Button settingsButton = rowButton("⚙", this::showSettings);
+            settingsButton.setTextSize(24);
+            tabs.addView(settingsButton, new LinearLayout.LayoutParams(dp(64), dp(56)));
+        }
         root.addView(tabs);
         ScrollView scroll = new ScrollView(this); content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(24)); scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
