@@ -185,7 +185,16 @@ public final class UpdaterActivity extends Activity {
                 new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(TARGET);
         params.setSize(candidate.apk.length());
-        params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        if (Build.VERSION.SDK_INT >= 31) {
+            boolean installerOfRecord = false;
+            try {
+                InstallSourceInfo source = getPackageManager().getInstallSourceInfo(TARGET);
+                installerOfRecord = getPackageName().equals(source.getInstallingPackageName());
+            } catch (PackageManager.NameNotFoundException ignored) {}
+            params.setRequireUserAction(installerOfRecord
+                    ? PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
+                    : PackageInstaller.SessionParams.USER_ACTION_REQUIRED);
+        }
         if (Build.VERSION.SDK_INT >= 33) params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE);
 
         int sessionId = installer.createSession(params);
@@ -245,7 +254,11 @@ public final class UpdaterActivity extends Activity {
         RUNNING.set(false);
         if (activity != null && !activity.isFinishing()) {
             String message = result.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            activity.fail(message == null || message.isBlank() ? "Android отменил установку." : message);
+            if (message != null && message.contains("Permission denied")) {
+                activity.fail("Android не разрешил установку. Повторите обновление и подтвердите первый системный запрос.");
+            } else {
+                activity.fail(message == null || message.isBlank() ? "Android отменил установку." : message);
+            }
         }
     }
 
