@@ -41,6 +41,8 @@ final class CardImageLoader {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         settings.setSupportZoom(false);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
         target.setBackgroundColor(Color.TRANSPARENT);
         target.setVerticalScrollBarEnabled(false);
         target.setHorizontalScrollBarEnabled(false);
@@ -74,6 +76,12 @@ final class CardImageLoader {
             }
         });
 
-        target.loadUrl(BASE + key(spanish) + ".svg");
+        String imageUrl = BASE + key(spanish) + ".svg";
+        String html = "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+                + "<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}"
+                + "body{display:flex;align-items:center;justify-content:center}"
+                + "img{display:block;width:100%;height:100%;object-fit:contain}</style></head>"
+                + "<body><img src=\"" + imageUrl + "\" alt=\"\"></body></html>";
+        target.loadDataWithBaseURL(BASE, html, "text/html", "UTF-8", null);
     }
 }
