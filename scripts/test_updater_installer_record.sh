@@ -11,6 +11,16 @@ target=ru.spanish.learning
 updater=ru.spanish.learning.updater
 mkdir -p "$reports"
 
+collect() {
+  dump_ui > "$reports/ui-final.xml" 2>/dev/null || true
+  adb shell dumpsys window windows > "$reports/window.txt" 2>&1 || true
+  adb logcat -d -t 4000 > "$reports/logcat.txt" 2>&1 || true
+  adb shell appops get "$updater" REQUEST_INSTALL_PACKAGES > "$reports/appops.txt" 2>&1 || true
+  adb shell dumpsys package "$target" > "$reports/target-package.txt" 2>&1 || true
+  adb shell dumpsys package "$updater" > "$reports/updater-package.txt" 2>&1 || true
+}
+trap collect EXIT
+
 installed_version() {
   adb shell dumpsys package "$target" | python3 -c 'import re,sys; m=re.search(r"versionCode=(\d+)",sys.stdin.read()); print(m.group(1) if m else "0")'
 }
@@ -67,6 +77,18 @@ wait_for_version() {
   for _ in $(seq 1 90); do
     if [[ $(installed_version) -eq $expected ]]; then
       return 0
+    fi
+    xml=$(dump_ui)
+    if grep -q 'text="Обновление не выполнено."' <<<"$xml"; then
+      printf '%s\n' "$xml" > "$reports/updater-failure.xml"
+      echo "Updater reported a failure before PackageInstaller completed." >&2
+      return 1
+    fi
+    focus=$(adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' | head -n 2 || true)
+    if grep -Eqi 'settings/.Settings|settings.*ManageExternalSources' <<<"$focus"; then
+      printf '%s\n' "$focus" > "$reports/unexpected-settings.txt"
+      echo "Updater still lacks install-source permission." >&2
+      return 1
     fi
     if confirmation_visible; then
       if [[ $allow_confirmation == yes ]]; then
