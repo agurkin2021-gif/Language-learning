@@ -89,6 +89,18 @@ public final class AppUpdater {
         });
     }
 
+    public static void checkNow(Context context) {
+        Context app = remember(context);
+        if (BuildConfig.DEBUG) return;
+        prefs(app).edit().remove("retry_after").remove("blocked_version").commit();
+        setStatus(app, "checking", "Проверяется новая версия приложения…");
+        if (!CHECK_QUEUED.compareAndSet(false, true)) return;
+        WORKER.execute(() -> {
+            try { perform(app, false, () -> false); }
+            finally { CHECK_QUEUED.set(false); }
+        });
+    }
+
     public static String status(Context context) {
         if (BuildConfig.DEBUG) return "Служебная сборка: автоматическая проверка обновлений отключена.";
         return prefs(context).getString("status", "Обновления проверяются при открытии приложения.");
