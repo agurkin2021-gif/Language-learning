@@ -84,7 +84,7 @@ public final class SpeechPlayer {
         audio.abandonAudioFocusRequest(focus);
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return;
         String token = "card:" + System.nanoTime();
-        tts.setSpeechRate(0.72f);
+        tts.setSpeechRate(speed);
         if (tts.speak(spanish.trim(), TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
             finishCardSpeech();
     }
