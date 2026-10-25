@@ -9,12 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class Store extends SQLiteOpenHelper {
-    public record Card(long id, String spanish, String meaning, int kind, boolean mastered) {}
+    public record Card(long id, String spanish, String meaning, int kind, int category, boolean mastered) {}
     public record Story(long id, String title, String body, String source, int position) {}
     public Store(Context context) { this(context, "learning.db"); }
-    Store(Context context, String databaseName) { super(context, databaseName, null, 1); }
+    Store(Context context, String databaseName) { super(context, databaseName, null, 2); }
     @Override public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE cards(id INTEGER PRIMARY KEY, spanish TEXT NOT NULL, meaning TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN(0,1)), mastered INTEGER NOT NULL DEFAULT 0 CHECK(mastered IN(0,1)))");
+        db.execSQL("CREATE TABLE cards(id INTEGER PRIMARY KEY, spanish TEXT NOT NULL, meaning TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN(0,1)), category INTEGER NOT NULL DEFAULT 0 CHECK(category IN(0,1,2,3)), mastered INTEGER NOT NULL DEFAULT 0 CHECK(mastered IN(0,1)))");
         db.execSQL("CREATE TABLE stories(id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, source TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)");
         ContentValues v = new ContentValues();
         v.put("title", "Una tarde en la plaza — пример");
@@ -23,7 +23,7 @@ public final class Store extends SQLiteOpenHelper {
         db.insertOrThrow("stories", null, v);
     }
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) { throw new IllegalStateException("Migration required"); }
-    public List<Card> cards(boolean mastered, int kind) {
+    public List<Card> cards(boolean mastered, int kind) { return cards(mastered, kind, 0); }\n    public List<Card> cards(boolean mastered, int kind, int category) {
         List<Card> result = new ArrayList<>();
         try (Cursor c = getReadableDatabase().query("cards", null, "mastered=? AND kind=?", new String[]{mastered ? "1" : "0", Integer.toString(kind)}, null, null, "id DESC")) {
             while (c.moveToNext()) result.add(new Card(c.getLong(0), c.getString(1), c.getString(2), c.getInt(3), c.getInt(4) == 1));
