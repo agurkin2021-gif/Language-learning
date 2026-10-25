@@ -84,7 +84,7 @@ public final class MainActivity extends Activity {
         update.setText(R.string.update_button);
         update.setAllCaps(false);
         update.setTextSize(15);
-        update.setOnClickListener(v -> showAutoUpdates());
+        update.setOnClickListener(v -> { AppUpdater.checkNow(this); showAutoUpdates(); });
         updates.addView(update, new LinearLayout.LayoutParams(0, dp(60), 1));
         root.addView(updates);
         setContentView(root);
@@ -103,7 +103,7 @@ public final class MainActivity extends Activity {
                     String url = BuildConfig.BUILD_RUN_ID.isEmpty() ? base : base + "runs/" + BuildConfig.BUILD_RUN_ID;
                     openBrowser(url);
                 })
-                .setPositiveButton("Автообновления", (dialog, which) -> showAutoUpdates()).show();
+                .setPositiveButton("Обновление", (dialog, which) -> { AppUpdater.checkNow(this); showAutoUpdates(); }).show();
     }
     private void showAutoUpdates() {
         player.pause();
@@ -115,7 +115,7 @@ public final class MainActivity extends Activity {
             return;
         }
         boolean allowed = getPackageManager().canRequestPackageInstalls();
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("Автоматические обновления")
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("Обновление")
                 .setMessage(AppUpdater.status(this) + "\n\nНовые версии загружаются сами. Установка происходит, когда вы переходите из приложения. После обновления откройте приложение снова.")
                 .setNegativeButton("Закрыть", null);
         if (!allowed) {
