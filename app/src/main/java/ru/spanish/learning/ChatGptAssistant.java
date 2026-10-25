@@ -704,15 +704,20 @@ public final class ChatGptAssistant {
     private Session loadSession() throws Exception {
         String encrypted = prefs.getString("session", "");
         if (encrypted.isEmpty()) return null;
-        JSONObject json = new JSONObject(decrypt(encrypted));
-        return new Session(
-                json.optString("client_id"),
-                json.optString("access_token"),
-                json.optString("refresh_token"),
-                json.optString("id_token"),
-                json.optString("scope"),
-                json.optString("email"),
-                json.optLong("expires_at"));
+        try {
+            JSONObject json = new JSONObject(decrypt(encrypted));
+            return new Session(
+                    json.optString("client_id"),
+                    json.optString("access_token"),
+                    json.optString("refresh_token"),
+                    json.optString("id_token"),
+                    json.optString("scope"),
+                    json.optString("email"),
+                    json.optLong("expires_at"));
+        } catch (Exception damagedOrRestoredOnAnotherDevice) {
+            prefs.edit().remove("session").remove("model").apply();
+            return null;
+        }
     }
 
     private String encrypt(String plain) throws Exception {
