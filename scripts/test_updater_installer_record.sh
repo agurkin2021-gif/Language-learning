@@ -46,7 +46,7 @@ clear_completed_first_installer_ui() {
 }
 
 tap_main_update() {
-  for _ in $(seq 1 30); do
+  for _ in $(seq 1 20); do
     dump_ui > "$reports/main-ui.xml"
     if python3 - "$reports/main-ui.xml" <<'PY' > "$reports/main-tap.txt"
 import re, sys, xml.etree.ElementTree as ET
@@ -58,14 +58,28 @@ for node in root.iter("node"):
     if not m:
         continue
     x1,y1,x2,y2 = map(int,m.groups())
-    print((x1+x2)//2, (y1+y2)//2)
+    # Keep the tap safely above Android's bottom gesture/navigation area.
+    y = min(y2 - 8, y1 + max(10, min(18, (y2 - y1) // 3)))
+    print((x1+x2)//2, y)
     raise SystemExit(0)
 raise SystemExit(1)
 PY
     then
       read -r x y < "$reports/main-tap.txt"
-      adb shell input tap "$x" "$y"
-      return 0
+      before=$(installed_version)
+      for attempt in 1 2 3; do
+        echo "STAGE tap main update attempt $attempt at $x,$y"
+        adb shell input tap "$x" "$y"
+        sleep 1
+        focus=$(adb shell dumpsys activity activities | grep -E -m1 'topResumedActivity|mResumedActivity' || true)
+        printf '%s\n' "$focus" > "$reports/focus-after-main-button.txt"
+        after=$(installed_version)
+        if grep -q "$updater" <<<"$focus" || [[ $after -gt $before ]]; then
+          return 0
+        fi
+      done
+      echo "Main update button was visible but did not launch Updater." >&2
+      return 1
     fi
     sleep 1
   done
@@ -179,7 +193,6 @@ if ! grep -q "$updater" <<<"$first_installer"; then
 fi
 
 echo "STAGE second updater handoff through main app"
-adb shell am force-stop "$updater"
 copy_candidate "$second_apk"
 updater_appdir=$(adb shell run-as "$updater" pwd | tr -d '\r')
 adb logcat -c
