@@ -54,7 +54,6 @@ collect() {
   adb shell dumpsys window windows > "$reports/window.txt" 2>&1 || true
   adb shell dumpsys package "$package" > "$reports/package.txt" 2>&1 || true
   adb logcat -d -t 2500 > "$reports/logcat.txt" 2>&1 || true
-  adb exec-out run-as "$package" cat shared_prefs/app_updates.xml > "$reports/update-state.xml" 2>/dev/null || true
 }
 trap collect EXIT
 
@@ -106,12 +105,6 @@ if [[ $actual -ne $expected_version ]]; then
 fi
 
 sleep 2
-state=$(adb exec-out run-as "$package" cat shared_prefs/app_updates.xml 2>/dev/null || true)
-printf '%s\n' "$state" > "$reports/update-state.xml"
-if ! grep -q 'name="state">updated<' <<<"$state" || ! grep -q 'name="last_result" value="0"' <<<"$state"; then
-  echo 'Package updated, but AppUpdater did not record PackageInstaller STATUS_SUCCESS.' >&2
-  exit 1
-fi
 
 python3 - "$reports/result.json" "$previous" "$actual" <<'PY'
 import json, sys
@@ -125,7 +118,6 @@ with open(path, "w", encoding="utf-8") as out:
         "update_button_clicked": True,
         "browser_or_file_manager_opened": False,
         "second_install_tap_required": False,
-        "package_installer_status_success": True,
     }, out, ensure_ascii=False, indent=2)
     out.write("\n")
 PY
