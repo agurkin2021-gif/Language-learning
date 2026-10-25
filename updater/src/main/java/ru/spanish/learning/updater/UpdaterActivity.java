@@ -104,6 +104,7 @@ public final class UpdaterActivity extends Activity {
         }
         show("Проверяю новую версию…");
         WORKER.execute(() -> {
+            boolean committed = false;
             try {
                 Candidate candidate = loadCandidate();
                 if (candidate == null) {
@@ -114,10 +115,11 @@ public final class UpdaterActivity extends Activity {
                     return;
                 }
                 install(candidate);
+                committed = true;
             } catch (Exception error) {
                 fail("Обновление не выполнено.");
             } finally {
-                RUNNING.set(false);
+                if (!committed) RUNNING.set(false);
             }
         });
     }
@@ -228,11 +230,13 @@ public final class UpdaterActivity extends Activity {
             return;
         }
         if (statusCode == PackageInstaller.STATUS_SUCCESS) {
+            RUNNING.set(false);
             if (activity != null && !activity.isFinishing()) {
                 activity.runOnUiThread(() -> activity.afterSuccess());
             }
             return;
         }
+        RUNNING.set(false);
         if (activity != null && !activity.isFinishing()) {
             String message = result.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
             activity.fail(message == null || message.isBlank() ? "Android отменил установку." : message);
