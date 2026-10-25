@@ -52,6 +52,13 @@ jobs:
           path: app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
           retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpanishLearningUpdater-unsigned-build-${{ github.run_number }}
+          overwrite: true
+          path: updater/build/outputs/apk/release/updater-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
       - name: Visible build summary
         if: always()
         env:
@@ -198,10 +205,69 @@ jobs:
             echo "Успех требует нового versionCode, callback STATUS_SUCCESS и сохранения SQLite/настроек в новом процессе."
             echo "Это проверка эмулятора Android 14; поведение конкретного телефона проверяется отдельно."
           } >> "$GITHUB_STEP_SUMMARY"
+  updater-installer-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build updater handoff fixtures
+        run: |
+          mkdir -p updater-test-fixtures
+          base=$((GITHUB_RUN_NUMBER + 10000))
+          ./gradlew --no-daemon :app:assembleDebug -PbuildNumber="$base" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk updater-test-fixtures/base.apk
+          ./gradlew --no-daemon :app:assembleDebug -PbuildNumber="$((base + 1))" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk updater-test-fixtures/first.apk
+          ./gradlew --no-daemon :app:assembleDebug -PbuildNumber="$((base + 2))" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk updater-test-fixtures/second.apk
+          ./gradlew --no-daemon :updater:assembleDebug -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION"
+          cp updater/build/outputs/apk/debug/updater-debug.apk updater-test-fixtures/updater.apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash scripts/test_updater_installer_record.sh updater-test-fixtures/base.apk updater-test-fixtures/first.apk updater-test-fixtures/second.apk updater-test-fixtures/updater.apk updater-installer-test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: updater-installer-test-${{ github.run_number }}
+          path: updater-installer-test/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Updater handoff summary
+        if: always()
+        env:
+          TEST_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Отдельный Updater · Android 14 · $TEST_RESULT"
+            echo "Проверка: первая смена установщика подтверждается один раз; после неё ru.spanish.learning.updater становится installer of record."
+            echo "Затем следующий APK ставится тем же Updater без второго системного подтверждения."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   phone-publish:
-    needs: [build, device-test, self-update-test]
+    needs: [build, device-test, self-update-test, updater-installer-test]
     if: >-
-      needs.build.result == 'success' && needs.device-test.result == 'success' && needs.self-update-test.result == 'success' &&
+      needs.build.result == 'success' && needs.device-test.result == 'success' && needs.self-update-test.result == 'success' && needs.updater-installer-test.result == 'success' &&
       ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
        (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
