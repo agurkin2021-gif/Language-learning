@@ -24,6 +24,9 @@ public final class SpeechPlayer {
     private TextToSpeech tts;
     private List<String> sentences = new ArrayList<>();
     private boolean ready, closed;
+    private int resumeOffset;
+    private int utteranceBaseOffset;
+    private String activeToken = "";
     public boolean sentenceMode = true;
     public float speed = 0.85f;
     public int pauseMs = 1500;
@@ -53,6 +56,9 @@ public final class SpeechPlayer {
             if (!ready) voiceDescription = "Нет установленного офлайн-голоса испанского. Установите его в настройках синтеза речи Android и откройте приложение заново.";
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) {}
+                @Override public void onRangeStart(String id, int start, int end, int frame) {
+                    handler.post(() -> rememberRange(id, start));
+                }
                 @Override public void onDone(String id) { handler.post(() -> done(id)); }
                 @Override public void onError(String id) { handler.post(() -> failed(id)); }
             });
@@ -60,10 +66,12 @@ public final class SpeechPlayer {
         }));
     }
     public boolean ready() { return ready; }
-    public void load(String body, int position) { pause(); sentences = Sentences.split(body); state.load(sentences.size(), position); listener.changed(); }
+    public void load(String body, int position) { pause(); resumeOffset = 0; activeToken = ""; sentences = Sentences.split(body); state.load(sentences.size(), position); listener.changed(); }
     public String current() { return sentences.isEmpty() ? "" : sentences.get(state.index); }
     public void playAllFromStart() {
         pause();
+        resumeOffset = 0;
+        activeToken = "";
         sentenceMode = false;
         state.load(sentences.size(), 0);
         listener.changed();
@@ -72,16 +80,30 @@ public final class SpeechPlayer {
     public void play() {
         if (closed || !ready || state.phase == PlaybackState.Phase.SPEAKING) return;
         handler.removeCallbacks(autoPlay);
+        boolean restart = state.phase == PlaybackState.Phase.FINISHED;
+        if (restart) resumeOffset = 0;
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { error = "Звук занят другим приложением"; listener.changed(); return; }
         String token = state.play();
         if (token == null) return;
+        String full = current();
+        if (resumeOffset < 0 || resumeOffset >= full.length()) resumeOffset = 0;
+        utteranceBaseOffset = resumeOffset;
+        activeToken = token;
+        String spoken = full.substring(utteranceBaseOffset);
         error = "";
         tts.setSpeechRate(speed);
-        if (tts.speak(current(), TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
+        if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
         listener.changed();
+    }
+    private void rememberRange(String token, int start) {
+        if (closed || !token.equals(activeToken) || state.phase != PlaybackState.Phase.SPEAKING) return;
+        String full = current();
+        resumeOffset = Math.max(0, Math.min(full.length(), utteranceBaseOffset + start));
     }
     private void done(String token) {
         if (closed || !state.complete(token)) return;
+        resumeOffset = 0;
+        activeToken = "";
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
         if (!sentenceMode && state.phase == PlaybackState.Phase.WAITING) handler.postDelayed(autoPlay, pauseMs);
@@ -95,7 +117,12 @@ public final class SpeechPlayer {
     }
     public void pause() {
         handler.removeCallbacks(autoPlay);
+        PlaybackState.Phase previous = state.phase;
         state.pause();
+        if (previous != PlaybackState.Phase.SPEAKING) {
+            resumeOffset = 0;
+            activeToken = "";
+        }
         if (tts != null) tts.stop();
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
@@ -103,6 +130,8 @@ public final class SpeechPlayer {
     public void repeat() {
         boolean previous = state.phase == PlaybackState.Phase.WAITING;
         pause();
+        resumeOffset = 0;
+        activeToken = "";
         if (previous && state.index > 0) state.index--;
         state.repeat(); play();
     }
