@@ -25,6 +25,9 @@ public final class MainActivity extends Activity {
     private Button toggle, repeat;
     private boolean archive;
     private int kind;
+    private int category;
+    private int reviewIndex;
+    private boolean cardRevealed;
     private String screen = "cards";
     private long storyId = -1;
     private boolean rendering;
