@@ -226,7 +226,7 @@ public final class MainActivity extends Activity {
         content.addView(cardBox, new LinearLayout.LayoutParams(-1, -2));
 
         FrameLayout visual = new FrameLayout(this);
-        LinearLayout.LayoutParams visualParams = new LinearLayout.LayoutParams(-1, dp(118));
+        LinearLayout.LayoutParams visualParams = new LinearLayout.LayoutParams(-1, dp(150));
         visualParams.bottomMargin = dp(4);
         cardBox.addView(visual, visualParams);
 
