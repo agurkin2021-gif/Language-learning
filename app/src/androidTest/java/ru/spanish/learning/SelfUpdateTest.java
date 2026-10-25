@@ -71,10 +71,16 @@ public final class SelfUpdateTest extends InstrumentationTestCase {
         assertEquals("Test exactly one increasing version", previousVersion + 1, nextVersion);
 
         context.deleteDatabase(DATABASE);
-        long wordId, storyId;
+        long wordId = -1, storyId;
         try (Store store = new Store(context, DATABASE)) {
             store.addCard("mate", "мате — сохранение при обновлении", 0);
-            wordId = store.cards(false, 0).get(0).id();
+            for (Store.Card card : store.cards(false, 0)) {
+                if ("mate".equals(card.spanish()) && "мате — сохранение при обновлении".equals(card.meaning())) {
+                    wordId = card.id();
+                    break;
+                }
+            }
+            assertTrue("Manual card must exist alongside the built-in vocabulary", wordId > 0);
             store.setMastered(wordId, true);
             store.addCard("por favor", "пожалуйста — сохранение при обновлении", 1);
             storyId = store.addStory("Проверка обновления", "Uno. Dos.", "Тест самообновления");
@@ -116,14 +122,27 @@ public final class SelfUpdateTest extends InstrumentationTestCase {
         assertEquals(expected, update.getLong("last_installed_version", -1));
 
         try (Store store = new Store(context, DATABASE)) {
-            assertEquals(1, store.cards(true, 0).size());
-            Store.Card word = store.cards(true, 0).get(0);
-            assertEquals(saved.getLong("word_id", -1), word.id());
+            Store.Card word = null;
+            for (Store.Card candidate : store.cards(true, 0)) {
+                if (candidate.id() == saved.getLong("word_id", -1)) {
+                    word = candidate;
+                    break;
+                }
+            }
+            assertNotNull("Manual mastered card must survive alongside built-in vocabulary", word);
             assertEquals("mate", word.spanish());
             assertEquals("мате — сохранение при обновлении", word.meaning());
-            assertTrue(store.cards(false, 0).isEmpty());
-            assertEquals(1, store.cards(false, 1).size());
-            assertEquals("por favor", store.cards(false, 1).get(0).spanish());
+
+            Store.Card expression = null;
+            for (Store.Card candidate : store.cards(false, 1)) {
+                if ("por favor".equals(candidate.spanish())
+                        && "пожалуйста — сохранение при обновлении".equals(candidate.meaning())) {
+                    expression = candidate;
+                    break;
+                }
+            }
+            assertNotNull("Manual expression must survive alongside built-in expressions", expression);
+
             Store.Story story = null;
             for (Store.Story candidate : store.stories()) {
                 if (candidate.id() == saved.getLong("story_id", -1)) story = candidate;
