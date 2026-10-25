@@ -209,9 +209,7 @@ public final class MainActivity extends Activity {
         visualHint.setGravity(Gravity.CENTER);
         visual.addView(visualHint, new FrameLayout.LayoutParams(-1, -1));
 
-        ImageView picture = new ImageView(this);
-        picture.setAdjustViewBounds(true);
-        picture.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        android.webkit.WebView picture = new android.webkit.WebView(this);
         visual.addView(picture, new FrameLayout.LayoutParams(-1, -1));
         CardImageLoader.load(this, picture, visualHint, card.spanish());
 
