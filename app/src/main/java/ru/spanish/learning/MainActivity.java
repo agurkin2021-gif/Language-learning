@@ -36,6 +36,11 @@ public final class MainActivity extends Activity {
     private int draftKind;
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        android.app.job.JobScheduler legacyUpdater = getSystemService(android.app.job.JobScheduler.class);
+        if (legacyUpdater != null) {
+            legacyUpdater.cancel(72101);
+            legacyUpdater.cancel(72102);
+        }
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
