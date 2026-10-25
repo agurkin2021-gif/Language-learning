@@ -36,7 +36,7 @@ public final class MainActivity extends Activity {
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
-        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); archive = prefs.getBoolean("archive", false);
+        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); archive = prefs.getBoolean("archive", false);
         long last = prefs.getLong("story", -1);
         if ("player".equals(screen)) {
             for (Store.Story story : store.stories()) if (story.id() == last) { openStory(story); return; }
@@ -53,7 +53,7 @@ public final class MainActivity extends Activity {
     }
     private void remember() {
         prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).putBoolean("archive", archive)
-                .putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
+                .putInt("category", category).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
     }
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
@@ -132,10 +132,14 @@ public final class MainActivity extends Activity {
     private void cards() {
         text(archive ? "Освоенное" : "Мои карточки", 28);
         text("В архив попадает только то, что вы отметили кнопкой «Знаю».", 16);
-        button(kind == 0 ? "Слова ▾" : "Устойчивые выражения ▾", () -> new AlertDialog.Builder(this).setTitle("Тип карточек").setItems(new String[]{"Слова", "Устойчивые выражения"}, (d,w) -> { kind = w; render(); }).show());
+        button(kind == 0 ? "Слова ▾" : "Устойчивые выражения ▾", () -> new AlertDialog.Builder(this).setTitle("Тип карточек").setItems(new String[]{"Слова", "Устойчивые выражения"}, (d,w) -> { kind = w; if (kind == 1) category = 0; render(); }).show());
+        if (kind == 0) {
+            String[] labels = {"Все слова", "Глаголы", "Существительные", "Прилагательные"};
+            button(labels[Math.max(0, Math.min(category, 3))] + " ▾", () -> new AlertDialog.Builder(this).setTitle("Категория слов").setItems(labels, (d,w) -> { category = w; render(); }).show());
+        }
         button(archive ? "← Вернуться к изучению" : "Освоенное", () -> { archive = !archive; render(); });
         if (!archive) button("＋ Добавить карточку", this::addCard);
-        List<Store.Card> cards = store.cards(archive, kind);
+        List<Store.Card> cards = store.cards(archive, kind, kind == 0 ? category : 0);
         text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
         for (Store.Card card : cards) {
             text(card.spanish(), 25); text(card.meaning(), 18);
