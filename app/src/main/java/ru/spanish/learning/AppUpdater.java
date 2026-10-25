@@ -101,6 +101,19 @@ public final class AppUpdater {
         });
     }
 
+    /** Explicit user action: check, download and start PackageInstaller while the Activity is visible. */
+    public static void updateNow(Activity activity) {
+        Context app = remember(activity);
+        if (BuildConfig.DEBUG) return;
+        prefs(app).edit().remove("retry_after").remove("blocked_version").commit();
+        setStatus(app, "checking", "Проверяется новая версия приложения…");
+        WORKER.execute(() -> perform(app, true, () -> false, true));
+    }
+
+    public static String state(Context context) {
+        return prefs(context).getString("state", "");
+    }
+
     public static String status(Context context) {
         if (BuildConfig.DEBUG) return "Служебная сборка: автоматическая проверка обновлений отключена.";
         return prefs(context).getString("status", "Обновления проверяются при открытии приложения.");
@@ -164,6 +177,10 @@ public final class AppUpdater {
     }
 
     private static void perform(Context context, boolean mayInstall, BooleanSupplier cancelled) {
+        perform(context, mayInstall, cancelled, false);
+    }
+
+    private static void perform(Context context, boolean mayInstall, BooleanSupplier cancelled, boolean interactive) {
         try {
             cancelled(cancelled);
             if (reconcileSession(context)) return;
@@ -214,7 +231,8 @@ public final class AppUpdater {
                 setStatus(context, "permission", "Для автоматических обновлений разрешите этому приложению установку обновлений в настройках Android.");
                 return;
             }
-            if (mayInstall && !foreground) installVerified(context, apk, version, expectedDigest, cancelled);
+            if (mayInstall && (!foreground || interactive))
+                installVerified(context, apk, version, expectedDigest, cancelled, interactive);
             else if (!foreground) scheduleSoon(context);
         } catch (Cancelled ignored) {
             // The app became visible or Android stopped the job. Leave a completed stage intact.
@@ -349,17 +367,24 @@ public final class AppUpdater {
 
     /** Package-private so the same production checks can be exercised by an on-device upgrade test. */
     static boolean installVerified(Context context, File apk, long expectedVersion, String expectedDigest) throws IOException {
-        return installVerified(remember(context), apk, expectedVersion, expectedDigest, () -> false);
+        return installVerified(remember(context), apk, expectedVersion, expectedDigest, () -> false, false);
     }
 
     private static boolean installVerified(Context context, File apk, long expectedVersion,
                                            String expectedDigest, BooleanSupplier stopped) throws IOException {
+        return installVerified(context, apk, expectedVersion, expectedDigest, stopped, false);
+    }
+
+    private static boolean installVerified(Context context, File apk, long expectedVersion,
+                                           String expectedDigest, BooleanSupplier stopped,
+                                           boolean interactive) throws IOException {
         verifyPackage(context, apk, expectedVersion, expectedDigest);
         cancelled(stopped);
         PackageInstaller installer = context.getPackageManager().getPackageInstaller();
         int sessionId;
         synchronized (INSTALL_LOCK) {
-            if (foreground || !context.getPackageManager().canRequestPackageInstalls() || reconcileSession(context)) return false;
+            if ((!interactive && foreground) || !context.getPackageManager().canRequestPackageInstalls()
+                    || reconcileSession(context)) return false;
             PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
             params.setAppPackageName(PACKAGE);
             params.setSize(apk.length());
@@ -380,12 +405,13 @@ public final class AppUpdater {
         boolean committed = false;
         try (PackageInstaller.Session session = installer.openSession(sessionId)) {
             try (InputStream input = new FileInputStream(apk); OutputStream output = session.openWrite("base.apk", 0, apk.length())) {
-                copy(input, output, UpdatePolicy.MAX_APK_BYTES, () -> stopped.getAsBoolean() || foreground);
+                copy(input, output, UpdatePolicy.MAX_APK_BYTES,
+                        () -> stopped.getAsBoolean() || (!interactive && foreground));
                 session.fsync(output);
             }
             synchronized (INSTALL_LOCK) {
                 cancelled(stopped);
-                if (foreground) throw new Cancelled();
+                if (!interactive && foreground) throw new Cancelled();
                 Intent result = new Intent(context, UpdateReceiver.class)
                         .setAction(PACKAGE + ".UPDATE_RESULT." + sessionId)
                         .putExtra(CALLBACK_SESSION, sessionId);
