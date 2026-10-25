@@ -34,7 +34,7 @@ final class CardImageLoader {
         }
     }
 
-    static void load(Activity activity, ImageView target, String spanish) {
+    static void load(Activity activity, ImageView target, View fallback, String spanish) {
         target.setVisibility(View.GONE);
         String key = key(spanish);
         File dir = new File(activity.getCacheDir(), "card-images");
