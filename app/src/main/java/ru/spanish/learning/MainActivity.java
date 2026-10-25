@@ -181,9 +181,27 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "На телефоне нет браузера для открытия GitHub", Toast.LENGTH_LONG).show();
         }
     }
+    private void openChatGPT() {
+        player.pause();
+        remember();
+        Intent launch = getPackageManager().getLaunchIntentForPackage("com.openai.chatgpt");
+        if (launch != null) {
+            launch.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(launch);
+            return;
+        }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/")));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Не удалось открыть ChatGPT", Toast.LENGTH_LONG).show();
+        }
+    }
     private void cards() {
         text(archive ? "Освоенное" : "Карточки", 28);
-        if (!archive) text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
+        if (!archive) {
+            text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
+            button("ChatGPT", this::openChatGPT);
+        }
 
         LinearLayout filters = new LinearLayout(this);
         filters.setOrientation(LinearLayout.HORIZONTAL);
