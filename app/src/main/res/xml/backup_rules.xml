@@ -1,4 +1,4 @@
 <full-backup-content>
     <include domain="database" path="." />
-    <include domain="sharedpref" path="." />
+    <include domain="sharedpref" path="." />\n    <include domain="file" path="card-images/" />
 </full-backup-content>
