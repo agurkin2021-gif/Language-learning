@@ -257,9 +257,9 @@ public final class MainActivity extends Activity {
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        String[] labels = {"Не знаю", "Сомневаюсь", "Знаю"};
+        String[] labels = {"Не знаю", "Знаю"};
         for (int i = 0; i < labels.length; i++) {
-            final int result = i;
+            final int result = i == 0 ? 0 : 2;
             Button b = new Button(this);
             b.setText(labels[i]);
             b.setAllCaps(false);
@@ -269,7 +269,7 @@ public final class MainActivity extends Activity {
             actions.addView(b, p);
             b.setOnClickListener(v -> {
                 reviewStep++;
-                long nextDue = result == 0 ? reviewStep + 4 : result == 1 ? reviewStep + 10 : 0;
+                long nextDue = result == 0 ? reviewStep + 4 : 0;
                 store.review(card.id(), result, nextDue);
                 reviewIndex = 0;
                 cardRevealed = false;
