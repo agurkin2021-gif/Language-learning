@@ -198,13 +198,22 @@ public final class MainActivity extends Activity {
         cardBox.setBackground(bg);
         content.addView(cardBox, new LinearLayout.LayoutParams(-1, -2));
 
+        FrameLayout visual = new FrameLayout(this);
+        LinearLayout.LayoutParams visualParams = new LinearLayout.LayoutParams(-1, dp(180));
+        visualParams.bottomMargin = dp(10);
+        cardBox.addView(visual, visualParams);
+
+        TextView visualHint = new TextView(this);
+        visualHint.setText(CardVisualHint.forCard(card));
+        visualHint.setTextSize(78);
+        visualHint.setGravity(Gravity.CENTER);
+        visual.addView(visualHint, new FrameLayout.LayoutParams(-1, -1));
+
         ImageView picture = new ImageView(this);
         picture.setAdjustViewBounds(true);
         picture.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        LinearLayout.LayoutParams pictureParams = new LinearLayout.LayoutParams(-1, dp(180));
-        pictureParams.bottomMargin = dp(10);
-        cardBox.addView(picture, pictureParams);
-        CardImageLoader.load(this, picture, card.spanish());
+        visual.addView(picture, new FrameLayout.LayoutParams(-1, -1));
+        CardImageLoader.load(this, picture, visualHint, card.spanish());
 
         TextView spanish = new TextView(this);
         spanish.setText(card.spanish());
