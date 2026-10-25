@@ -1,4 +1,5 @@
 name: Android APK
+run-name: "Android · сборка ${{ github.run_number }} · ${{ github.head_ref || github.ref_name }}"
 on:
   push:
     branches: [main]
@@ -6,9 +7,15 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  BUILD_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,18 +30,43 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+      - name: Build and verify numbered APK
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
       - name: Verify installable APK signature and record digest
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
+        id: apk
         with:
-          name: SpanishLearning-debug-apk
+          name: SpanishLearning-test-build-${{ github.run_number }}
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/SHA256SUMS.txt
           retention-days: 30
+      - name: Visible build summary
+        if: always()
+        env:
+          APK_URL: ${{ steps.apk.outputs.artifact-url }}
+          BUILD_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Изучение испанского · сборка $GITHUB_RUN_NUMBER"
+            echo "Версия: 0.1.$GITHUB_RUN_NUMBER-test. Результат сборки: $BUILD_RESULT."
+            echo ""
+            echo "Код: [$BUILD_REVISION](https://github.com/$GITHUB_REPOSITORY/commit/$BUILD_REVISION)"
+            echo ""
+            if [ -n "$APK_URL" ]; then
+              echo "[Скачать тестовый APK в ZIP]($APK_URL)"
+            else
+              echo "APK не создан. Откройте неуспешный шаг выше."
+            fi
+            echo ""
+            echo "Второе задание device-test проверяет запуск и сохраняет снимки экранов в build-preview."
+            echo ""
+            echo "Постоянный ключ подписи пока не создан по решению пользователя. Это тестовый APK, не канал автообновлений."
+            echo "Новая сборка не отправляется на телефон автоматически. Генерация сказок помощником пока не подключена."
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,6 +76,7 @@ jobs:
             app/build/reports/lint-results-debug.html
   device-test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,7 +101,32 @@ jobs:
           arch: x86_64
           target: default
           disable-animations: true
-          script: ./gradlew --no-daemon connectedDebugAndroidTest
+          script: |
+            ./gradlew --no-daemon connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+            mkdir -p build-preview
+            adb pull /sdcard/Android/data/ru.spanish.learning/files/build-preview/. build-preview/
+      - uses: actions/upload-artifact@v4
+        id: preview
+        if: always()
+        with:
+          name: build-preview-${{ github.run_number }}
+          path: build-preview/
+          retention-days: 30
+      - name: Preview summary
+        if: always()
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.artifact-url }}
+          TEST_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Проверка на эмуляторе · $TEST_RESULT"
+            if [ -n "$PREVIEW_URL" ]; then
+              echo "[Снимки экранов приложения (ZIP)]($PREVIEW_URL)"
+            else
+              echo "Снимки не созданы: проверьте результат тестов."
+            fi
+            echo "Снимки Android 10 показывают интерфейс этой сборки. Реальный голос на телефоне здесь не проверяется."
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

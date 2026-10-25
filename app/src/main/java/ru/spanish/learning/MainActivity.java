@@ -3,6 +3,9 @@ package ru.spanish.learning;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import android.content.Intent;
+import android.content.ActivityNotFoundException;
+import android.net.Uri;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -58,9 +61,29 @@ public final class MainActivity extends Activity {
             tab.setOnClickListener(v -> navigate(label.equals("Карточки") ? "cards" : "stories"));
         }
         root.addView(tabs);
-        ScrollView scroll = new ScrollView(this); content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(24)); scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1)); setContentView(root);
+        ScrollView scroll = new ScrollView(this); content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(24)); scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        Button buildInfo = new Button(this);
+        buildInfo.setText(getString(R.string.build_button, BuildConfig.VERSION_NAME));
+        buildInfo.setAllCaps(false);
+        buildInfo.setOnClickListener(v -> showBuild());
+        root.addView(buildInfo, new LinearLayout.LayoutParams(-1, dp(48)));
+        setContentView(root);
         if (screen.equals("cards")) cards(); else if (screen.equals("player")) storyPlayer(); else stories();
         rendering = false; remember(); updatePlayer();
+    }
+    private void showBuild() {
+        player.pause();
+        String commit = BuildConfig.SOURCE_REVISION;
+        if (commit.length() > 7) commit = commit.substring(0, 7);
+        new AlertDialog.Builder(this).setTitle("Версия и сборка")
+                .setMessage(getString(R.string.build_details, BuildConfig.VERSION_NAME, commit))
+                .setNegativeButton("Закрыть", null)
+                .setPositiveButton("Открыть GitHub", (dialog, which) -> {
+                    String base = "https://github.com/agurkin2021-gif/Language-learning/actions/";
+                    String url = BuildConfig.BUILD_RUN_ID.isEmpty() ? base : base + "runs/" + BuildConfig.BUILD_RUN_ID;
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
+                    catch (ActivityNotFoundException e) { Toast.makeText(this, "На телефоне нет браузера для открытия GitHub", Toast.LENGTH_LONG).show(); }
+                }).show();
     }
     private void cards() {
         text(archive ? "Освоенное" : "Мои карточки", 28);
