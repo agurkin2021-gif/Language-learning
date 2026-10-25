@@ -118,6 +118,13 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     apk = args.output_dir / APK_NAME
     sign_apk(args.unsigned_apk, apk, sdk, config)
+    verification = run_tool([sdk / "apksigner", "verify", "--verbose", "--print-certs", apk])
+    safe_lines = [
+        line for line in verification.splitlines()
+        if line.startswith("Signer #") and "certificate SHA-256 digest:" in line
+        or line.startswith("Verified using v2 scheme")
+    ]
+    print("\n".join(safe_lines))
     verify_signed(apk, args.unsigned_apk, sdk, certificate)
 
     digest = hashlib.sha256(apk.read_bytes()).hexdigest()
