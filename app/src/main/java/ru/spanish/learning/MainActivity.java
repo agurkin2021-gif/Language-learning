@@ -19,6 +19,8 @@ import java.util.List;
 
 public final class MainActivity extends Activity {
     private Store store;
+    private RemoteContentSync contentSync;
+    private boolean syncingContent;
     private SpeechPlayer player;
     private SharedPreferences prefs;
     private LinearLayout content;
@@ -47,6 +49,7 @@ public final class MainActivity extends Activity {
             legacyUpdater.cancel(72102);
         }
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
+        contentSync = new RemoteContentSync();
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
         screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); reviewStep = prefs.getLong("reviewStep", 0); archive = prefs.getBoolean("archive", false);
@@ -200,7 +203,7 @@ public final class MainActivity extends Activity {
         text(archive ? "Освоенное" : "Карточки", 28);
         if (!archive) {
             text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
-            button("ChatGPT", this::openChatGPT);
+            button("ChatGPT — добавить голосом/текстом", this::openChatGPT);
         }
 
         LinearLayout filters = new LinearLayout(this);
@@ -411,7 +414,7 @@ public final class MainActivity extends Activity {
     private void stories() {
         text("Библиотека сказок", 28);
         text("Слушайте целиком или по одному предложению.", 17);
-        button("Помощник: подключение не настроено", () -> new AlertDialog.Builder(this).setTitle("Генерация пока недоступна").setMessage("Освоенных карточек: " + store.mastered().size() + ".\n\nПриложение не читает этот чат. Для создания рассказов по архиву ещё нужно согласовать и подключить помощника. Сейчас данные никуда не отправляются, платные API не используются.\n\nНиже есть заранее написанный пример для прослушивания.").setPositiveButton("Понятно", null).show());
+        button("ChatGPT — создать или добавить сказку", this::openChatGPT);
         for (Store.Story s : store.stories()) {
             text(s.title(), 23); text(s.source(), 14); button("Открыть и слушать", () -> openStory(s));
         }
@@ -471,11 +474,30 @@ public final class MainActivity extends Activity {
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
     }
+    private void syncContent() {
+        if (contentSync == null || syncingContent) return;
+        syncingContent = true;
+        contentSync.sync(store, (added, rejected, error) -> runOnUiThread(() -> {
+            syncingContent = false;
+            if (isFinishing() || isDestroyed()) return;
+            if (added > 0) {
+                Toast.makeText(this, "Добавлено из ChatGPT: " + added, Toast.LENGTH_SHORT).show();
+                if ((cardDialog == null || !cardDialog.isShowing()) && !"player".equals(screen)) render();
+            }
+        }));
+    }
+
     @Override public void onBackPressed() { if (screen.equals("player")) navigate("stories"); else super.onBackPressed(); }
     @Override protected void onResume() {
         super.onResume();
         if (prefs.getBoolean("cardDraftOpen", false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
+        syncContent();
     }
     @Override protected void onPause() { player.pause(); remember(); rememberCardDraft(); super.onPause(); }
-    @Override protected void onDestroy() { player.close(); store.close(); super.onDestroy(); }
+    @Override protected void onDestroy() {
+        if (contentSync != null) contentSync.close();
+        player.close();
+        store.close();
+        super.onDestroy();
+    }
 }
