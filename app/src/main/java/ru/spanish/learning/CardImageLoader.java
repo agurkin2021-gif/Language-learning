@@ -20,15 +20,12 @@ final class CardImageLoader {
     private CardImageLoader() {}
 
     static String key(String spanish) {
-        try {
-            byte[] hash = MessageDigest.getInstance("SHA-256")
-                    .digest(spanish.trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
-            StringBuilder out = new StringBuilder();
-            for (int i = 0; i < 12; i++) out.append(String.format("%02x", hash[i]));
-            return out.toString();
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
+        String normalized = Normalizer.normalize(spanish.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-+|-+$)", "");
+        if (normalized.isEmpty()) normalized = "card";
+        return normalized + "-" + Integer.toUnsignedString(spanish.trim().toLowerCase(Locale.ROOT).hashCode(), 36);
     }
 
     static void load(Activity activity, WebView target, View fallback, String spanish) {
