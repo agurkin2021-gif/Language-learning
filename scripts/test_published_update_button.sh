@@ -72,6 +72,13 @@ sleep 2
 
 tap_text "Обновление"
 printf 'clicked\n' > "$reports/button.txt"
+sleep 1
+xml_after_click=$(dump_ui)
+if grep -Eqi 'text="(Закрыть|Проверить|Разрешить обновления|Подтвердить в Android)"' <<<"$xml_after_click"; then
+  echo 'Update button opened an app-side confirmation/progress dialog; one-tap contract failed.' >&2
+  printf '%s\n' "$xml_after_click" > "$reports/app-dialog-after-click.xml"
+  exit 1
+fi
 
 actual=$previous
 for attempt in $(seq 1 120); do
