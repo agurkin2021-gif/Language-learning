@@ -62,11 +62,20 @@ public final class MainActivity extends Activity {
         }
         root.addView(tabs);
         ScrollView scroll = new ScrollView(this); content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(24)); scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout updates = new LinearLayout(this);
         Button buildInfo = new Button(this);
         buildInfo.setText(getString(R.string.build_button, BuildConfig.VERSION_NAME));
         buildInfo.setAllCaps(false);
+        buildInfo.setTextSize(13);
         buildInfo.setOnClickListener(v -> showBuild());
-        root.addView(buildInfo, new LinearLayout.LayoutParams(-1, dp(48)));
+        updates.addView(buildInfo, new LinearLayout.LayoutParams(0, dp(60), 1));
+        Button update = new Button(this);
+        update.setText(R.string.update_button);
+        update.setAllCaps(false);
+        update.setTextSize(15);
+        update.setOnClickListener(v -> downloadUpdate());
+        updates.addView(update, new LinearLayout.LayoutParams(0, dp(60), 1));
+        root.addView(updates);
         setContentView(root);
         if (screen.equals("cards")) cards(); else if (screen.equals("player")) storyPlayer(); else stories();
         rendering = false; remember(); updatePlayer();
@@ -76,14 +85,30 @@ public final class MainActivity extends Activity {
         String commit = BuildConfig.SOURCE_REVISION;
         if (commit.length() > 7) commit = commit.substring(0, 7);
         new AlertDialog.Builder(this).setTitle("Версия и сборка")
-                .setMessage(getString(R.string.build_details, BuildConfig.VERSION_NAME, commit))
+                .setMessage(getString(BuildConfig.DEBUG ? R.string.build_details_debug : R.string.build_details, BuildConfig.VERSION_NAME, commit))
                 .setNegativeButton("Закрыть", null)
-                .setPositiveButton("Открыть GitHub", (dialog, which) -> {
+                .setNeutralButton("Сборка", (dialog, which) -> {
                     String base = "https://github.com/agurkin2021-gif/Language-learning/actions/";
                     String url = BuildConfig.BUILD_RUN_ID.isEmpty() ? base : base + "runs/" + BuildConfig.BUILD_RUN_ID;
-                    try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
-                    catch (ActivityNotFoundException e) { Toast.makeText(this, "На телефоне нет браузера для открытия GitHub", Toast.LENGTH_LONG).show(); }
-                }).show();
+                    openBrowser(url);
+                })
+                .setPositiveButton("Обновить", (dialog, which) -> downloadUpdate()).show();
+    }
+    private void downloadUpdate() {
+        player.pause();
+        if (BuildConfig.DEBUG) {
+            new AlertDialog.Builder(this).setTitle("Служебная сборка")
+                    .setMessage("Эта сборка предназначена для проверки. Первую версию с постоянной подписью нужно установить отдельно; обновление поверх старой тестовой сборки может быть несовместимо.")
+                    .setPositiveButton("Понятно", null).show();
+            return;
+        }
+        openBrowser("https://github.com/agurkin2021-gif/Language-learning/raw/refs/heads/phone-builds/SpanishLearning.apk");
+    }
+    private void openBrowser(String url) {
+        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
+        catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "На телефоне нет браузера для открытия GitHub", Toast.LENGTH_LONG).show();
+        }
     }
     private void cards() {
         text(archive ? "Освоенное" : "Мои карточки", 28);

@@ -31,7 +31,7 @@ jobs:
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and verify numbered APK
-        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
       - name: Verify installable APK signature and record digest
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
@@ -40,10 +40,18 @@ jobs:
         id: apk
         with:
           name: SpanishLearning-test-build-${{ github.run_number }}
+          overwrite: true
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/SHA256SUMS.txt
           retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpanishLearning-unsigned-build-${{ github.run_number }}
+          overwrite: true
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
       - name: Visible build summary
         if: always()
         env:
@@ -64,13 +72,14 @@ jobs:
             echo ""
             echo "Второе задание device-test проверяет запуск и сохраняет снимки экранов в build-preview."
             echo ""
-            echo "Постоянный ключ подписи пока не создан по решению пользователя. Это тестовый APK, не канал автообновлений."
+            echo "Этот debug APK предназначен для проверки. Подписанный APK для телефона публикует отдельное задание phone-publish после обеих успешных проверок."
             echo "Новая сборка не отправляется на телефон автоматически. Генерация сказок помощником пока не подключена."
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: verification-reports
+          overwrite: true
           path: |
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
@@ -110,6 +119,7 @@ jobs:
         if: always()
         with:
           name: build-preview-${{ github.run_number }}
+          overwrite: true
           path: build-preview/
           retention-days: 30
       - name: Preview summary
@@ -131,4 +141,73 @@ jobs:
         if: always()
         with:
           name: device-test-reports
+          overwrite: true
           path: app/build/reports/androidTests/
+  phone-publish:
+    needs: [build, device-test]
+    if: >-
+      needs.build.result == 'success' && needs.device-test.result == 'success' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.head.ref == 'codex/android-v1'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: phone-publish-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Check permanent signing secret
+        id: signing
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+        run: |
+          if [ -z "$ANDROID_SIGNING_CONFIG" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "## APK для телефона: ожидает добавления секрета" >> "$GITHUB_STEP_SUMMARY"
+            echo "Добавьте ANDROID_SIGNING_CONFIG в Actions secrets. Новый ключ и APK для телефона не создаются; проверки исходного кода выполнены отдельно." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: steps.signing.outputs.available == 'true'
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install signing tools
+        if: steps.signing.outputs.available == 'true'
+        run: sdkmanager 'build-tools;35.0.0'
+      - uses: actions/download-artifact@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          name: SpanishLearning-unsigned-build-${{ github.run_number }}
+          path: phone-unsigned
+      - name: Sign, verify and publish APK for phone
+        id: publish
+        if: steps.signing.outputs.available == 'true'
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/phone_publish.py --unsigned-apk phone-unsigned/app-release-unsigned.apk --output-dir phone-package
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.publish.outputs.artifact_ready == 'true'
+        with:
+          name: SpanishLearning-phone-build-${{ github.run_number }}-attempt-${{ github.run_attempt }}
+          path: |
+            phone-package/SpanishLearning.apk
+            phone-package/SHA256SUMS.txt
+            phone-package/build-info.json
+          if-no-files-found: error
+          retention-days: 30

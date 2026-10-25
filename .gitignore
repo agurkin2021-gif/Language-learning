@@ -3,4 +3,7 @@
 local.properties
 *.jks
 *.keystore
+*.p12
+*ANDROID_SIGNING_CONFIG*
+phone-signing-private/
 .idea/
