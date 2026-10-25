@@ -143,6 +143,7 @@ public final class ChatGptAssistant {
                 String instructions = buildInstructions(store);
                 String finalText = "";
                 boolean executedAny = false;
+                boolean toolSucceeded = false;
 
                 for (int round = 0; round < 4; round++) {
                     ResponseTurn turn = request(session.accessToken, model, instructions, input);
@@ -162,6 +163,9 @@ public final class ChatGptAssistant {
                         input.put(callItem);
 
                         String result = executeTool(store, call);
+                        try {
+                            if (new JSONObject(result).optBoolean("ok", false)) toolSucceeded = true;
+                        } catch (Exception ignored) {}
                         JSONObject output = new JSONObject();
                         output.put("type", "function_call_output");
                         output.put("call_id", call.callId);
@@ -170,7 +174,11 @@ public final class ChatGptAssistant {
                     }
                 }
 
-                if (finalText.isEmpty()) finalText = executedAny ? "Готово." : "Не удалось получить ответ.";
+                if (finalText.isEmpty()) {
+                    if (toolSucceeded) finalText = "Готово.";
+                    else if (executedAny) throw new IllegalStateException("Не удалось выполнить действие в приложении");
+                    else finalText = "Не удалось получить ответ.";
+                }
                 appendHistory("user", clean);
                 appendHistory("assistant", finalText);
                 String answer = finalText;
