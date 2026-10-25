@@ -1,6 +1,7 @@
 package ru.spanish.learning;
 
 import android.app.Activity;
+import android.app.backup.BackupManager;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.content.Intent;
@@ -73,6 +74,7 @@ public final class MainActivity extends Activity {
     private void remember() {
         prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).putBoolean("archive", archive)
                 .putInt("category", category).putInt("reviewIndex", reviewIndex).putLong("reviewStep", reviewStep).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
+        new BackupManager(this).dataChanged();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
     }
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
