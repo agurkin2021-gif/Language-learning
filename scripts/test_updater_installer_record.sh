@@ -155,9 +155,13 @@ fi
 
 adb shell am force-stop "$updater"
 copy_candidate "$second_apk"
-adb shell am start -W -n "$target/.MainActivity" >/dev/null
+updater_appdir=$(adb shell run-as "$updater" pwd | tr -d '\r')
+adb logcat -c
+adb shell am start -W -n "$target/.MainActivity" --es updater_test_path "$updater_appdir/files/candidate.apk" >/dev/null
 sleep 1
 tap_main_update
+sleep 1
+adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' > "$reports/focus-after-main-button.txt" || true
 wait_for_version "$second_version" no
 sleep 2
 second_installer=$(installer_line)
