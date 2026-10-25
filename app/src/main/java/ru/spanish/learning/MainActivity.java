@@ -1,6 +1,11 @@
 package ru.spanish.learning;
 
 import android.app.Activity;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.app.backup.BackupManager;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
@@ -16,10 +21,18 @@ import android.text.InputFilter;
 import android.view.View;
 import android.widget.*;
 import java.util.List;
+import java.util.ArrayList;
 
 public final class MainActivity extends Activity {
     private Store store;
     private RemoteContentSync contentSync;
+    private ChatGptAssistant assistant;
+    private AlertDialog assistantDialog;
+    private EditText assistantInput;
+    private TextView assistantHistory;
+    private TextView assistantStatus;
+    private SpeechRecognizer speechRecognizer;
+    private static final int MIC_PERMISSION = 7301;
     private boolean syncingContent;
     private SpeechPlayer player;
     private SharedPreferences prefs;
@@ -50,6 +63,7 @@ public final class MainActivity extends Activity {
         }
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
         contentSync = new RemoteContentSync();
+        assistant = new ChatGptAssistant(this);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
         screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); reviewStep = prefs.getLong("reviewStep", 0); archive = prefs.getBoolean("archive", false);
@@ -186,21 +200,175 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "На телефоне нет браузера для открытия GitHub", Toast.LENGTH_LONG).show();
         }
     }
-    private void openChatGPT() {
+    private void showAssistant() {
         player.pause();
         remember();
-        Intent launch = getPackageManager().getLaunchIntentForPackage("com.openai.chatgpt");
-        if (launch != null) {
-            launch.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            startActivity(launch);
+        if (assistantDialog != null && assistantDialog.isShowing()) return;
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(6), dp(18), dp(6));
+
+        assistantStatus = new TextView(this);
+        assistantStatus.setTextSize(14);
+        assistantStatus.setPadding(0, dp(6), 0, dp(8));
+        box.addView(assistantStatus);
+
+        Button connect = new Button(this);
+        connect.setAllCaps(false);
+        connect.setText("Подключить ChatGPT");
+        box.addView(connect, new LinearLayout.LayoutParams(-1, -2));
+
+        ScrollView historyScroll = new ScrollView(this);
+        assistantHistory = new TextView(this);
+        assistantHistory.setTextSize(16);
+        assistantHistory.setTextColor(Color.rgb(29, 47, 44));
+        assistantHistory.setPadding(0, dp(10), 0, dp(10));
+        assistantHistory.setText(assistant.historyText().isEmpty()
+                ? "Здесь можно говорить или писать. Контекст приложения уже передаётся автоматически."
+                : assistant.historyText());
+        historyScroll.addView(assistantHistory);
+        LinearLayout.LayoutParams historyParams = new LinearLayout.LayoutParams(-1, dp(240));
+        box.addView(historyScroll, historyParams);
+
+        assistantInput = new EditText(this);
+        assistantInput.setHint("Напишите или наговорите задачу…");
+        assistantInput.setMinLines(2);
+        assistantInput.setMaxLines(5);
+        assistantInput.setTextSize(17);
+        box.addView(assistantInput, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        Button mic = new Button(this);
+        mic.setText("🎤 Голос");
+        mic.setAllCaps(false);
+        Button send = new Button(this);
+        send.setText("Отправить");
+        send.setAllCaps(false);
+        actions.addView(mic, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(0, -2, 1);
+        sendParams.setMarginStart(dp(6));
+        actions.addView(send, sendParams);
+        box.addView(actions);
+
+        Runnable refreshConnection = () -> {
+            boolean connected = assistant.isConnected();
+            String account = assistant.accountLabel();
+            assistantStatus.setText(connected
+                    ? "ChatGPT подключён" + (account.isEmpty() ? "" : " • " + account)
+                    : "Нужно один раз подключить этот ChatGPT-аккаунт.");
+            connect.setVisibility(connected ? View.GONE : View.VISIBLE);
+            send.setEnabled(connected);
+        };
+        refreshConnection.run();
+
+        connect.setOnClickListener(v -> {
+            connect.setEnabled(false);
+            assistantStatus.setText("Открываю одноразовое подключение ChatGPT…");
+            assistant.connect(this, (ok, message) -> {
+                connect.setEnabled(true);
+                assistantStatus.setText(message);
+                refreshConnection.run();
+            });
+        });
+
+        mic.setOnClickListener(v -> startAssistantVoice());
+        send.setOnClickListener(v -> {
+            String message = assistantInput.getText().toString().trim();
+            if (message.isEmpty()) {
+                assistantInput.setError("Введите сообщение");
+                return;
+            }
+            send.setEnabled(false);
+            mic.setEnabled(false);
+            assistantStatus.setText("Отправляю в ChatGPT…");
+            assistant.send(store, message, (ok, answer) -> runOnUiThread(() -> {
+                send.setEnabled(true);
+                mic.setEnabled(true);
+                assistantStatus.setText(ok ? "Готово" : answer);
+                if (ok) {
+                    assistantInput.setText("");
+                    assistantHistory.setText(assistant.historyText());
+                }
+            }));
+        });
+
+        assistantDialog = new AlertDialog.Builder(this)
+                .setTitle("ChatGPT • Изучение испанского")
+                .setView(box)
+                .setNegativeButton("Закрыть", null)
+                .create();
+        assistantDialog.setOnDismissListener(d -> {
+            assistantInput = null;
+            assistantHistory = null;
+            assistantStatus = null;
+            if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
+        });
+        assistantDialog.show();
+    }
+
+    private void startAssistantVoice() {
+        if (assistantInput == null) return;
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_PERMISSION);
             return;
         }
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/")));
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "Не удалось открыть ChatGPT", Toast.LENGTH_LONG).show();
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            Toast.makeText(this, "Голосовой набор недоступен на этом телефоне", Toast.LENGTH_LONG).show();
+            return;
         }
+        if (speechRecognizer == null) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                @Override public void onReadyForSpeech(Bundle params) {
+                    if (assistantStatus != null) assistantStatus.setText("Говорите…");
+                }
+                @Override public void onBeginningOfSpeech() {}
+                @Override public void onRmsChanged(float rmsdB) {}
+                @Override public void onBufferReceived(byte[] buffer) {}
+                @Override public void onEndOfSpeech() {
+                    if (assistantStatus != null) assistantStatus.setText("Распознаю…");
+                }
+                @Override public void onError(int error) {
+                    if (assistantStatus != null) assistantStatus.setText("Не удалось распознать голос. Нажмите микрофон ещё раз.");
+                }
+                @Override public void onResults(Bundle results) {
+                    ArrayList<String> variants = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (assistantInput != null && variants != null && !variants.isEmpty()) {
+                        assistantInput.setText(variants.get(0));
+                        assistantInput.setSelection(assistantInput.length());
+                    }
+                    if (assistantStatus != null) assistantStatus.setText("Готово к отправке");
+                }
+                @Override public void onPartialResults(Bundle partialResults) {
+                    ArrayList<String> variants = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (assistantInput != null && variants != null && !variants.isEmpty()) {
+                        assistantInput.setText(variants.get(0));
+                        assistantInput.setSelection(assistantInput.length());
+                    }
+                }
+                @Override public void onEvent(int eventType, Bundle params) {}
+            });
+        }
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU");
+        intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        speechRecognizer.startListening(intent);
     }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == MIC_PERMISSION && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            startAssistantVoice();
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+    }
+
     private void cards() {
         text(archive ? "Освоенное" : "Карточки", 28);
 
@@ -216,7 +384,7 @@ public final class MainActivity extends Activity {
 
         if (!archive) {
             text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
-            button("ChatGPT — добавить голосом/текстом", this::openChatGPT);
+            button("ChatGPT — голос / текст", this::showAssistant);
         }
 
         LinearLayout filters = new LinearLayout(this);
@@ -427,7 +595,7 @@ public final class MainActivity extends Activity {
     private void stories() {
         text("Библиотека сказок", 28);
         text("Слушайте целиком или по одному предложению.", 17);
-        button("ChatGPT — создать или добавить сказку", this::openChatGPT);
+        button("ChatGPT — голос / текст", this::showAssistant);
         for (Store.Story s : store.stories()) {
             text(s.title(), 23); text(s.source(), 14); button("Открыть и слушать", () -> openStory(s));
         }
@@ -509,6 +677,8 @@ public final class MainActivity extends Activity {
     @Override protected void onPause() { player.pause(); remember(); rememberCardDraft(); super.onPause(); }
     @Override protected void onDestroy() {
         if (contentSync != null) contentSync.close();
+        if (assistant != null) assistant.close();
+        if (speechRecognizer != null) speechRecognizer.destroy();
         player.close();
         store.close();
         super.onDestroy();
