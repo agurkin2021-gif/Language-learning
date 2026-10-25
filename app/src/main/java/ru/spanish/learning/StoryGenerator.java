@@ -7,9 +7,9 @@ import java.util.List;
  * Implementations must run off the UI thread and return a complete, attributed story.
  */
 public interface StoryGenerator {
-    record Draft(String title, String spanish, String provenance) {}
+    record Draft(String title, String spanish, String russian, String provenance) {}
     Draft generate(List<Store.Card> mastered) throws Exception;
     static long save(Store store, Draft draft) {
-        return store.addStory(draft.title(), draft.spanish(), draft.provenance());
+        return store.addStory(draft.title(), draft.spanish(), draft.russian(), draft.provenance());
     }
 }
