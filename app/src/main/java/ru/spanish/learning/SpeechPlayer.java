@@ -59,13 +59,39 @@ public final class SpeechPlayer {
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
                     handler.post(() -> rememberRange(id, start));
                 }
-                @Override public void onDone(String id) { handler.post(() -> done(id)); }
-                @Override public void onError(String id) { handler.post(() -> failed(id)); }
+                @Override public void onDone(String id) {
+                    handler.post(() -> {
+                        if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        else done(id);
+                    });
+                }
+                @Override public void onError(String id) {
+                    handler.post(() -> {
+                        if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        else failed(id);
+                    });
+                }
             });
             listener.changed();
         }));
     }
     public boolean ready() { return ready; }
+
+    public void speakCard(String spanish) {
+        if (closed || !ready || spanish == null || spanish.trim().isEmpty()) return;
+        handler.removeCallbacks(autoPlay);
+        if (tts != null) tts.stop();
+        audio.abandonAudioFocusRequest(focus);
+        if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return;
+        String token = "card:" + System.nanoTime();
+        tts.setSpeechRate(0.72f);
+        if (tts.speak(spanish.trim(), TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
+            finishCardSpeech();
+    }
+
+    private void finishCardSpeech() {
+        audio.abandonAudioFocusRequest(focus);
+    }
     public void load(String body, int position) { pause(); resumeOffset = 0; activeToken = ""; sentences = Sentences.split(body); state.load(sentences.size(), position); listener.changed(); }
     public String current() { return sentences.isEmpty() ? "" : sentences.get(state.index); }
     public void playAllFromStart() {
