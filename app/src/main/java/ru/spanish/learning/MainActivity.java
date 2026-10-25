@@ -22,7 +22,7 @@ public final class MainActivity extends Activity {
     private SharedPreferences prefs;
     private LinearLayout content;
     private TextView sentence, playbackStatus, voice;
-    private Button toggle, repeat;
+    private Button toggle, repeat, updateButton;
     private boolean archive;
     private int kind;
     private int category;
@@ -80,12 +80,12 @@ public final class MainActivity extends Activity {
         buildInfo.setTextSize(13);
         buildInfo.setOnClickListener(v -> showBuild());
         updates.addView(buildInfo, new LinearLayout.LayoutParams(0, dp(60), 1));
-        Button update = new Button(this);
-        update.setText(R.string.update_button);
-        update.setAllCaps(false);
-        update.setTextSize(15);
-        update.setOnClickListener(v -> startUpdateNow());
-        updates.addView(update, new LinearLayout.LayoutParams(0, dp(60), 1));
+        updateButton = new Button(this);
+        updateButton.setText(R.string.update_button);
+        updateButton.setAllCaps(false);
+        updateButton.setTextSize(15);
+        updateButton.setOnClickListener(v -> startUpdateNow());
+        updates.addView(updateButton, new LinearLayout.LayoutParams(0, dp(60), 1));
         root.addView(updates);
         setContentView(root);
         if (screen.equals("cards")) cards(); else if (screen.equals("player")) storyPlayer(); else stories();
@@ -102,69 +102,54 @@ public final class MainActivity extends Activity {
                     String base = "https://github.com/agurkin2021-gif/Language-learning/actions/";
                     String url = BuildConfig.BUILD_RUN_ID.isEmpty() ? base : base + "runs/" + BuildConfig.BUILD_RUN_ID;
                     openBrowser(url);
-                })
-                .setPositiveButton("Обновление", (dialog, which) -> startUpdateNow()).show();
+                }).show();
     }
     private void startUpdateNow() {
         player.pause();
         remember();
-        if (BuildConfig.DEBUG || !getPackageManager().canRequestPackageInstalls()) {
-            showAutoUpdates();
+        if (BuildConfig.DEBUG) {
+            Toast.makeText(this, "В служебной сборке обновление отключено", Toast.LENGTH_SHORT).show();
             return;
         }
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            prefs.edit().putBoolean("resumeUpdateAfterPermission", true).apply();
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, "Разрешите этому приложению установку обновлений в настройках Android", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        prefs.edit().remove("resumeUpdateAfterPermission").apply();
+        setUpdateBusy(true);
         AppUpdater.updateNow(this);
-        AlertDialog progress = new AlertDialog.Builder(this)
-                .setTitle("Обновление")
-                .setMessage("Проверяется новая версия приложения…")
-                .setNegativeButton("Закрыть", null)
-                .create();
-        progress.show();
 
         android.os.Handler handler = new android.os.Handler(getMainLooper());
         long deadline = android.os.SystemClock.elapsedRealtime() + 120_000;
         Runnable poll = new Runnable() {
             @Override public void run() {
                 if (isFinishing() || isDestroyed()) return;
-                if (AppUpdater.hasPendingConfirmation(MainActivity.this)) {
-                    if (progress.isShowing()) progress.dismiss();
-                    if (!AppUpdater.continuePending(MainActivity.this))
-                        Toast.makeText(MainActivity.this, "Не удалось открыть системное подтверждение обновления", Toast.LENGTH_LONG).show();
+                String state = AppUpdater.state(MainActivity.this);
+                if ("current".equals(state) || "failed".equals(state) || "permission".equals(state)
+                        || "updated".equals(state) || "blocked".equals(state)) {
+                    setUpdateBusy(false);
                     return;
                 }
-                String state = AppUpdater.state(MainActivity.this);
-                String status = AppUpdater.status(MainActivity.this);
-                if (progress.isShowing()) progress.setMessage(status);
-                if ("current".equals(state) || "failed".equals(state) || "permission".equals(state)
-                        || "updated".equals(state) || "blocked".equals(state)) return;
-                if (android.os.SystemClock.elapsedRealtime() >= deadline) return;
-                handler.postDelayed(this, 300);
+                if (android.os.SystemClock.elapsedRealtime() >= deadline) {
+                    setUpdateBusy(false);
+                    return;
+                }
+                handler.postDelayed(this, 400);
             }
         };
-        handler.post(poll);
+        handler.postDelayed(poll, 400);
     }
 
-    private void showAutoUpdates() {
-        player.pause();
-        remember();
-        if (BuildConfig.DEBUG) {
-            new AlertDialog.Builder(this).setTitle("Служебная сборка")
-                    .setMessage("Эта сборка предназначена для проверки. Автообновления доступны в версии для телефона с постоянной подписью.")
-                    .setPositiveButton("Понятно", null).show();
-            return;
-        }
-        boolean allowed = getPackageManager().canRequestPackageInstalls();
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("Обновление")
-                .setMessage(AppUpdater.status(this) + "\n\nНовые версии загружаются сами. Установка происходит, когда вы переходите из приложения. После обновления откройте приложение снова.")
-                .setNegativeButton("Закрыть", null);
-        if (!allowed) {
-            dialog.setPositiveButton("Разрешить обновления", (d, w) -> {
-                try { startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()))); }
-                catch (ActivityNotFoundException e) { Toast.makeText(this, "Откройте разрешение установки для этого приложения в настройках Android", Toast.LENGTH_LONG).show(); }
-            });
-        } else if (AppUpdater.hasPendingConfirmation(this)) {
-            dialog.setPositiveButton("Подтвердить в Android", (d, w) -> AppUpdater.continuePending(this));
-        }
-        dialog.show();
+    private void setUpdateBusy(boolean busy) {
+        if (updateButton == null) return;
+        updateButton.setEnabled(!busy);
+        updateButton.setText(busy ? "Обновляется…" : getString(R.string.update_button));
     }
     private void openBrowser(String url) {
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
@@ -402,10 +387,12 @@ public final class MainActivity extends Activity {
         super.onResume();
         AppUpdater.setForeground(true);
         if (prefs.getBoolean("cardDraftOpen", false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
-        AppUpdater.check(this);
-        if (!BuildConfig.DEBUG && !getPackageManager().canRequestPackageInstalls() && !prefs.getBoolean("autoUpdatePromptShown", false)) {
-            prefs.edit().putBoolean("autoUpdatePromptShown", true).apply();
-            showAutoUpdates();
+        if (!BuildConfig.DEBUG && prefs.getBoolean("resumeUpdateAfterPermission", false)
+                && getPackageManager().canRequestPackageInstalls()) {
+            prefs.edit().remove("resumeUpdateAfterPermission").apply();
+            startUpdateNow();
+        } else {
+            AppUpdater.check(this);
         }
     }
     @Override protected void onPause() { player.pause(); remember(); rememberCardDraft(); super.onPause(); }
