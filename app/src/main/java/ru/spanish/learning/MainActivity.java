@@ -36,8 +36,6 @@ public final class MainActivity extends Activity {
     private int draftKind;
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
-        AppUpdater.setForeground(true);
-        AppUpdater.configureSchedule(this);
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
@@ -107,49 +105,17 @@ public final class MainActivity extends Activity {
     private void startUpdateNow() {
         player.pause();
         remember();
-        if (BuildConfig.DEBUG) {
-            Toast.makeText(this, "В служебной сборке обновление отключено", Toast.LENGTH_SHORT).show();
-            return;
+        Intent updateIntent = new Intent("ru.spanish.learning.updater.UPDATE")
+                .setPackage("ru.spanish.learning.updater");
+        try {
+            startActivity(updateIntent);
+        } catch (ActivityNotFoundException e) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Нужен Updater")
+                    .setMessage("Для обновлений установите приложение «Обновление испанского» один раз. После этого кнопка «Обновление» будет передавать установку ему.")
+                    .setPositiveButton("Понятно", null)
+                    .show();
         }
-        if (!getPackageManager().canRequestPackageInstalls()) {
-            prefs.edit().putBoolean("resumeUpdateAfterPermission", true).apply();
-            try {
-                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                        Uri.parse("package:" + getPackageName())));
-            } catch (ActivityNotFoundException e) {
-                Toast.makeText(this, "Разрешите этому приложению установку обновлений в настройках Android", Toast.LENGTH_LONG).show();
-            }
-            return;
-        }
-        prefs.edit().remove("resumeUpdateAfterPermission").apply();
-        setUpdateBusy(true);
-        AppUpdater.updateNow(this);
-
-        android.os.Handler handler = new android.os.Handler(getMainLooper());
-        long deadline = android.os.SystemClock.elapsedRealtime() + 120_000;
-        Runnable poll = new Runnable() {
-            @Override public void run() {
-                if (isFinishing() || isDestroyed()) return;
-                String state = AppUpdater.state(MainActivity.this);
-                if ("current".equals(state) || "failed".equals(state) || "permission".equals(state)
-                        || "updated".equals(state) || "blocked".equals(state)) {
-                    setUpdateBusy(false);
-                    return;
-                }
-                if (android.os.SystemClock.elapsedRealtime() >= deadline) {
-                    setUpdateBusy(false);
-                    return;
-                }
-                handler.postDelayed(this, 400);
-            }
-        };
-        handler.postDelayed(poll, 400);
-    }
-
-    private void setUpdateBusy(boolean busy) {
-        if (updateButton == null) return;
-        updateButton.setEnabled(!busy);
-        updateButton.setText(busy ? "Обновляется…" : getString(R.string.update_button));
     }
     private void openBrowser(String url) {
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
@@ -385,17 +351,8 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed() { if (screen.equals("player")) navigate("stories"); else super.onBackPressed(); }
     @Override protected void onResume() {
         super.onResume();
-        AppUpdater.setForeground(true);
         if (prefs.getBoolean("cardDraftOpen", false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
-        if (!BuildConfig.DEBUG && prefs.getBoolean("resumeUpdateAfterPermission", false)
-                && getPackageManager().canRequestPackageInstalls()) {
-            prefs.edit().remove("resumeUpdateAfterPermission").apply();
-            startUpdateNow();
-        } else {
-            AppUpdater.check(this);
-        }
     }
     @Override protected void onPause() { player.pause(); remember(); rememberCardDraft(); super.onPause(); }
-    @Override protected void onStop() { super.onStop(); if (!isChangingConfigurations()) AppUpdater.setForeground(false); }
     @Override protected void onDestroy() { player.close(); store.close(); super.onDestroy(); }
 }
