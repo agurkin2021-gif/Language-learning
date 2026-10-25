@@ -18,7 +18,13 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         getInstrumentation().waitForIdleSync();
     }
     public void testNavigationAndPlayerSurviveRepeatedTaps() {
-        getActivity(); tap("Карточки"); tap("Освоенное"); tap("← К изучению");
+        getActivity(); tap("Карточки");
+        getInstrumentation().runOnMainSync(() -> {
+            View root = getActivity().getWindow().getDecorView();
+            assertNotNull(find(root, "＋ Слово"));
+            assertNotNull(find(root, "＋ Устойчивое выражение"));
+        });
+        tap("Освоенное"); tap("← К изучению");
         tap("Сказки"); tap("Открыть и слушать");
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();
