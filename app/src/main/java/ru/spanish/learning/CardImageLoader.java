@@ -10,6 +10,8 @@ import android.webkit.WebViewClient;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.text.Normalizer;
 import java.util.Locale;
 
@@ -30,8 +32,11 @@ final class CardImageLoader {
         if (fallback != null) fallback.setVisibility(View.VISIBLE);
 
         byte[] svg;
-        String asset = "card-images/" + key(spanish) + ".svg";
-        try (InputStream input = activity.getAssets().open(asset);
+        String imageKey = key(spanish);
+        File dynamic = new File(new File(activity.getFilesDir(), "card-images"), imageKey + ".svg");
+        try (InputStream input = dynamic.isFile()
+                    ? new FileInputStream(dynamic)
+                    : activity.getAssets().open("card-images/" + imageKey + ".svg");
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[4096];
             int count;
