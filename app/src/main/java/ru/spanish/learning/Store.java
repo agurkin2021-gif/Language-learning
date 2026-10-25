@@ -1,5 +1,6 @@
 package ru.spanish.learning;
 
+import android.app.backup.BackupManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -9,11 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class Store extends SQLiteOpenHelper {
+    private final Context context;
     public record Card(long id, String spanish, String meaning, int kind, int category, boolean mastered, int lastResult, int reviewCount, long nextDue) {}
     public record Story(long id, String title, String body, String source, int position) {}
 
     public Store(Context context) { this(context, "learning.db"); }
-    Store(Context context, String databaseName) { super(context, databaseName, null, 4); }
+    Store(Context context, String databaseName) {
+        super(context, databaseName, null, 4);
+        this.context = context.getApplicationContext();
+    }
+
+    private void changed() { new BackupManager(context).dataChanged(); }
 
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE cards(id INTEGER PRIMARY KEY, spanish TEXT NOT NULL, meaning TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN(0,1)), category INTEGER NOT NULL DEFAULT 0 CHECK(category IN(0,1,2,3)), mastered INTEGER NOT NULL DEFAULT 0 CHECK(mastered IN(0,1)), last_result INTEGER NOT NULL DEFAULT 0 CHECK(last_result IN(0,1,2)), review_count INTEGER NOT NULL DEFAULT 0, next_due INTEGER NOT NULL DEFAULT 0)");
@@ -76,6 +83,7 @@ public final class Store extends SQLiteOpenHelper {
         v.put("kind", kind);
         v.put("category", category);
         getWritableDatabase().insertOrThrow("cards", null, v);
+        changed();
     }
 
     public void review(long id, int result) {
@@ -87,6 +95,7 @@ public final class Store extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.execSQL("UPDATE cards SET last_result=?, review_count=review_count+1, mastered=?, next_due=? WHERE id=?",
                 new Object[]{result, result == 2 ? 1 : 0, result == 2 ? 0 : Math.max(0, nextDue), id});
+        changed();
     }
 
     public List<Card> cardsForReview(int kind, int category, long step) {
@@ -122,6 +131,7 @@ public final class Store extends SQLiteOpenHelper {
             v.put("next_due", 0);
         }
         getWritableDatabase().update("cards", v, "id=?", new String[]{Long.toString(id)});
+        changed();
     }
 
     public List<Story> stories() {
@@ -138,12 +148,15 @@ public final class Store extends SQLiteOpenHelper {
         v.put("title", title);
         v.put("body", body);
         v.put("source", source);
-        return getWritableDatabase().insertOrThrow("stories", null, v);
+        long id = getWritableDatabase().insertOrThrow("stories", null, v);
+        changed();
+        return id;
     }
 
     public void position(long id, int position) {
         ContentValues v = new ContentValues();
         v.put("position", position);
         getWritableDatabase().update("stories", v, "id=?", new String[]{Long.toString(id)});
+        changed();
     }
 }
