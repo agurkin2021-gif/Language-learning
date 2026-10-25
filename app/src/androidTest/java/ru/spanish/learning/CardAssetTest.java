@@ -2,6 +2,7 @@ package ru.spanish.learning;
 
 import android.test.AndroidTestCase;
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,7 +30,11 @@ public final class CardAssetTest extends AndroidTestCase {
             assertTrue("Duplicate starter Spanish entry: " + card.spanish(), spanish.add(card.spanish()));
             String asset = "card-images/" + key + ".svg";
             try (InputStream input = getContext().getAssets().open(asset)) {
-                byte[] bytes = input.readAllBytes();
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                byte[] buffer = new byte[4096];
+                int count;
+                while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                byte[] bytes = output.toByteArray();
                 assertTrue("Empty SVG for " + card.spanish(), bytes.length > 100);
                 String svg = new String(bytes, StandardCharsets.UTF_8);
                 assertTrue("Invalid SVG for " + card.spanish(), svg.contains("<svg") && svg.contains("</svg>"));
