@@ -551,11 +551,13 @@ public final class MainActivity extends Activity {
         if (!cardRevealed) actions.setVisibility(View.GONE);
         cardBox.setOnClickListener(v -> {
             if (!cardRevealed) {
+                player.speakCard(card.spanish());
                 cardRevealed = true;
                 actions.setVisibility(View.VISIBLE);
                 word.setText(card.meaning());
             } else if (word.getText().toString().equals(card.meaning())) {
                 word.setText(card.spanish());
+                player.speakCard(card.spanish());
             } else {
                 word.setText(card.meaning());
             }
