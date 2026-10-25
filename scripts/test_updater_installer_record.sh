@@ -30,6 +30,21 @@ dump_ui() {
   adb exec-out cat /sdcard/window.xml 2>/dev/null || true
 }
 
+clear_completed_first_installer_ui() {
+  for _ in $(seq 1 15); do
+    dump_ui > "$reports/pre-second-ui.xml"
+    if grep -q 'package="com.google.android.packageinstaller"' "$reports/pre-second-ui.xml"; then
+      cp "$reports/pre-second-ui.xml" "$reports/stale-first-confirmation.xml"
+      adb shell input keyevent KEYCODE_BACK
+      sleep 1
+      continue
+    fi
+    return 0
+  done
+  echo "First install confirmation did not leave the foreground." >&2
+  return 1
+}
+
 tap_main_update() {
   for _ in $(seq 1 30); do
     dump_ui > "$reports/main-ui.xml"
@@ -51,14 +66,6 @@ PY
       read -r x y < "$reports/main-tap.txt"
       adb shell input tap "$x" "$y"
       return 0
-    fi
-
-    # Android 14's package installer can briefly remain above the freshly
-    # updated app after the first approved handoff. That dialog belongs to the
-    # already-completed first install, not to the second update under test.
-    if grep -q 'package="com.google.android.packageinstaller"' "$reports/main-ui.xml"; then
-      cp "$reports/main-ui.xml" "$reports/stale-first-confirmation.xml"
-      adb shell input keyevent KEYCODE_BACK
     fi
     sleep 1
   done
@@ -173,6 +180,7 @@ adb shell am force-stop "$updater"
 copy_candidate "$second_apk"
 updater_appdir=$(adb shell run-as "$updater" pwd | tr -d '\r')
 adb logcat -c
+clear_completed_first_installer_ui
 adb shell am start -W -n "$target/.MainActivity" --es updater_test_path "$updater_appdir/files/candidate.apk" >/dev/null
 sleep 1
 tap_main_update
