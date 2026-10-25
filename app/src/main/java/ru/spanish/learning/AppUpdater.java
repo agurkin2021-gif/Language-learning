@@ -30,6 +30,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -55,6 +56,7 @@ public final class AppUpdater {
     private static final AtomicBoolean CHECK_QUEUED = new AtomicBoolean();
     private static volatile Context application;
     private static volatile boolean foreground;
+    private static volatile WeakReference<Activity> interactiveActivity = new WeakReference<>(null);
     private static int writingSession = -1;
 
     private AppUpdater() {}
@@ -105,6 +107,7 @@ public final class AppUpdater {
     public static void updateNow(Activity activity) {
         Context app = remember(activity);
         if (BuildConfig.DEBUG) return;
+        interactiveActivity = new WeakReference<>(activity);
         prefs(app).edit().remove("retry_after").remove("blocked_version").commit();
         setStatus(app, "checking", "Проверяется новая версия приложения…");
         WORKER.execute(() -> perform(app, true, () -> false, true));
@@ -523,7 +526,19 @@ public final class AppUpdater {
                     Intent identity = new Intent(confirmation).replaceExtras((Bundle) null);
                     settings.edit().putString("pending_identity", identity.toUri(Intent.URI_INTENT_SCHEME))
                             .putInt("pending_request_code", sessionId).putString("state", "pending")
-                            .putString("status", "Android требует подтверждения обновления. Откройте системный запрос в разделе обновлений.").commit();
+                            .putString("status", "Android подтверждает установку обновления.").commit();
+
+                    Activity activity = interactiveActivity.get();
+                    if (activity != null && !activity.isFinishing()
+                            && (Build.VERSION.SDK_INT < 17 || !activity.isDestroyed())) {
+                        activity.runOnUiThread(() -> {
+                            try {
+                                activity.startActivity(confirmation);
+                            } catch (RuntimeException ignored) {
+                                // MainActivity polling can still send the saved PendingIntent fallback.
+                            }
+                        });
+                    }
                 } else {
                     abandonRecordedSession(context, sessionId,
                             "Android не предоставил запрос подтверждения. Проверка повторится позже.");
