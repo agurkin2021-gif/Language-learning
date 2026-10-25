@@ -201,7 +201,7 @@ final class DefaultAdjectivesExtra {
 {"rígido","жёсткий"},
 {"estable","стабильный"},
 {"inestable","нестабильный"},
-{"seguro","надёжный, безопасный"},
+{"confiable","надёжный, заслуживающий доверия"},
 {"arriesgado","рискованный"}
     };
 }
