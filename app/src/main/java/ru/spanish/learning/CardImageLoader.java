@@ -11,8 +11,8 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.text.Normalizer;
+import java.util.Locale;
 
 final class CardImageLoader {
     private static final String BASE = "https://raw.githubusercontent.com/agurkin2021-gif/Language-learning/card-assets/card-images/";
