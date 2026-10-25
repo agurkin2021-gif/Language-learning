@@ -27,13 +27,16 @@ public final class MainActivity extends Activity {
     private int kind;
     private int category;
     private int reviewIndex;
+    private long reviewStep;
     private boolean cardRevealed;
     private String screen = "cards";
     private long storyId = -1;
     private boolean rendering;
     private AlertDialog cardDialog;
     private EditText draftSpanish, draftMeaning;
+    private Spinner draftCategorySpinner;
     private int draftKind;
+    private int draftCategory;
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
         android.app.job.JobScheduler legacyUpdater = getSystemService(android.app.job.JobScheduler.class);
@@ -44,7 +47,7 @@ public final class MainActivity extends Activity {
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
-        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); archive = prefs.getBoolean("archive", false);
+        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); reviewStep = prefs.getLong("reviewStep", 0); archive = prefs.getBoolean("archive", false);
         long last = prefs.getLong("story", -1);
         if ("player".equals(screen)) {
             for (Store.Story story : store.stories()) if (story.id() == last) { openStory(story); return; }
@@ -69,7 +72,7 @@ public final class MainActivity extends Activity {
     }
     private void remember() {
         prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).putBoolean("archive", archive)
-                .putInt("category", category).putInt("reviewIndex", reviewIndex).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
+                .putInt("category", category).putInt("reviewIndex", reviewIndex).putLong("reviewStep", reviewStep).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
     }
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
@@ -191,7 +194,9 @@ public final class MainActivity extends Activity {
         }
         content.addView(cardActions, new LinearLayout.LayoutParams(-1, -2));
 
-        List<Store.Card> cards = store.cards(archive, kind, kind == 0 ? category : 0);
+        List<Store.Card> cards = archive
+                ? store.cards(true, kind, kind == 0 ? category : 0)
+                : store.cardsForReview(kind, kind == 0 ? category : 0, reviewStep);
         text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
         if (cards.isEmpty()) return;
 
@@ -283,8 +288,10 @@ public final class MainActivity extends Activity {
             if (i > 0) p.setMarginStart(dp(6));
             actions.addView(b, p);
             b.setOnClickListener(v -> {
-                store.review(card.id(), result);
-                if (result != 2) reviewIndex++;
+                reviewStep++;
+                long nextDue = result == 0 ? reviewStep + 4 : result == 1 ? reviewStep + 10 : 0;
+                store.review(card.id(), result, nextDue);
+                reviewIndex = 0;
                 cardRevealed = false;
                 render();
             });
@@ -317,27 +324,46 @@ public final class MainActivity extends Activity {
         LinearLayout box = form(); EditText es = field(box, "По-испански", 500, false); EditText ru = field(box, "Русский смысл", 1000, true);
         boolean restoring = prefs.getBoolean("cardDraftOpen", false);
         draftKind = restoring ? prefs.getInt("cardDraftKind", kind) : kind;
+        int defaultCategory = category >= 1 && category <= 3 ? category : 1;
+        draftCategory = restoring ? prefs.getInt("cardDraftCategory", defaultCategory) : defaultCategory;
         if (restoring) { es.setText(prefs.getString("cardDraftSpanish", "")); ru.setText(prefs.getString("cardDraftMeaning", "")); }
         draftSpanish = es; draftMeaning = ru;
+        draftCategorySpinner = null;
+        if (draftKind == 0) {
+            TextView label = new TextView(this);
+            label.setText("Категория");
+            label.setTextSize(16);
+            label.setPadding(0, dp(10), 0, 0);
+            box.addView(label);
+            draftCategorySpinner = new Spinner(this);
+            draftCategorySpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+                    new String[]{"Глагол", "Существительное", "Прилагательное"}));
+            draftCategorySpinner.setSelection(Math.max(0, Math.min(2, draftCategory - 1)));
+            box.addView(draftCategorySpinner);
+        }
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle(draftKind == 0 ? "Новое слово" : "Новое выражение").setView(box).setNegativeButton("Отмена", (d, w) -> clearCardDraft()).setPositiveButton("Сохранить", null).create();
         cardDialog = dialog;
         dialog.setOnCancelListener(d -> clearCardDraft());
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
             if (es.getText().toString().trim().isEmpty()) { es.setError("Введите испанский текст"); return; }
             if (ru.getText().toString().trim().isEmpty()) { ru.setError("Введите русский смысл"); return; }
-            store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), draftKind); clearCardDraft(); dialog.dismiss(); render();
+            draftCategory = draftKind == 0 && draftCategorySpinner != null ? draftCategorySpinner.getSelectedItemPosition() + 1 : 0;
+            store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), draftKind, draftCategory);
+            clearCardDraft(); dialog.dismiss(); render();
         })); dialog.show();
     }
     private void rememberCardDraft() {
         if (cardDialog != null && cardDialog.isShowing() && draftSpanish != null && draftMeaning != null) {
-            prefs.edit().putBoolean("cardDraftOpen", true).putInt("cardDraftKind", draftKind)
+            if (draftKind == 0 && draftCategorySpinner != null)
+                draftCategory = draftCategorySpinner.getSelectedItemPosition() + 1;
+            prefs.edit().putBoolean("cardDraftOpen", true).putInt("cardDraftKind", draftKind).putInt("cardDraftCategory", draftCategory)
                     .putString("cardDraftSpanish", draftSpanish.getText().toString())
                     .putString("cardDraftMeaning", draftMeaning.getText().toString()).commit();
         }
     }
     private void clearCardDraft() {
-        prefs.edit().remove("cardDraftOpen").remove("cardDraftKind").remove("cardDraftSpanish").remove("cardDraftMeaning").commit();
-        draftSpanish = null; draftMeaning = null;
+        prefs.edit().remove("cardDraftOpen").remove("cardDraftKind").remove("cardDraftCategory").remove("cardDraftSpanish").remove("cardDraftMeaning").commit();
+        draftSpanish = null; draftMeaning = null; draftCategorySpinner = null;
     }
     private void stories() {
         text("Библиотека сказок", 28);
