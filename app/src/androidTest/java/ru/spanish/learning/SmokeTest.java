@@ -24,7 +24,8 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull(find(root, "＋ Слово"));
             assertNotNull(find(root, "＋ Устойчивое выражение"));
             assertNotNull(find(root, "Обновление"));
-            assertNotNull(find(root, "Версия / сборка"));\n            assertNotNull(find(root, "ChatGPT — голос / текст"));
+            assertNotNull(find(root, "Версия / сборка"));
+            assertNotNull(find(root, "ChatGPT — голос / текст"));
             assertNull(find(root, "⚙"));
         });
         tap("Освоенное"); tap("← К изучению");
