@@ -6,7 +6,7 @@ import android.content.SharedPreferences;
 import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
-import android.graphics.Color;
+import android.graphics.Color;\nimport android.graphics.drawable.GradientDrawable;\nimport android.view.Gravity;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputFilter;
@@ -36,7 +36,7 @@ public final class MainActivity extends Activity {
         store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
-        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); archive = prefs.getBoolean("archive", false);
+        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); archive = prefs.getBoolean("archive", false);
         long last = prefs.getLong("story", -1);
         if ("player".equals(screen)) {
             for (Store.Story story : store.stories()) if (story.id() == last) { openStory(story); return; }
@@ -53,7 +53,7 @@ public final class MainActivity extends Activity {
     }
     private void remember() {
         prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).putBoolean("archive", archive)
-                .putInt("category", category).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
+                .putInt("category", category).putInt("reviewIndex", reviewIndex).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
     }
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
@@ -130,23 +130,136 @@ public final class MainActivity extends Activity {
         }
     }
     private void cards() {
-        text(archive ? "Освоенное" : "Мои карточки", 28);
-        text("В архив попадает только то, что вы отметили кнопкой «Знаю».", 16);
-        button(kind == 0 ? "Слова ▾" : "Устойчивые выражения ▾", () -> new AlertDialog.Builder(this).setTitle("Тип карточек").setItems(new String[]{"Слова", "Устойчивые выражения"}, (d,w) -> { kind = w; if (kind == 1) category = 0; render(); }).show());
+        text(archive ? "Освоенное" : "Карточки", 28);
+        if (!archive) text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
+
+        button(kind == 0 ? "Слова ▾" : "Устойчивые выражения ▾", () ->
+                new AlertDialog.Builder(this).setTitle("Тип карточек")
+                        .setItems(new String[]{"Слова", "Устойчивые выражения"}, (d,w) -> {
+                            kind = w;
+                            if (kind == 1) category = 0;
+                            reviewIndex = 0;
+                            cardRevealed = false;
+                            render();
+                        }).show());
+
         if (kind == 0) {
             String[] labels = {"Все слова", "Глаголы", "Существительные", "Прилагательные"};
-            button(labels[Math.max(0, Math.min(category, 3))] + " ▾", () -> new AlertDialog.Builder(this).setTitle("Категория слов").setItems(labels, (d,w) -> { category = w; render(); }).show());
+            button(labels[Math.max(0, Math.min(category, 3))] + " ▾", () ->
+                    new AlertDialog.Builder(this).setTitle("Категория слов")
+                            .setItems(labels, (d,w) -> {
+                                category = w;
+                                reviewIndex = 0;
+                                cardRevealed = false;
+                                render();
+                            }).show());
         }
-        button(archive ? "← Вернуться к изучению" : "Освоенное", () -> { archive = !archive; render(); });
+
+        button(archive ? "← Вернуться к изучению" : "Освоенное", () -> {
+            archive = !archive;
+            reviewIndex = 0;
+            cardRevealed = false;
+            render();
+        });
+
         if (!archive) button("＋ Добавить карточку", this::addCard);
+
         List<Store.Card> cards = store.cards(archive, kind, kind == 0 ? category : 0);
         text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
-        for (Store.Card card : cards) {
-            text(card.spanish(), 25); text(card.meaning(), 18);
-            button(archive ? "Вернуть к изучению" : "Знаю", () -> { store.setMastered(card.id(), !archive); render(); });
-            View line = new View(this); line.setBackgroundColor(0xFFD7DDD6); content.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
+        if (cards.isEmpty()) return;
+
+        if (archive) {
+            for (Store.Card card : cards) {
+                text(card.spanish(), 24);
+                text(card.meaning(), 18);
+                button("Вернуть к изучению", () -> {
+                    store.setMastered(card.id(), false);
+                    render();
+                });
+                View line = new View(this);
+                line.setBackgroundColor(0xFFD7DDD6);
+                content.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
+            }
+            return;
         }
+
+        if (reviewIndex < 0 || reviewIndex >= cards.size()) reviewIndex = 0;
+        Store.Card card = cards.get(reviewIndex);
+
+        LinearLayout cardBox = new LinearLayout(this);
+        cardBox.setOrientation(LinearLayout.VERTICAL);
+        cardBox.setGravity(Gravity.CENTER_HORIZONTAL);
+        cardBox.setPadding(dp(20), dp(20), dp(20), dp(20));
+        cardBox.setMinimumHeight(dp(360));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.WHITE);
+        bg.setCornerRadius(dp(22));
+        bg.setStroke(dp(1), 0xFFD7DDD6);
+        cardBox.setBackground(bg);
+        content.addView(cardBox, new LinearLayout.LayoutParams(-1, -2));
+
+        ImageView picture = new ImageView(this);
+        picture.setAdjustViewBounds(true);
+        picture.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        LinearLayout.LayoutParams pictureParams = new LinearLayout.LayoutParams(-1, dp(180));
+        pictureParams.bottomMargin = dp(10);
+        cardBox.addView(picture, pictureParams);
+        CardImageLoader.load(this, picture, card.spanish());
+
+        TextView spanish = new TextView(this);
+        spanish.setText(card.spanish());
+        spanish.setTextSize(34);
+        spanish.setTextColor(Color.rgb(29, 47, 44));
+        spanish.setGravity(Gravity.CENTER);
+        spanish.setPadding(0, dp(12), 0, dp(12));
+        cardBox.addView(spanish, new LinearLayout.LayoutParams(-1, -2));
+
+        if (!cardRevealed) {
+            TextView prompt = new TextView(this);
+            prompt.setText("Нажмите на карточку, чтобы открыть перевод");
+            prompt.setTextSize(14);
+            prompt.setTextColor(0xFF66736F);
+            prompt.setGravity(Gravity.CENTER);
+            prompt.setPadding(0, dp(18), 0, dp(6));
+            cardBox.addView(prompt, new LinearLayout.LayoutParams(-1, -2));
+            cardBox.setOnClickListener(v -> {
+                cardRevealed = true;
+                render();
+            });
+        } else {
+            TextView meaning = new TextView(this);
+            meaning.setText(card.meaning());
+            meaning.setTextSize(24);
+            meaning.setTextColor(Color.rgb(29, 47, 44));
+            meaning.setGravity(Gravity.CENTER);
+            meaning.setPadding(0, dp(18), 0, dp(18));
+            cardBox.addView(meaning, new LinearLayout.LayoutParams(-1, -2));
+
+            LinearLayout actions = new LinearLayout(this);
+            actions.setOrientation(LinearLayout.HORIZONTAL);
+            String[] labels = {"Не знаю", "Сомневаюсь", "Знаю"};
+            for (int i = 0; i < labels.length; i++) {
+                final int result = i;
+                Button b = new Button(this);
+                b.setText(labels[i]);
+                b.setAllCaps(false);
+                b.setMinHeight(dp(56));
+                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1);
+                if (i > 0) p.setMarginStart(dp(6));
+                actions.addView(b, p);
+                b.setOnClickListener(v -> {
+                    store.review(card.id(), result);
+                    if (result != 2) reviewIndex++;
+                    cardRevealed = false;
+                    render();
+                });
+            }
+            cardBox.addView(actions, new LinearLayout.LayoutParams(-1, -2));
+        }
+
+        text((reviewIndex + 1) + " / " + cards.size(), 14);
     }
+
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {
         EditText e = new EditText(this); e.setHint(hint); e.setTextSize(18); e.setSingleLine(!multiline); e.setFilters(new InputFilter[]{new InputFilter.LengthFilter(max)}); if(multiline) e.setMinLines(3); box.addView(e); return e;
     }
