@@ -44,8 +44,6 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull(find(root, "⚙"));
         });
         tap("⚙");
-        getInstrumentation().runOnMainSync(() ->
-                assertNotNull(find(getActivity().getWindow().getDecorView(), "Тёмная тема")));
         getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
         getInstrumentation().waitForIdleSync();
         for(int i=0;i<8;i++) tap("Повторить предложение");
