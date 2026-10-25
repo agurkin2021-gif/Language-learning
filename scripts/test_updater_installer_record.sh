@@ -31,8 +31,9 @@ dump_ui() {
 }
 
 tap_main_update() {
-  dump_ui > "$reports/main-ui.xml"
-  python3 - "$reports/main-ui.xml" <<'PY' > "$reports/main-tap.txt"
+  for _ in $(seq 1 30); do
+    dump_ui > "$reports/main-ui.xml"
+    if python3 - "$reports/main-ui.xml" <<'PY' > "$reports/main-tap.txt"
 import re, sys, xml.etree.ElementTree as ET
 root = ET.parse(sys.argv[1]).getroot()
 for node in root.iter("node"):
@@ -46,8 +47,23 @@ for node in root.iter("node"):
     raise SystemExit(0)
 raise SystemExit(1)
 PY
-  read -r x y < "$reports/main-tap.txt"
-  adb shell input tap "$x" "$y"
+    then
+      read -r x y < "$reports/main-tap.txt"
+      adb shell input tap "$x" "$y"
+      return 0
+    fi
+
+    # Android 14's package installer can briefly remain above the freshly
+    # updated app after the first approved handoff. That dialog belongs to the
+    # already-completed first install, not to the second update under test.
+    if grep -q 'package="com.google.android.packageinstaller"' "$reports/main-ui.xml"; then
+      cp "$reports/main-ui.xml" "$reports/stale-first-confirmation.xml"
+      adb shell input keyevent KEYCODE_BACK
+    fi
+    sleep 1
+  done
+  echo "Main update button did not become available." >&2
+  return 1
 }
 
 tap_install_confirmation() {
