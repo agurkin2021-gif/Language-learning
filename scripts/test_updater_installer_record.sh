@@ -30,6 +30,26 @@ dump_ui() {
   adb exec-out cat /sdcard/window.xml 2>/dev/null || true
 }
 
+tap_main_update() {
+  dump_ui > "$reports/main-ui.xml"
+  python3 - "$reports/main-ui.xml" <<'PY' > "$reports/main-tap.txt"
+import re, sys, xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if node.attrib.get("text") != "Обновление":
+        continue
+    m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds",""))
+    if not m:
+        continue
+    x1,y1,x2,y2 = map(int,m.groups())
+    print((x1+x2)//2, (y1+y2)//2)
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+  read -r x y < "$reports/main-tap.txt"
+  adb shell input tap "$x" "$y"
+}
+
 tap_install_confirmation() {
   dump_ui > "$reports/confirmation.xml"
   python3 - "$reports/confirmation.xml" <<'PY' > "$reports/tap.txt"
@@ -135,7 +155,9 @@ fi
 
 adb shell am force-stop "$updater"
 copy_candidate "$second_apk"
-start_updater
+adb shell am start -W -n "$target/.MainActivity" >/dev/null
+sleep 1
+tap_main_update
 wait_for_version "$second_version" no
 sleep 2
 second_installer=$(installer_line)
