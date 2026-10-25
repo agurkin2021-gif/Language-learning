@@ -59,6 +59,14 @@ public final class MainActivity extends Activity {
     private Button button(String value, Runnable action) {
         Button b = new Button(this); b.setText(value); b.setAllCaps(false); b.setMinHeight(dp(52)); content.addView(b, new LinearLayout.LayoutParams(-1, -2)); b.setOnClickListener(v -> action.run()); return b;
     }
+    private Button rowButton(String value, Runnable action) {
+        Button b = new Button(this);
+        b.setText(value);
+        b.setAllCaps(false);
+        b.setMinHeight(dp(48));
+        b.setOnClickListener(v -> action.run());
+        return b;
+    }
     private void remember() {
         prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).putBoolean("archive", archive)
                 .putInt("category", category).putInt("reviewIndex", reviewIndex).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
@@ -132,7 +140,9 @@ public final class MainActivity extends Activity {
         text(archive ? "Освоенное" : "Карточки", 28);
         if (!archive) text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
 
-        button(kind == 0 ? "Слова ▾" : "Устойчивые выражения ▾", () ->
+        LinearLayout filters = new LinearLayout(this);
+        filters.setOrientation(LinearLayout.HORIZONTAL);
+        Button typeButton = rowButton(kind == 0 ? "Слова ▾" : "Устойчивые выражения ▾", () ->
                 new AlertDialog.Builder(this).setTitle("Тип карточек")
                         .setItems(new String[]{"Слова", "Устойчивые выражения"}, (d,w) -> {
                             kind = w;
@@ -141,10 +151,11 @@ public final class MainActivity extends Activity {
                             cardRevealed = false;
                             render();
                         }).show());
+        filters.addView(typeButton, new LinearLayout.LayoutParams(0, -2, 1));
 
         if (kind == 0) {
             String[] labels = {"Все слова", "Глаголы", "Существительные", "Прилагательные"};
-            button(labels[Math.max(0, Math.min(category, 3))] + " ▾", () ->
+            Button categoryButton = rowButton(labels[Math.max(0, Math.min(category, 3))] + " ▾", () ->
                     new AlertDialog.Builder(this).setTitle("Категория слов")
                             .setItems(labels, (d,w) -> {
                                 category = w;
@@ -152,16 +163,28 @@ public final class MainActivity extends Activity {
                                 cardRevealed = false;
                                 render();
                             }).show());
+            LinearLayout.LayoutParams categoryParams = new LinearLayout.LayoutParams(0, -2, 1);
+            categoryParams.setMarginStart(dp(6));
+            filters.addView(categoryButton, categoryParams);
         }
+        content.addView(filters, new LinearLayout.LayoutParams(-1, -2));
 
-        button(archive ? "← Вернуться к изучению" : "Освоенное", () -> {
+        LinearLayout cardActions = new LinearLayout(this);
+        cardActions.setOrientation(LinearLayout.HORIZONTAL);
+        Button masteredButton = rowButton(archive ? "← К изучению" : "Освоенное", () -> {
             archive = !archive;
             reviewIndex = 0;
             cardRevealed = false;
             render();
         });
-
-        if (!archive) button("＋ Добавить карточку", this::addCard);
+        cardActions.addView(masteredButton, new LinearLayout.LayoutParams(0, -2, 1));
+        if (!archive) {
+            Button addButton = rowButton("＋ Добавить", this::addCard);
+            LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(0, -2, 1);
+            addParams.setMarginStart(dp(6));
+            cardActions.addView(addButton, addParams);
+        }
+        content.addView(cardActions, new LinearLayout.LayoutParams(-1, -2));
 
         List<Store.Card> cards = store.cards(archive, kind, kind == 0 ? category : 0);
         text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
@@ -188,8 +211,8 @@ public final class MainActivity extends Activity {
         LinearLayout cardBox = new LinearLayout(this);
         cardBox.setOrientation(LinearLayout.VERTICAL);
         cardBox.setGravity(Gravity.CENTER_HORIZONTAL);
-        cardBox.setPadding(dp(20), dp(20), dp(20), dp(20));
-        cardBox.setMinimumHeight(dp(360));
+        cardBox.setPadding(dp(12), dp(12), dp(12), dp(12));
+        cardBox.setMinimumHeight(dp(290));
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(Color.WHITE);
         bg.setCornerRadius(dp(22));
@@ -198,13 +221,13 @@ public final class MainActivity extends Activity {
         content.addView(cardBox, new LinearLayout.LayoutParams(-1, -2));
 
         FrameLayout visual = new FrameLayout(this);
-        LinearLayout.LayoutParams visualParams = new LinearLayout.LayoutParams(-1, dp(180));
-        visualParams.bottomMargin = dp(10);
+        LinearLayout.LayoutParams visualParams = new LinearLayout.LayoutParams(-1, dp(118));
+        visualParams.bottomMargin = dp(4);
         cardBox.addView(visual, visualParams);
 
         TextView visualHint = new TextView(this);
         visualHint.setText(CardVisualHint.forCard(card));
-        visualHint.setTextSize(78);
+        visualHint.setTextSize(54);
         visualHint.setGravity(Gravity.CENTER);
         visual.addView(visualHint, new FrameLayout.LayoutParams(-1, -1));
 
@@ -214,16 +237,16 @@ public final class MainActivity extends Activity {
 
         TextView spanish = new TextView(this);
         spanish.setText(card.spanish());
-        spanish.setTextSize(34);
+        spanish.setTextSize(30);
         spanish.setTextColor(Color.rgb(29, 47, 44));
         spanish.setGravity(Gravity.CENTER);
-        spanish.setPadding(0, dp(12), 0, dp(12));
+        spanish.setPadding(0, dp(6), 0, dp(6));
         cardBox.addView(spanish, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout revealArea = new LinearLayout(this);
         revealArea.setOrientation(LinearLayout.VERTICAL);
         revealArea.setGravity(Gravity.CENTER);
-        revealArea.setMinimumHeight(dp(150));
+        revealArea.setMinimumHeight(dp(105));
         cardBox.addView(revealArea, new LinearLayout.LayoutParams(-1, -2));
 
         TextView prompt = new TextView(this);
@@ -231,15 +254,15 @@ public final class MainActivity extends Activity {
         prompt.setTextSize(14);
         prompt.setTextColor(0xFF66736F);
         prompt.setGravity(Gravity.CENTER);
-        prompt.setPadding(0, dp(18), 0, dp(6));
+        prompt.setPadding(0, dp(8), 0, dp(2));
         revealArea.addView(prompt, new LinearLayout.LayoutParams(-1, -2));
 
         TextView meaning = new TextView(this);
         meaning.setText(card.meaning());
-        meaning.setTextSize(24);
+        meaning.setTextSize(21);
         meaning.setTextColor(Color.rgb(29, 47, 44));
         meaning.setGravity(Gravity.CENTER);
-        meaning.setPadding(0, dp(12), 0, dp(12));
+        meaning.setPadding(0, dp(6), 0, dp(6));
         revealArea.addView(meaning, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout actions = new LinearLayout(this);
@@ -250,7 +273,7 @@ public final class MainActivity extends Activity {
             Button b = new Button(this);
             b.setText(labels[i]);
             b.setAllCaps(false);
-            b.setMinHeight(dp(56));
+            b.setMinHeight(dp(46));
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1);
             if (i > 0) p.setMarginStart(dp(6));
             actions.addView(b, p);
