@@ -201,6 +201,17 @@ public final class MainActivity extends Activity {
     }
     private void cards() {
         text(archive ? "Освоенное" : "Карточки", 28);
+
+        LinearLayout maintenance = new LinearLayout(this);
+        maintenance.setOrientation(LinearLayout.HORIZONTAL);
+        Button updateButton = rowButton("Обновление", this::startUpdateNow);
+        Button buildButton = rowButton("Версия / сборка", this::showBuild);
+        maintenance.addView(updateButton, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams buildParams = new LinearLayout.LayoutParams(0, -2, 1);
+        buildParams.setMarginStart(dp(6));
+        maintenance.addView(buildButton, buildParams);
+        content.addView(maintenance, new LinearLayout.LayoutParams(-1, -2));
+
         if (!archive) {
             text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
             button("ChatGPT — добавить голосом/текстом", this::openChatGPT);
