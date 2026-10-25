@@ -18,7 +18,7 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         getInstrumentation().waitForIdleSync();
     }
     public void testNavigationAndPlayerSurviveRepeatedTaps() {
-        getActivity(); tap("Карточки"); tap("Освоенное"); tap("← Вернуться к изучению");
+        getActivity(); tap("Карточки"); tap("Освоенное"); tap("← К изучению");
         tap("Сказки"); tap("Открыть и слушать");
         for(int i=0;i<8;i++) tap("Повторить предложение");
         tap("Карточки"); tap("Сказки"); tap("Открыть и слушать");
