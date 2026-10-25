@@ -247,35 +247,13 @@ public final class MainActivity extends Activity {
         visual.addView(picture, new FrameLayout.LayoutParams(-1, -1));
         CardImageLoader.load(this, picture, visualHint, card.spanish());
 
-        TextView spanish = new TextView(this);
-        spanish.setText(card.spanish());
-        spanish.setTextSize(30);
-        spanish.setTextColor(Color.rgb(29, 47, 44));
-        spanish.setGravity(Gravity.CENTER);
-        spanish.setPadding(0, dp(6), 0, dp(6));
-        cardBox.addView(spanish, new LinearLayout.LayoutParams(-1, -2));
-
-        LinearLayout revealArea = new LinearLayout(this);
-        revealArea.setOrientation(LinearLayout.VERTICAL);
-        revealArea.setGravity(Gravity.CENTER);
-        revealArea.setMinimumHeight(dp(105));
-        cardBox.addView(revealArea, new LinearLayout.LayoutParams(-1, -2));
-
-        TextView prompt = new TextView(this);
-        prompt.setText("Нажмите на карточку, чтобы открыть перевод");
-        prompt.setTextSize(14);
-        prompt.setTextColor(0xFF66736F);
-        prompt.setGravity(Gravity.CENTER);
-        prompt.setPadding(0, dp(8), 0, dp(2));
-        revealArea.addView(prompt, new LinearLayout.LayoutParams(-1, -2));
-
-        TextView meaning = new TextView(this);
-        meaning.setText(card.meaning());
-        meaning.setTextSize(21);
-        meaning.setTextColor(Color.rgb(29, 47, 44));
-        meaning.setGravity(Gravity.CENTER);
-        meaning.setPadding(0, dp(6), 0, dp(6));
-        revealArea.addView(meaning, new LinearLayout.LayoutParams(-1, -2));
+        TextView word = new TextView(this);
+        word.setText(cardRevealed ? card.meaning() : card.spanish());
+        word.setTextSize(30);
+        word.setTextColor(Color.rgb(29, 47, 44));
+        word.setGravity(Gravity.CENTER);
+        word.setPadding(0, dp(10), 0, dp(10));
+        cardBox.addView(word, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
@@ -298,21 +276,20 @@ public final class MainActivity extends Activity {
                 render();
             });
         }
-        revealArea.addView(actions, new LinearLayout.LayoutParams(-1, -2));
+        cardBox.addView(actions, new LinearLayout.LayoutParams(-1, -2));
 
-        if (!cardRevealed) {
-            meaning.setVisibility(View.GONE);
-            actions.setVisibility(View.GONE);
-            cardBox.setOnClickListener(v -> {
+        if (!cardRevealed) actions.setVisibility(View.GONE);
+        cardBox.setOnClickListener(v -> {
+            if (!cardRevealed) {
                 cardRevealed = true;
-                prompt.setVisibility(View.GONE);
-                meaning.setVisibility(View.VISIBLE);
                 actions.setVisibility(View.VISIBLE);
-                cardBox.setOnClickListener(null);
-            });
-        } else {
-            prompt.setVisibility(View.GONE);
-        }
+                word.setText(card.meaning());
+            } else if (word.getText().toString().equals(card.meaning())) {
+                word.setText(card.spanish());
+            } else {
+                word.setText(card.meaning());
+            }
+        });
 
         text((reviewIndex + 1) + " / " + cards.size(), 14);
     }
