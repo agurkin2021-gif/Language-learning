@@ -36,12 +36,13 @@ public class StoreTest extends AndroidTestCase {
         assertTrue(foundMastered);
         assertEquals(expressionsBefore + 1, s.cards(false, 1).size());
 
-        long story = StoryGenerator.save(s, new StoryGenerator.Draft("Prueba", "Hola. Buen día.", "Тестовый адаптер"));
+        long story = StoryGenerator.save(s, new StoryGenerator.Draft("Prueba", "Hola. Buen día.", "Привет. Добрый день.", "Тестовый адаптер"));
         s.position(story, 1);
         s.close();
 
         s = new Store(getContext(), "test-learning.db");
         assertEquals("Prueba", s.stories().get(0).title());
+        assertEquals("Привет. Добрый день.", s.stories().get(0).translation());
         assertEquals(1, s.stories().get(0).position());
         s.setMastered(id, false);
 
