@@ -20,6 +20,15 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
     public void testNavigationAndPlayerSurviveRepeatedTaps() {
         getActivity(); tap("Карточки"); tap("Освоенное"); tap("← К изучению");
         tap("Сказки"); tap("Открыть и слушать");
+        getInstrumentation().runOnMainSync(() -> {
+            View root = getActivity().getWindow().getDecorView();
+            assertNotNull(find(root, "Лусия живёт в маленьком доме."));
+            assertNull(find(root, "Обновление"));
+            assertNotNull(find(root, "⚙"));
+        });
+        tap("⚙");
+        getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
+        getInstrumentation().waitForIdleSync();
         for(int i=0;i<8;i++) tap("Повторить предложение");
         tap("Карточки"); tap("Сказки"); tap("Открыть и слушать");
         getInstrumentation().runOnMainSync(() -> assertNotNull(find(getActivity().getWindow().getDecorView(),"← Библиотека")));
