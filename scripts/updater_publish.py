@@ -8,10 +8,11 @@ import json
 import os
 from pathlib import Path
 import re
+import tempfile
 
 from phone_publish import (
     GitHub, PublishError, Superseded, ensure_source_current, run_tool,
-    sign_apk, signing_configuration, trusted_source, verify_signed
+    signing_configuration, trusted_source, verify_signed
 )
 
 CHANNEL = "updater-builds"
@@ -49,6 +50,34 @@ def read_channel(github):
     metadata = json.loads(github.blob(entries["build-info.json"]["sha"]))
     return {"head": head, "entries": entries, "metadata": metadata}
 
+
+
+
+def sign_updater_apk(unsigned, destination, sdk, config):
+    try:
+        key_bytes = base64.b64decode(config["keystore_base64"], validate=True)
+    except ValueError:
+        raise PublishError("Некорректный keystore_base64") from None
+    with tempfile.TemporaryDirectory(prefix="spanish-updater-signing-", dir=os.environ.get("RUNNER_TEMP")) as directory:
+        keystore = Path(directory) / "updater-signing.p12"
+        keystore.write_bytes(key_bytes)
+        keystore.chmod(0o600)
+        environment = os.environ.copy()
+        environment["ANDROID_STORE_PASSWORD"] = config["store_password"]
+        environment["ANDROID_KEY_PASSWORD"] = config["key_password"]
+        run_tool([
+            sdk / "apksigner", "sign",
+            "--ks", keystore,
+            "--ks-key-alias", config["key_alias"],
+            "--ks-pass", "env:ANDROID_STORE_PASSWORD",
+            "--key-pass", "env:ANDROID_KEY_PASSWORD",
+            "--v1-signing-enabled", "false",
+            "--v2-signing-enabled", "true",
+            "--v3-signing-enabled", "false",
+            "--v4-signing-enabled", "false",
+            "--out", destination,
+            unsigned,
+        ], environment)
 
 def verify_package(apk, sdk, number):
     badging = run_tool([sdk / "aapt", "dump", "badging", apk])
@@ -117,7 +146,7 @@ def main():
     verify_package(args.unsigned_apk, sdk, number)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     apk = args.output_dir / APK_NAME
-    sign_apk(args.unsigned_apk, apk, sdk, config)
+    sign_updater_apk(args.unsigned_apk, apk, sdk, config)
     verification = run_tool([sdk / "apksigner", "verify", "--verbose", "--print-certs", apk])
     safe_lines = [
         line for line in verification.splitlines()
