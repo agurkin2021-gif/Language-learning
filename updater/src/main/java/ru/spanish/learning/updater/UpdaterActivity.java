@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -117,6 +118,7 @@ public final class UpdaterActivity extends Activity {
                 install(candidate);
                 committed = true;
             } catch (Exception error) {
+                Log.e("SpanishUpdater", "Update failed", error);
                 fail("Обновление не выполнено.");
             } finally {
                 if (!committed) RUNNING.set(false);
