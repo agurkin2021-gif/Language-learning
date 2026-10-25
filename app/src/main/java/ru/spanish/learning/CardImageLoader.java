@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 final class CardImageLoader {
-    private static final String BASE = "https://raw.githubusercontent.com/agurkin2021-gif/Language-learning/phone-builds/card-images/";
+    private static final String BASE = "https://raw.githubusercontent.com/agurkin2021-gif/Language-learning/card-assets/card-images/";
 
     private CardImageLoader() {}
 
