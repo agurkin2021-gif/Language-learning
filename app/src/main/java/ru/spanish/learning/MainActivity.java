@@ -40,7 +40,8 @@ public final class MainActivity extends Activity {
     private TextView sentence, sentenceRu, playbackStatus;
     private Button toggle, repeat;
     private List<String> storyTranslations = new java.util.ArrayList<>();
-    private boolean archive;\n    private boolean darkTheme;
+    private boolean archive;
+    private boolean darkTheme;
     private int kind;
     private int category;
     private int reviewIndex;
@@ -55,6 +56,8 @@ public final class MainActivity extends Activity {
     private int draftKind;
     private int draftCategory;
     @Override public void onCreate(Bundle saved) {
+        darkTheme = getSharedPreferences("ui", MODE_PRIVATE).getBoolean("darkTheme", false);
+        setTheme(darkTheme ? R.style.AppThemeDark : R.style.AppTheme);
         super.onCreate(saved);
         android.app.job.JobScheduler legacyUpdater = getSystemService(android.app.job.JobScheduler.class);
         if (legacyUpdater != null) {
