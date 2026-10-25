@@ -84,7 +84,7 @@ public final class MainActivity extends Activity {
         update.setText(R.string.update_button);
         update.setAllCaps(false);
         update.setTextSize(15);
-        update.setOnClickListener(v -> { AppUpdater.checkNow(this); showAutoUpdates(); });
+        update.setOnClickListener(v -> startUpdateNow());
         updates.addView(update, new LinearLayout.LayoutParams(0, dp(60), 1));
         root.addView(updates);
         setContentView(root);
@@ -103,8 +103,46 @@ public final class MainActivity extends Activity {
                     String url = BuildConfig.BUILD_RUN_ID.isEmpty() ? base : base + "runs/" + BuildConfig.BUILD_RUN_ID;
                     openBrowser(url);
                 })
-                .setPositiveButton("Обновление", (dialog, which) -> { AppUpdater.checkNow(this); showAutoUpdates(); }).show();
+                .setPositiveButton("Обновление", (dialog, which) -> startUpdateNow()).show();
     }
+    private void startUpdateNow() {
+        player.pause();
+        remember();
+        if (BuildConfig.DEBUG || !getPackageManager().canRequestPackageInstalls()) {
+            showAutoUpdates();
+            return;
+        }
+        AppUpdater.updateNow(this);
+        AlertDialog progress = new AlertDialog.Builder(this)
+                .setTitle("Обновление")
+                .setMessage("Проверяется новая версия приложения…")
+                .setNegativeButton("Закрыть", null)
+                .create();
+        progress.show();
+
+        android.os.Handler handler = new android.os.Handler(getMainLooper());
+        long deadline = android.os.SystemClock.elapsedRealtime() + 120_000;
+        Runnable poll = new Runnable() {
+            @Override public void run() {
+                if (isFinishing() || isDestroyed()) return;
+                if (AppUpdater.hasPendingConfirmation(MainActivity.this)) {
+                    if (progress.isShowing()) progress.dismiss();
+                    if (!AppUpdater.continuePending(MainActivity.this))
+                        Toast.makeText(MainActivity.this, "Не удалось открыть системное подтверждение обновления", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String state = AppUpdater.state(MainActivity.this);
+                String status = AppUpdater.status(MainActivity.this);
+                if (progress.isShowing()) progress.setMessage(status);
+                if ("current".equals(state) || "failed".equals(state) || "permission".equals(state)
+                        || "updated".equals(state) || "blocked".equals(state)) return;
+                if (android.os.SystemClock.elapsedRealtime() >= deadline) return;
+                handler.postDelayed(this, 300);
+            }
+        };
+        handler.post(poll);
+    }
+
     private void showAutoUpdates() {
         player.pause();
         remember();
