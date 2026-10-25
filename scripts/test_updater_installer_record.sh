@@ -26,8 +26,8 @@ installed_version() {
 }
 
 dump_ui() {
-  timeout 10s adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
-  timeout 10s adb exec-out cat /sdcard/window.xml 2>/dev/null || true
+  timeout 3s adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 || true
+  timeout 3s adb exec-out cat /sdcard/window.xml 2>/dev/null || true
 }
 
 clear_completed_first_installer_ui() {
@@ -117,7 +117,7 @@ start_updater() {
 wait_for_version() {
   local expected=$1
   local allow_confirmation=$2
-  for _ in $(seq 1 90); do
+  for _ in $(seq 1 60); do
     if [[ $(installed_version) -eq $expected ]]; then
       return 0
     fi
