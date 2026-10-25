@@ -93,8 +93,8 @@ adb install -r "$updater_apk" >/dev/null
 adb shell appops set "$updater" REQUEST_INSTALL_PACKAGES allow
 
 base_version=$(installed_version)
-first_version=$(aapt dump badging "$first_apk" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -n1)
-second_version=$(aapt dump badging "$second_apk" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -n1)
+first_version=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$first_apk" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -n1)
+second_version=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$second_apk" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -n1)
 if [[ -z $first_version || -z $second_version || $base_version -ge $first_version || $first_version -ge $second_version ]]; then
   echo "Fixture versions are invalid." >&2
   exit 1
