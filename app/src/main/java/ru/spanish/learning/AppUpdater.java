@@ -37,7 +37,7 @@ import java.util.function.BooleanSupplier;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Downloads only this app's signed releases. Installation never starts from a visible Activity. */
+/** Downloads only this app's signed releases. Installation never starts from a visible Activity.\n * Cancelled installs are retried so an older client cannot permanently block a published version. */
 public final class AppUpdater {
     private static final String PACKAGE = "ru.spanish.learning";
     private static final String REPOSITORY = "agurkin2021-gif/Language-learning";
