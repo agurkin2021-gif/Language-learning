@@ -202,11 +202,6 @@ final class DefaultAdjectivesExtra {
 {"estable","стабильный"},
 {"inestable","нестабильный"},
 {"seguro","надёжный, безопасный"},
-{"arriesgado","рискованный"},
-{"potente","мощный"},
-{"débil","слабый"},
-{"eficiente","эффективный"},
-{"ineficiente","неэффективный"},
-{"práctico","практичный"}
+{"arriesgado","рискованный"}
     };
 }
