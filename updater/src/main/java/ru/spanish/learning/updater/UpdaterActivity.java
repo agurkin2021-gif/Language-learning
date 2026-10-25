@@ -128,6 +128,10 @@ public final class UpdaterActivity extends Activity {
 
     private Candidate loadCandidate() throws Exception {
         String testPath = BuildConfig.DEBUG ? getIntent().getStringExtra("test_apk_path") : null;
+        if (BuildConfig.DEBUG && (testPath == null || testPath.isEmpty())) {
+            File defaultTest = new File(getFilesDir(), "candidate.apk");
+            if (defaultTest.isFile()) testPath = defaultTest.getAbsolutePath();
+        }
         if (testPath != null && !testPath.isEmpty()) {
             File file = new File(testPath).getCanonicalFile();
             if (!file.getPath().startsWith(getFilesDir().getCanonicalPath() + File.separator))
