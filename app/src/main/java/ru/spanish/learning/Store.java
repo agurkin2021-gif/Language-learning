@@ -16,7 +16,7 @@ public final class Store extends SQLiteOpenHelper {
 
     public Store(Context context) { this(context, "learning.db"); }
     Store(Context context, String databaseName) {
-        super(context, databaseName, null, 5);
+        super(context, databaseName, null, 6);
         this.context = context.getApplicationContext();
     }
 
@@ -25,6 +25,7 @@ public final class Store extends SQLiteOpenHelper {
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE cards(id INTEGER PRIMARY KEY, spanish TEXT NOT NULL, meaning TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN(0,1)), category INTEGER NOT NULL DEFAULT 0 CHECK(category IN(0,1,2,3)), mastered INTEGER NOT NULL DEFAULT 0 CHECK(mastered IN(0,1)), last_result INTEGER NOT NULL DEFAULT 0 CHECK(last_result IN(0,1,2)), review_count INTEGER NOT NULL DEFAULT 0, next_due INTEGER NOT NULL DEFAULT 0)");
         db.execSQL("CREATE TABLE stories(id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, translation TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)");
+        db.execSQL("CREATE TABLE remote_items(external_id TEXT PRIMARY KEY NOT NULL, item_type TEXT NOT NULL, local_id INTEGER NOT NULL)");
         ContentValues v = new ContentValues();
         v.put("title", "Una tarde en la plaza — пример");
         v.put("body", "Lucía vive en una casa pequeña. Una tarde, sale a caminar. En la plaza ve a su amigo Tomás.\n—¿Cómo estás? —pregunta Lucía.\n—Muy bien. ¿Querés tomar un mate?\nLucía dice que sí. Los dos se sientan bajo un árbol. Tomás comparte el mate con ella. Hablan de su día y miran los pájaros. Después, Lucía vuelve a casa contenta.");
@@ -50,6 +51,9 @@ public final class Store extends SQLiteOpenHelper {
             ContentValues story = new ContentValues();
             story.put("translation", "Лусия живёт в маленьком доме. Однажды вечером она выходит погулять. На площади она видит своего друга Томаса.\n—Как ты? —спрашивает Лусия.\n—Очень хорошо. Хочешь выпить мате?\nЛусия говорит, что да. Они вдвоём садятся под дерево. Томас делится с ней мате. Они разговаривают о своём дне и смотрят на птиц. Потом Лусия довольная возвращается домой.");
             db.update("stories", story, "title=?", new String[]{"Una tarde en la plaza — пример"});
+        }
+        if (oldVersion < 6) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS remote_items(external_id TEXT PRIMARY KEY NOT NULL, item_type TEXT NOT NULL, local_id INTEGER NOT NULL)");
         }
         DefaultCards.seed(db);
     }
@@ -167,6 +171,79 @@ public final class Store extends SQLiteOpenHelper {
         long id = getWritableDatabase().insertOrThrow("stories", null, v);
         changed();
         return id;
+    }
+
+    private boolean remoteImported(SQLiteDatabase db, String externalId) {
+        try (Cursor c = db.query("remote_items", new String[]{"external_id"}, "external_id=?",
+                new String[]{externalId}, null, null, null, "1")) {
+            return c.moveToFirst();
+        }
+    }
+
+    private void markRemoteImported(SQLiteDatabase db, String externalId, String itemType, long localId) {
+        ContentValues remote = new ContentValues();
+        remote.put("external_id", externalId);
+        remote.put("item_type", itemType);
+        remote.put("local_id", localId);
+        db.insertOrThrow("remote_items", null, remote);
+    }
+
+    public boolean importRemoteCard(String externalId, String spanish, String meaning, int kind, int category) {
+        if (externalId == null || externalId.trim().isEmpty()) throw new IllegalArgumentException("externalId");
+        if (spanish == null || spanish.trim().isEmpty() || meaning == null || meaning.trim().isEmpty())
+            throw new IllegalArgumentException("Пустая карточка");
+        if (kind < 0 || kind > 1) throw new IllegalArgumentException("kind");
+        if (kind == 0 && (category < 1 || category > 3)) throw new IllegalArgumentException("category");
+        if (kind == 1) category = 0;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            if (remoteImported(db, externalId)) {
+                db.setTransactionSuccessful();
+                return false;
+            }
+            ContentValues v = new ContentValues();
+            v.put("spanish", spanish.trim());
+            v.put("meaning", meaning.trim());
+            v.put("kind", kind);
+            v.put("category", category);
+            long localId = db.insertOrThrow("cards", null, v);
+            markRemoteImported(db, externalId, kind == 0 ? "word" : "phrase", localId);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        changed();
+        return true;
+    }
+
+    public boolean importRemoteStory(String externalId, String title, String body, String translation) {
+        if (externalId == null || externalId.trim().isEmpty()) throw new IllegalArgumentException("externalId");
+        if (title == null || title.trim().isEmpty() || body == null || Sentences.split(body).isEmpty())
+            throw new IllegalArgumentException("Пустой рассказ");
+        String cleanTranslation = translation == null ? "" : translation.trim();
+        if (!cleanTranslation.isEmpty() && Sentences.split(body).size() != Sentences.split(cleanTranslation).size())
+            throw new IllegalArgumentException("Количество предложений в переводе не совпадает");
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            if (remoteImported(db, externalId)) {
+                db.setTransactionSuccessful();
+                return false;
+            }
+            ContentValues v = new ContentValues();
+            v.put("title", title.trim());
+            v.put("body", body.trim());
+            v.put("translation", cleanTranslation);
+            v.put("source", "ChatGPT • синхронизировано");
+            long localId = db.insertOrThrow("stories", null, v);
+            markRemoteImported(db, externalId, "story", localId);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        changed();
+        return true;
     }
 
     public void position(long id, int position) {
