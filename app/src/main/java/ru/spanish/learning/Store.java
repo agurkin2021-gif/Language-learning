@@ -12,11 +12,11 @@ import java.util.List;
 public final class Store extends SQLiteOpenHelper {
     private final Context context;
     public record Card(long id, String spanish, String meaning, int kind, int category, boolean mastered, int lastResult, int reviewCount, long nextDue) {}
-    public record Story(long id, String title, String body, String source, int position) {}
+    public record Story(long id, String title, String body, String translation, String source, int position) {}
 
     public Store(Context context) { this(context, "learning.db"); }
     Store(Context context, String databaseName) {
-        super(context, databaseName, null, 4);
+        super(context, databaseName, null, 5);
         this.context = context.getApplicationContext();
     }
 
@@ -24,10 +24,11 @@ public final class Store extends SQLiteOpenHelper {
 
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE cards(id INTEGER PRIMARY KEY, spanish TEXT NOT NULL, meaning TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN(0,1)), category INTEGER NOT NULL DEFAULT 0 CHECK(category IN(0,1,2,3)), mastered INTEGER NOT NULL DEFAULT 0 CHECK(mastered IN(0,1)), last_result INTEGER NOT NULL DEFAULT 0 CHECK(last_result IN(0,1,2)), review_count INTEGER NOT NULL DEFAULT 0, next_due INTEGER NOT NULL DEFAULT 0)");
-        db.execSQL("CREATE TABLE stories(id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, source TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)");
+        db.execSQL("CREATE TABLE stories(id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, translation TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)");
         ContentValues v = new ContentValues();
         v.put("title", "Una tarde en la plaza — пример");
         v.put("body", "Lucía vive en una casa pequeña. Una tarde, sale a caminar. En la plaza ve a su amigo Tomás.\n—¿Cómo estás? —pregunta Lucía.\n—Muy bien. ¿Querés tomar un mate?\nLucía dice que sí. Los dos se sientan bajo un árbol. Tomás comparte el mate con ella. Hablan de su día y miran los pájaros. Después, Lucía vuelve a casa contenta.");
+        v.put("translation", "Лусия живёт в маленьком доме. Однажды вечером она выходит погулять. На площади она видит своего друга Томаса.\n—Как ты? —спрашивает Лусия.\n—Очень хорошо. Хочешь выпить мате?\nЛусия говорит, что да. Они вдвоём садятся под дерево. Томас делится с ней мате. Они разговаривают о своём дне и смотрят на птиц. Потом Лусия довольная возвращается домой.");
         v.put("source", "Встроенный пример • написан заранее, не ИИ-генерация по архиву");
         db.insertOrThrow("stories", null, v);
         DefaultCards.seed(db);
@@ -43,6 +44,12 @@ public final class Store extends SQLiteOpenHelper {
         }
         if (oldVersion < 4) {
             db.execSQL("ALTER TABLE cards ADD COLUMN next_due INTEGER NOT NULL DEFAULT 0");
+        }
+        if (oldVersion < 5) {
+            db.execSQL("ALTER TABLE stories ADD COLUMN translation TEXT NOT NULL DEFAULT ''");
+            ContentValues story = new ContentValues();
+            story.put("translation", "Лусия живёт в маленьком доме. Однажды вечером она выходит погулять. На площади она видит своего друга Томаса.\n—Как ты? —спрашивает Лусия.\n—Очень хорошо. Хочешь выпить мате?\nЛусия говорит, что да. Они вдвоём садятся под дерево. Томас делится с ней мате. Они разговаривают о своём дне и смотрят на птиц. Потом Лусия довольная возвращается домой.");
+            db.update("stories", story, "title=?", new String[]{"Una tarde en la plaza — пример"});
         }
         DefaultCards.seed(db);
     }
@@ -136,17 +143,26 @@ public final class Store extends SQLiteOpenHelper {
 
     public List<Story> stories() {
         List<Story> result = new ArrayList<>();
-        try (Cursor c = getReadableDatabase().query("stories", null, null, null, null, null, "id DESC")) {
-            while (c.moveToNext()) result.add(new Story(c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getInt(4)));
+        String[] columns = {"id", "title", "body", "translation", "source", "position"};
+        try (Cursor c = getReadableDatabase().query("stories", columns, null, null, null, null, "id DESC")) {
+            while (c.moveToNext()) result.add(new Story(c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getString(4), c.getInt(5)));
         }
         return result;
     }
 
     public long addStory(String title, String body, String source) {
+        return addStory(title, body, "", source);
+    }
+
+    public long addStory(String title, String body, String translation, String source) {
         if (title.trim().isEmpty() || Sentences.split(body).isEmpty()) throw new IllegalArgumentException("Пустой рассказ");
+        String cleanTranslation = translation == null ? "" : translation.trim();
+        if (!cleanTranslation.isEmpty() && Sentences.split(body).size() != Sentences.split(cleanTranslation).size())
+            throw new IllegalArgumentException("Количество предложений в переводе не совпадает");
         ContentValues v = new ContentValues();
         v.put("title", title);
         v.put("body", body);
+        v.put("translation", cleanTranslation);
         v.put("source", source);
         long id = getWritableDatabase().insertOrThrow("stories", null, v);
         changed();
