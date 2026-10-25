@@ -226,47 +226,61 @@ public final class MainActivity extends Activity {
         spanish.setPadding(0, dp(12), 0, dp(12));
         cardBox.addView(spanish, new LinearLayout.LayoutParams(-1, -2));
 
-        if (!cardRevealed) {
-            TextView prompt = new TextView(this);
-            prompt.setText("Нажмите на карточку, чтобы открыть перевод");
-            prompt.setTextSize(14);
-            prompt.setTextColor(0xFF66736F);
-            prompt.setGravity(Gravity.CENTER);
-            prompt.setPadding(0, dp(18), 0, dp(6));
-            cardBox.addView(prompt, new LinearLayout.LayoutParams(-1, -2));
-            cardBox.setOnClickListener(v -> {
-                cardRevealed = true;
+        LinearLayout revealArea = new LinearLayout(this);
+        revealArea.setOrientation(LinearLayout.VERTICAL);
+        revealArea.setGravity(Gravity.CENTER);
+        revealArea.setMinimumHeight(dp(150));
+        cardBox.addView(revealArea, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView prompt = new TextView(this);
+        prompt.setText("Нажмите на карточку, чтобы открыть перевод");
+        prompt.setTextSize(14);
+        prompt.setTextColor(0xFF66736F);
+        prompt.setGravity(Gravity.CENTER);
+        prompt.setPadding(0, dp(18), 0, dp(6));
+        revealArea.addView(prompt, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView meaning = new TextView(this);
+        meaning.setText(card.meaning());
+        meaning.setTextSize(24);
+        meaning.setTextColor(Color.rgb(29, 47, 44));
+        meaning.setGravity(Gravity.CENTER);
+        meaning.setPadding(0, dp(12), 0, dp(12));
+        revealArea.addView(meaning, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        String[] labels = {"Не знаю", "Сомневаюсь", "Знаю"};
+        for (int i = 0; i < labels.length; i++) {
+            final int result = i;
+            Button b = new Button(this);
+            b.setText(labels[i]);
+            b.setAllCaps(false);
+            b.setMinHeight(dp(56));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1);
+            if (i > 0) p.setMarginStart(dp(6));
+            actions.addView(b, p);
+            b.setOnClickListener(v -> {
+                store.review(card.id(), result);
+                if (result != 2) reviewIndex++;
+                cardRevealed = false;
                 render();
             });
-        } else {
-            TextView meaning = new TextView(this);
-            meaning.setText(card.meaning());
-            meaning.setTextSize(24);
-            meaning.setTextColor(Color.rgb(29, 47, 44));
-            meaning.setGravity(Gravity.CENTER);
-            meaning.setPadding(0, dp(18), 0, dp(18));
-            cardBox.addView(meaning, new LinearLayout.LayoutParams(-1, -2));
+        }
+        revealArea.addView(actions, new LinearLayout.LayoutParams(-1, -2));
 
-            LinearLayout actions = new LinearLayout(this);
-            actions.setOrientation(LinearLayout.HORIZONTAL);
-            String[] labels = {"Не знаю", "Сомневаюсь", "Знаю"};
-            for (int i = 0; i < labels.length; i++) {
-                final int result = i;
-                Button b = new Button(this);
-                b.setText(labels[i]);
-                b.setAllCaps(false);
-                b.setMinHeight(dp(56));
-                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1);
-                if (i > 0) p.setMarginStart(dp(6));
-                actions.addView(b, p);
-                b.setOnClickListener(v -> {
-                    store.review(card.id(), result);
-                    if (result != 2) reviewIndex++;
-                    cardRevealed = false;
-                    render();
-                });
-            }
-            cardBox.addView(actions, new LinearLayout.LayoutParams(-1, -2));
+        if (!cardRevealed) {
+            meaning.setVisibility(View.GONE);
+            actions.setVisibility(View.GONE);
+            cardBox.setOnClickListener(v -> {
+                cardRevealed = true;
+                prompt.setVisibility(View.GONE);
+                meaning.setVisibility(View.VISIBLE);
+                actions.setVisibility(View.VISIBLE);
+                cardBox.setOnClickListener(null);
+            });
+        } else {
+            prompt.setVisibility(View.GONE);
         }
 
         text((reviewIndex + 1) + " / " + cards.size(), 14);
