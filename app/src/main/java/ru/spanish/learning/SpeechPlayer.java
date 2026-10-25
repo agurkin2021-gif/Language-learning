@@ -62,6 +62,13 @@ public final class SpeechPlayer {
     public boolean ready() { return ready; }
     public void load(String body, int position) { pause(); sentences = Sentences.split(body); state.load(sentences.size(), position); listener.changed(); }
     public String current() { return sentences.isEmpty() ? "" : sentences.get(state.index); }
+    public void playAllFromStart() {
+        pause();
+        sentenceMode = false;
+        state.load(sentences.size(), 0);
+        listener.changed();
+        play();
+    }
     public void play() {
         if (closed || !ready || state.phase == PlaybackState.Phase.SPEAKING) return;
         handler.removeCallbacks(autoPlay);
