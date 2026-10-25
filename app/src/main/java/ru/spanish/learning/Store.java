@@ -97,6 +97,21 @@ public final class Store extends SQLiteOpenHelper {
         changed();
     }
 
+    public boolean addCardIfMissing(String spanish, String meaning, int kind, int category) {
+        String cleanSpanish = spanish == null ? "" : spanish.trim();
+        String cleanMeaning = meaning == null ? "" : meaning.trim();
+        if (cleanSpanish.isEmpty() || cleanMeaning.isEmpty()) throw new IllegalArgumentException("Пустая карточка");
+        if (kind == 0 && (category < 1 || category > 3)) throw new IllegalArgumentException("category");
+        if (kind == 1) category = 0;
+        try (Cursor c = getReadableDatabase().query("cards", new String[]{"id"},
+                "spanish=? AND kind=?", new String[]{cleanSpanish, Integer.toString(kind)},
+                null, null, null, "1")) {
+            if (c.moveToFirst()) return false;
+        }
+        addCard(cleanSpanish, cleanMeaning, kind, category);
+        return true;
+    }
+
     public void review(long id, int result) {
         review(id, result, 0);
     }
@@ -171,6 +186,17 @@ public final class Store extends SQLiteOpenHelper {
         long id = getWritableDatabase().insertOrThrow("stories", null, v);
         changed();
         return id;
+    }
+
+    public boolean addStoryIfMissing(String title, String body, String translation, String source) {
+        String cleanTitle = title == null ? "" : title.trim();
+        if (cleanTitle.isEmpty()) throw new IllegalArgumentException("Пустой заголовок");
+        try (Cursor c = getReadableDatabase().query("stories", new String[]{"id"},
+                "title=?", new String[]{cleanTitle}, null, null, null, "1")) {
+            if (c.moveToFirst()) return false;
+        }
+        addStory(cleanTitle, body, translation, source);
+        return true;
     }
 
     private boolean remoteImported(SQLiteDatabase db, String externalId) {
