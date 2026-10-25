@@ -18,6 +18,7 @@ public final class SpeechPlayer {
     public final PlaybackState state = new PlaybackState();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Listener listener;
+    private final Runnable autoPlay = this::play;
     private final AudioManager audio;
     private final AudioFocusRequest focus;
     private TextToSpeech tts;
@@ -63,7 +64,7 @@ public final class SpeechPlayer {
     public String current() { return sentences.isEmpty() ? "" : sentences.get(state.index); }
     public void play() {
         if (closed || !ready || state.phase == PlaybackState.Phase.SPEAKING) return;
-        handler.removeCallbacksAndMessages(null);
+        handler.removeCallbacks(autoPlay);
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { error = "Звук занят другим приложением"; listener.changed(); return; }
         String token = state.play();
         if (token == null) return;
@@ -76,7 +77,7 @@ public final class SpeechPlayer {
         if (closed || !state.complete(token)) return;
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
-        if (!sentenceMode && state.phase == PlaybackState.Phase.WAITING) handler.postDelayed(this::play, pauseMs);
+        if (!sentenceMode && state.phase == PlaybackState.Phase.WAITING) handler.postDelayed(autoPlay, pauseMs);
     }
     private void failed(String token) {
         if (closed || !state.complete(token)) return;
@@ -86,7 +87,7 @@ public final class SpeechPlayer {
         audio.abandonAudioFocusRequest(focus); listener.changed();
     }
     public void pause() {
-        handler.removeCallbacksAndMessages(null);
+        handler.removeCallbacks(autoPlay);
         state.pause();
         if (tts != null) tts.stop();
         audio.abandonAudioFocusRequest(focus);
