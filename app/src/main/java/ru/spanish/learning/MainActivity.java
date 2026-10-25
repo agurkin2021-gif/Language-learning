@@ -40,7 +40,7 @@ public final class MainActivity extends Activity {
     private TextView sentence, sentenceRu, playbackStatus;
     private Button toggle, repeat;
     private List<String> storyTranslations = new java.util.ArrayList<>();
-    private boolean archive;
+    private boolean archive;\n    private boolean darkTheme;
     private int kind;
     private int category;
     private int reviewIndex;
@@ -75,8 +75,13 @@ public final class MainActivity extends Activity {
         render();
     }
     private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
+    private int pageBg() { return darkTheme ? Color.rgb(18, 23, 22) : Color.rgb(245, 243, 237); }
+    private int primaryText() { return darkTheme ? Color.rgb(235, 240, 238) : Color.rgb(29, 47, 44); }
+    private int secondaryText() { return darkTheme ? Color.rgb(174, 187, 183) : Color.rgb(76, 90, 87); }
+    private int cardBg() { return darkTheme ? Color.rgb(31, 38, 36) : Color.WHITE; }
+    private int borderColor() { return darkTheme ? Color.rgb(74, 86, 82) : 0xFFD7DDD6; }
     private TextView text(String value, int size) {
-        TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(Color.rgb(29, 47, 44)); t.setPadding(0, dp(8), 0, dp(8)); content.addView(t); return t;
+        TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(primaryText()); t.setPadding(0, dp(8), 0, dp(8)); content.addView(t); return t;
     }
     private Button button(String value, Runnable action) {
         Button b = new Button(this); b.setText(value); b.setAllCaps(false); b.setMinHeight(dp(52)); content.addView(b, new LinearLayout.LayoutParams(-1, -2)); b.setOnClickListener(v -> action.run()); return b;
@@ -98,7 +103,7 @@ public final class MainActivity extends Activity {
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
     private void render() {
         rendering = true; sentence = null; sentenceRu = null; playbackStatus = null; toggle = null; repeat = null;
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(Color.rgb(245,243,237));
+        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
         for (String label : new String[]{"Карточки", "Сказки"}) {
@@ -118,49 +123,68 @@ public final class MainActivity extends Activity {
     }
     private void showSettings() {
         player.pause();
-        String[] items = {
-                "Прослушивание: " + (player.sentenceMode ? "по одному предложению" : "весь рассказ без остановок"),
-                "Скорость произношения: " + player.speed + "×",
-                "Пауза между предложениями: " + player.pauseMs / 1000f + " с",
-                "Обновление",
-                "Версия / сборка"
-        };
-        new AlertDialog.Builder(this)
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(4), dp(18), dp(4));
+
+        Switch darkSwitch = new Switch(this);
+        darkSwitch.setText("Тёмная тема");
+        darkSwitch.setTextSize(18);
+        darkSwitch.setMinHeight(dp(56));
+        darkSwitch.setChecked(darkTheme);
+        box.addView(darkSwitch, new LinearLayout.LayoutParams(-1, -2));
+
+        Button mode = rowButton("Прослушивание: " + (player.sentenceMode ? "по одному предложению" : "весь рассказ без остановок"), () ->
+                new AlertDialog.Builder(this).setTitle("Режим прослушивания")
+                        .setItems(new String[]{"Весь рассказ без остановок", "По одному предложению"}, (d,w) -> {
+                            player.pause();
+                            player.sentenceMode = w == 1;
+                            remember();
+                            updatePlayer();
+                        }).show());
+        box.addView(mode, new LinearLayout.LayoutParams(-1, -2));
+
+        Button speed = rowButton("Скорость произношения: " + player.speed + "×", () ->
+                new AlertDialog.Builder(this).setTitle("Скорость произношения")
+                        .setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
+                            player.pause();
+                            player.speed = new float[]{.6f,.75f,.85f,1f,1.2f}[w];
+                            remember();
+                            updatePlayer();
+                        }).show());
+        box.addView(speed, new LinearLayout.LayoutParams(-1, -2));
+
+        Button pause = rowButton("Пауза между предложениями: " + player.pauseMs / 1000f + " с", () ->
+                new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
+                        .setItems(new String[]{"0 с", "1 с", "1.5 с", "3 с", "5 с"}, (d,w) -> {
+                            player.pause();
+                            player.pauseMs = new int[]{0,1000,1500,3000,5000}[w];
+                            remember();
+                            updatePlayer();
+                        }).show());
+        box.addView(pause, new LinearLayout.LayoutParams(-1, -2));
+
+        box.addView(rowButton("Обновление", this::startUpdateNow), new LinearLayout.LayoutParams(-1, -2));
+        box.addView(rowButton("Версия / сборка", this::showBuild), new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Настройки")
-                .setItems(items, (dialog, which) -> {
-                    if (which == 0) {
-                        new AlertDialog.Builder(this).setTitle("Режим прослушивания")
-                                .setItems(new String[]{"Весь рассказ без остановок", "По одному предложению"}, (d,w) -> {
-                                    player.pause();
-                                    player.sentenceMode = w == 1;
-                                    remember();
-                                    updatePlayer();
-                                }).show();
-                    } else if (which == 1) {
-                        new AlertDialog.Builder(this).setTitle("Скорость произношения")
-                                .setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
-                                    player.pause();
-                                    player.speed = new float[]{.6f,.75f,.85f,1f,1.2f}[w];
-                                    remember();
-                                    updatePlayer();
-                                }).show();
-                    } else if (which == 2) {
-                        new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
-                                .setItems(new String[]{"0 с", "1 с", "1.5 с", "3 с", "5 с"}, (d,w) -> {
-                                    player.pause();
-                                    player.pauseMs = new int[]{0,1000,1500,3000,5000}[w];
-                                    remember();
-                                    updatePlayer();
-                                }).show();
-                    } else if (which == 3) {
-                        startUpdateNow();
-                    } else {
-                        showBuild();
-                    }
-                })
+                .setView(box)
                 .setNegativeButton("Закрыть", null)
-                .show();
+                .create();
+
+        darkSwitch.setOnCheckedChangeListener((v, checked) -> {
+            if (checked == darkTheme) return;
+            darkTheme = checked;
+            prefs.edit().putBoolean("darkTheme", checked).commit();
+            new BackupManager(this).dataChanged();
+            dialog.dismiss();
+            recreate();
+        });
+        dialog.show();
     }
+
     private void showBuild() {
         player.pause();
         String commit = BuildConfig.SOURCE_REVISION;
@@ -222,7 +246,7 @@ public final class MainActivity extends Activity {
         ScrollView historyScroll = new ScrollView(this);
         assistantHistory = new TextView(this);
         assistantHistory.setTextSize(16);
-        assistantHistory.setTextColor(Color.rgb(29, 47, 44));
+        assistantHistory.setTextColor(primaryText());
         assistantHistory.setPadding(0, dp(10), 0, dp(10));
         assistantHistory.setText(assistant.historyText().isEmpty()
                 ? "Здесь можно говорить или писать. Контекст приложения уже передаётся автоматически."
@@ -454,7 +478,7 @@ public final class MainActivity extends Activity {
                     render();
                 });
                 View line = new View(this);
-                line.setBackgroundColor(0xFFD7DDD6);
+                line.setBackgroundColor(borderColor());
                 content.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
             }
             return;
@@ -469,9 +493,9 @@ public final class MainActivity extends Activity {
         cardBox.setPadding(dp(12), dp(12), dp(12), dp(12));
         cardBox.setMinimumHeight(dp(290));
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.WHITE);
+        bg.setColor(cardBg());
         bg.setCornerRadius(dp(22));
-        bg.setStroke(dp(1), 0xFFD7DDD6);
+        bg.setStroke(dp(1), borderColor());
         cardBox.setBackground(bg);
         content.addView(cardBox, new LinearLayout.LayoutParams(-1, -2));
 
@@ -493,7 +517,7 @@ public final class MainActivity extends Activity {
         TextView word = new TextView(this);
         word.setText(cardRevealed ? card.meaning() : card.spanish());
         word.setTextSize(30);
-        word.setTextColor(Color.rgb(29, 47, 44));
+        word.setTextColor(primaryText());
         word.setGravity(Gravity.CENTER);
         word.setPadding(0, dp(10), 0, dp(10));
         cardBox.addView(word, new LinearLayout.LayoutParams(-1, -2));
@@ -610,7 +634,7 @@ public final class MainActivity extends Activity {
         storyTranslations = Sentences.split(selected.translation());
         sentence = text(player.current(), 27); sentence.setTextIsSelectable(true);
         sentenceRu = text(currentTranslation(), 20); sentenceRu.setTextIsSelectable(true);
-        sentenceRu.setTextColor(Color.rgb(76, 90, 87));
+        sentenceRu.setTextColor(secondaryText());
         playbackStatus = text("", 16);
         toggle = button("Слушать", () -> { if(player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING)) player.pause(); else player.play(); });
         toggle.setTextSize(24); toggle.setMinHeight(dp(76));
