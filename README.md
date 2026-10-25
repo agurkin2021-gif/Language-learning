@@ -1,3 +1,5 @@
+> **Продолжение разработки:** перед изменениями сначала прочитать [`CONTEXT.md`](CONTEXT.md). В нём зафиксированы текущая архитектура, история проблем с обновлением, последний проверенный CI и ограничения физического HyperOS-теста.
+
 # Изучение испанского — Android v0.1
 
 [![Android APK](https://github.com/agurkin2021-gif/Language-learning/actions/workflows/android.yml/badge.svg?branch=codex%2Fandroid-v1)](https://github.com/agurkin2021-gif/Language-learning/actions/workflows/android.yml)
