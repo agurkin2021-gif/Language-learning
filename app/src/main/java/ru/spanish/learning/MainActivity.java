@@ -992,7 +992,7 @@ public final class MainActivity extends Activity {
         cardVoiceStatus = text(player.voiceDescription, 12);
         cardVoiceStatus.setTextColor(secondaryText());
 
-        TextView hint = text("Нажмите для перевода · листайте в обе стороны · × — освоено", 15);
+        TextView hint = text("Нажмите для перевода · листайте в обе стороны · × — удалить · ✓ — знаю", 15);
         hint.setTextColor(secondaryText());
         hint.setPadding(0, dp(2), 0, dp(12));
 
@@ -1066,18 +1066,49 @@ public final class MainActivity extends Activity {
         counter.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         counter.setPadding(0, dp(2), 0, dp(10));
 
-        TextView confirmKnown = new TextView(this);
-        confirmKnown.setText("УДАЛИТЬ");
-        confirmKnown.setTextSize(15);
-        confirmKnown.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        confirmKnown.setTextColor(ui.danger);
-        confirmKnown.setGravity(Gravity.CENTER);
-        confirmKnown.setPadding(dp(18), 0, dp(18), 0);
-        confirmKnown.setContentDescription("Подтвердить: убрать из изучения, сохранить в словаре");
-        confirmKnown.setBackground(ui.ripple(ui.dangerSoft, 14, ui.danger));
-        confirmKnown.setElevation(dp(12));
-        confirmKnown.setVisibility(View.GONE);
-        confirmKnown.setOnClickListener(v -> {
+        // Two distinct actions: red left × physically deletes the card; green right ✓ archives it.
+        TextView deleteForever = new TextView(this);
+        deleteForever.setText("×");
+        deleteForever.setTextSize(29);
+        deleteForever.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        deleteForever.setTextColor(Color.WHITE);
+        deleteForever.setGravity(Gravity.CENTER);
+        deleteForever.setTag("card-delete-forever");
+        deleteForever.setContentDescription("Удалить карточку навсегда");
+        deleteForever.setBackground(ui.ripple(ui.danger, 24, Color.TRANSPARENT));
+        deleteForever.setElevation(dp(12));
+        deleteForever.setOnClickListener(v -> {
+            cancelCardSpeech();
+            player.pause();
+            Store.Card selected = cards.get(reviewIndex);
+            new AlertDialog.Builder(this)
+                    .setTitle("Удалить навсегда?")
+                    .setMessage("Карточка «" + selected.spanish()
+                            + "» будет удалена из словаря без возможности восстановления. "
+                            + "В освоенное она не попадёт.")
+                    .setNegativeButton("Отмена", null)
+                    .setPositiveButton("Удалить", (dialog, which) -> {
+                        if (store.deleteCard(selected.id())) {
+                            if (reviewIndex >= cards.size() - 1) reviewIndex = 0;
+                            cardRevealed = false;
+                            render();
+                        }
+                    })
+                    .show();
+        });
+
+        TextView known = new TextView(this);
+        known.setText("✓");
+        known.setTextSize(28);
+        known.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        known.setTextColor(Color.WHITE);
+        known.setGravity(Gravity.CENTER);
+        known.setTag("card-mark-known");
+        known.setContentDescription("Знаю — перенести карточку в освоенное");
+        known.setBackground(ui.ripple(darkTheme ? 0xFF257D50 : 0xFF19824B,
+                24, Color.TRANSPARENT));
+        known.setElevation(dp(12));
+        known.setOnClickListener(v -> {
             cancelCardSpeech();
             player.pause();
             store.review(cards.get(reviewIndex).id(), 2, 0);
@@ -1086,25 +1117,10 @@ public final class MainActivity extends Activity {
             render();
         });
 
-        TextView known = new TextView(this);
-        known.setText("×");
-        known.setTextSize(27);
-        known.setTextColor(ui.danger);
-        known.setGravity(Gravity.CENTER);
-        known.setContentDescription("Открыть подтверждение удаления из изучения");
-        known.setBackground(ui.ripple(ui.dangerSoft, 25, Color.TRANSPARENT));
-        known.setElevation(dp(12));
-        known.setOnClickListener(v -> confirmKnown.setVisibility(
-                confirmKnown.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
-
         CardSwipePager strip = new CardSwipePager(this,
                 previous.view(), front.view(), next.view(), size > 1,
                 new CardSwipePager.Listener() {
                     @Override public void onTap() {
-                        if (confirmKnown.getVisibility() == View.VISIBLE) {
-                            confirmKnown.setVisibility(View.GONE);
-                            return;
-                        }
                         cancelCardSpeech();
                         player.pause();
                         Store.Card visible = cards.get(reviewIndex);
@@ -1118,7 +1134,6 @@ public final class MainActivity extends Activity {
                         cancelCardSpeech();
                         swipeReleasedAtMs = -1L;
                         player.pause();
-                        confirmKnown.setVisibility(View.GONE);
                     }
                     @Override public void onPageSettling(int delta) {
                         // Count the 205 ms swipe animation as part of the wait.
@@ -1170,11 +1185,11 @@ public final class MainActivity extends Activity {
         strip.setTag("card-swipe-viewport");
         cardFrame.addView(strip, new FrameLayout.LayoutParams(-1, dp(315)));
 
-        FrameLayout.LayoutParams confirmParams =
-                new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END);
-        confirmParams.topMargin = dp(62);
-        confirmParams.rightMargin = dp(10);
-        cardFrame.addView(confirmKnown, confirmParams);
+        FrameLayout.LayoutParams deleteParams =
+                new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.START);
+        deleteParams.topMargin = dp(9);
+        deleteParams.leftMargin = dp(10);
+        cardFrame.addView(deleteForever, deleteParams);
         FrameLayout.LayoutParams knownParams =
                 new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.END);
         knownParams.topMargin = dp(9);
