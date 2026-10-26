@@ -1,6 +1,8 @@
 package ru.spanish.learning;
 
 import android.os.SystemClock;
+import android.content.ContentValues;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.test.ActivityInstrumentationTestCase2;
 import android.view.MotionEvent;
 import android.view.View;
@@ -8,7 +10,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import java.util.List;
 
-/** Exercises the swipe surface, tap-to-translate and the non-destructive known action. */
+/** Exercises swipe behavior, permanent deletion and marking a card learned. */
 public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainActivity> {
     public CardSwipeTest() { super(MainActivity.class); }
 
@@ -122,6 +124,95 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
         assertEquals(initialCounter[0], counter()[0]);
     }
 
+    private void clickAlertAction(String label) {
+        for (int attempt = 0; attempt < 35; attempt++) {
+            AccessibilityNodeInfo root = getInstrumentation().getUiAutomation().getRootInActiveWindow();
+            if (root != null) {
+                for (AccessibilityNodeInfo node : root.findAccessibilityNodeInfosByText(label)) {
+                    if (!label.contentEquals(node.getText())) continue;
+                    AccessibilityNodeInfo clickable = node;
+                    while (!clickable.isClickable() && clickable.getParent() != null)
+                        clickable = clickable.getParent();
+                    if (clickable.isClickable()) {
+                        assertTrue("Cannot press dialog action " + label,
+                                clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK));
+                        getInstrumentation().waitForIdleSync();
+                        return;
+                    }
+                }
+            }
+            SystemClock.sleep(120);
+        }
+        fail("Dialog action not found: " + label);
+    }
+
+    public void testLeftCrossConfirmsPermanentDeletionNotMastery() {
+        android.content.Context context = getInstrumentation().getTargetContext();
+        context.getSharedPreferences("ui", 0).edit()
+                .putString("studyLanguage", "es")
+                .putString("screen", "cards")
+                .putInt("kind", 0)
+                .putInt("category", 1)
+                .putInt("reviewIndex", 0).commit();
+        getActivity();
+        getInstrumentation().waitForIdleSync();
+
+        Store.Card target;
+        int total = counter()[1];
+        try (Store store = new Store(context)) {
+            target = store.cards(false, 0, 1).get(counter()[0] - 1);
+            assertEquals(950, store.vocabulary().size());
+        }
+
+        getInstrumentation().runOnMainSync(() -> {
+            View delete = tagged(root(), "card-delete-forever");
+            assertNotNull(delete);
+            delete.performClick();
+        });
+        getInstrumentation().waitForIdleSync();
+        clickAlertAction("Отмена");
+        assertEquals("Cancellation keeps the card visible", total, counter()[1]);
+
+        try (Store store = new Store(context)) {
+            assertTrue("Cancellation keeps the card in the study list",
+                    store.cards(false, 0, 1).stream().anyMatch(c -> c.id() == target.id()));
+        }
+
+        boolean removed = false;
+        try {
+            getInstrumentation().runOnMainSync(() -> {
+                View delete = tagged(root(), "card-delete-forever");
+                assertNotNull(delete);
+                delete.performClick();
+            });
+            getInstrumentation().waitForIdleSync();
+            clickAlertAction("Удалить");
+            removed = true;
+            assertEquals("Confirmed deletion removes one card", total - 1, counter()[1]);
+            try (Store store = new Store(context)) {
+                assertEquals(949, store.vocabulary().size());
+                assertFalse("Deleted card must not remain in vocabulary or mastered archive",
+                        store.vocabulary().stream().anyMatch(c -> c.id() == target.id()));
+                assertFalse(store.mastered().stream().anyMatch(c -> c.id() == target.id()));
+            }
+        } finally {
+            // Restore the fixture with its original ID and state, even if an assertion fails.
+            if (removed) try (Store store = new Store(context)) {
+                ContentValues values = new ContentValues();
+                values.put("id", target.id());
+                values.put("spanish", target.spanish());
+                values.put("meaning", target.meaning());
+                values.put("kind", target.kind());
+                values.put("category", target.category());
+                values.put("mastered", target.mastered() ? 1 : 0);
+                values.put("last_result", target.lastResult());
+                values.put("review_count", target.reviewCount());
+                values.put("next_due", target.nextDue());
+                store.getWritableDatabase().insertOrThrow("cards", null, values);
+            }
+        }
+    }
+
     public void testShortDragReturnsToSameCard() {
         getActivity();
         getInstrumentation().waitForIdleSync();
@@ -136,7 +227,7 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
         });
     }
 
-    public void testBothSwipeDirectionsTapAndKnownCross() {
+    public void testBothSwipeDirectionsTapAndKnownCheck() {
         getActivity();
         getInstrumentation().runOnMainSync(() -> {
             TextView tab = text(root(), "Карточки");
@@ -173,36 +264,20 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
             assertNotNull("Returning begins in Spanish", text(root(), initial.spanish()));
 
             getInstrumentation().runOnMainSync(() -> {
-                TextView cross = text(root(), "×");
-                assertNotNull("Top-right red known cross", cross);
-                assertEquals("Открыть подтверждение удаления из изучения",
-                        cross.getContentDescription().toString());
-                cross.performClick();
-                TextView confirm = text(root(), "УДАЛИТЬ");
-                assertNotNull("Second-tap confirmation pill", confirm);
-                assertEquals(View.VISIBLE, confirm.getVisibility());
+                TextView delete = text(root(), "×");
+                TextView learned = text(root(), "✓");
+                assertNotNull("Left permanent-delete cross", delete);
+                assertNotNull("Right green learned check", learned);
+                assertEquals("Удалить карточку навсегда",
+                        delete.getContentDescription().toString());
+                assertEquals("Знаю — перенести карточку в освоенное",
+                        learned.getContentDescription().toString());
+                assertSame(delete, tagged(root(), "card-delete-forever"));
+                assertSame(learned, tagged(root(), "card-mark-known"));
+                learned.performClick();
             });
             getInstrumentation().waitForIdleSync();
-            assertEquals("First tap must not remove the current card", total, counter()[1]);
-            for (Store.Card item : store.vocabulary()) {
-                if (item.id() == learnedId[0]) assertFalse("No mastery before confirmation", item.mastered());
-            }
-
-            getInstrumentation().runOnMainSync(() -> {
-                // Tapping the card without confirming closes the pill and keeps the card.
-                View surface = tagged(root(), "card-swipe-surface");
-                assertNotNull(surface);
-                surface.performClick();
-                assertEquals(View.GONE, text(root(), "УДАЛИТЬ").getVisibility());
-
-                TextView cross = text(root(), "×");
-                cross.performClick();
-                TextView confirm = text(root(), "УДАЛИТЬ");
-                assertEquals(View.VISIBLE, confirm.getVisibility());
-                confirm.performClick();
-            });
-            getInstrumentation().waitForIdleSync();
-            assertEquals("Only confirmation marks the card as learned", total - 1, counter()[1]);
+            assertEquals("Green check marks card as learned in one tap", total - 1, counter()[1]);
             assertEquals("Card is retained in the dictionary", originalVocabularySize, store.vocabulary().size());
             boolean mastered = false;
             for (Store.Card card : store.vocabulary()) {
