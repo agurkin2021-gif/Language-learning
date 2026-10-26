@@ -104,9 +104,17 @@ PY
       echo "Settings update action was visible but did not launch Updater." >&2
       return 1
     fi
+    # In the redesigned study screen, secondary actions are deliberately below
+    # the flashcard. UIAutomator only sees on-screen views; scroll the active
+    # ScrollView to expose the actual update button before declaring failure.
+    local size width height
+    size=$(adb shell wm size | sed -n 's/.*: \\([0-9][0-9]*\\)x\\([0-9][0-9]*\\).*/\\1 \\2/p' | tail -n 1)
+    read -r width height <<< "${size:-1080 1920}"
+    adb shell input swipe "$((width / 2))" "$((height * 75 / 100))" \
+                         "$((width / 2))" "$((height * 28 / 100))" 250 || true
     sleep 1
   done
-  echo "Settings update action did not become available." >&2
+  echo "Update action did not become available after scrolling." >&2
   return 1
 }
 
