@@ -182,9 +182,14 @@ public class StoreTest extends AndroidTestCase {
             assertEquals(Store.StoryWordSave.RESTORED,
                     StoryVocabulary.existing(store, "QUERÉS"));
             assertEquals(original + 1, store.vocabulary().size());
-            assertEquals("ты хочешь",
-                    store.vocabulary().stream().filter(c -> c.id() == saved.id())
-                            .findFirst().orElseThrow().meaning());
+            boolean restoredWithMeaning = false;
+            for (Store.Card restoredCard : store.vocabulary()) {
+                if (restoredCard.id() == saved.id()) {
+                    assertEquals("ты хочешь", restoredCard.meaning());
+                    restoredWithMeaning = true;
+                }
+            }
+            assertTrue(restoredWithMeaning);
 
             assertEquals(Store.StoryWordSave.ADDED,
                     StoryVocabulary.saveVerified(getContext(), store, "caminábamos",
