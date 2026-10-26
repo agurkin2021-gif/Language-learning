@@ -263,7 +263,7 @@ public final class ChatGptAssistant {
                                         + " из " + batch.limit + "…" : "Выполняю действие…");
                         String result = isCard
                                 ? auditCardBeforeSave(store, call, batch,
-                                        session.accessToken, model, callback)
+                                        session.accessToken, model, clean, callback)
                                 : runLimitedTool(store, call, batch);
                         try {
                             if (new JSONObject(result).optBoolean("ok", false)) toolSucceeded = true;
@@ -912,7 +912,7 @@ public final class ChatGptAssistant {
      */
     private String auditCardBeforeSave(Store store, ToolCall call,
                                        CardAdditionPolicy.Batch batch,
-                                       String accessToken, String model,
+                                       String accessToken, String model, String requestContext,
                                        SendUpdates callback) throws Exception {
         if (batch.reached()) return runLimitedTool(store, call, batch);
         JSONObject args = new JSONObject(call.arguments);
@@ -932,7 +932,7 @@ public final class ChatGptAssistant {
             if (store.containsCard(foreign, phrase ? 1 : 0))
                 return runLimitedTool(store, call, batch);
             String verifiedRussian = CardTranslationAudit.review(foreign, russian,
-                    category, phrase, store.isEnglish(),
+                    category, phrase, store.isEnglish(), requestContext,
                     (pass, instructions, jsonPayload) -> {
                         JSONObject question = new JSONObject()
                                 .put("role", "user").put("content", jsonPayload);
