@@ -74,7 +74,7 @@ gear = point_for("⚙")
 if gear:
     print("gear", *gear)
     raise SystemExit(0)
-stories = point_for("Сказки")
+stories = point_for("Рассказы") or point_for("Сказки")
 if stories:
     print("stories", *stories)
     raise SystemExit(0)
@@ -96,10 +96,10 @@ PY
 
       if [[ $action == stories ]]; then
         if [[ $opened_stories == yes ]]; then
-          echo "Stories tab was opened but settings did not become available." >&2
+          echo "Рассказы tab was opened but settings did not become available." >&2
           return 1
         fi
-        echo "STAGE navigate to Stories tab at $x,$y"
+        echo "STAGE navigate to Рассказы tab at $x,$y"
         adb shell input tap "$x" "$y"
         opened_stories=yes
         sleep 1
@@ -121,7 +121,7 @@ PY
       echo "Settings update action was visible but did not launch Updater." >&2
       return 1
     fi
-    # Look for the Update control in Settings (Stories tab -> gear), not on Cards.
+    # Look for the Update control in Settings (Рассказы tab -> gear), not on Cards.
     # If a smaller screen hides the button, scroll before retrying.
     local size width height
     size=$(adb shell wm size | sed -n 's/.*: \([0-9][0-9]*\)x\([0-9][0-9]*\).*/\1 \2/p' | tail -n 1)
