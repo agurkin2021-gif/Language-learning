@@ -13,6 +13,7 @@ public final class Store extends SQLiteOpenHelper {
     private final Context context;
     public record Card(long id, String spanish, String meaning, int kind, int category, boolean mastered, int lastResult, int reviewCount, long nextDue) {}
     public record Story(long id, String title, String body, String translation, String source, int position) {}
+    public enum StoryWordSave { ADDED, ALREADY_STUDYING, RESTORED }
 
     public Store(Context context) { this(context, "learning.db"); }
     Store(Context context, String databaseName) {
@@ -107,6 +108,29 @@ public final class Store extends SQLiteOpenHelper {
         v.put("category", category);
         getWritableDatabase().insertOrThrow("cards", null, v);
         changed();
+    }
+
+    /** Keep the exact inflected form, including irregular verbs, as a separate learning card. */
+    public StoryWordSave addStoryWord(String spanish, String meaning, int category) {
+        if (spanish == null || spanish.trim().isEmpty() || meaning == null || meaning.trim().isEmpty()
+                || category < 0 || category > 3) throw new IllegalArgumentException("Неверная карточка");
+        String printed = spanish.trim();
+        for (Card card : vocabulary()) {
+            if (card.kind() != 0 || !card.spanish().equalsIgnoreCase(printed)) continue;
+            if (card.mastered()) {
+                setMastered(card.id(), false);
+                return StoryWordSave.RESTORED;
+            }
+            return StoryWordSave.ALREADY_STUDYING;
+        }
+        ContentValues values = new ContentValues();
+        values.put("spanish", printed);
+        values.put("meaning", meaning.trim());
+        values.put("kind", 0);
+        values.put("category", category); // 0 means not classified; shown under "Все слова".
+        getWritableDatabase().insertOrThrow("cards", null, values);
+        changed();
+        return StoryWordSave.ADDED;
     }
 
     public boolean addCardIfMissing(String spanish, String meaning, int kind, int category) {

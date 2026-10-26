@@ -91,6 +91,51 @@ public class StoreTest extends AndroidTestCase {
         getContext().deleteDatabase(database);
     }
 
+    public void testLongPressStoryWordSavesExactFormAndContextWithoutChangingStory() throws Exception {
+        String db = "test-story-word.db";
+        getContext().deleteDatabase(db);
+        try (Store store = new Store(getContext(), db)) {
+            int original = store.vocabulary().size();
+            String spanish = "¿Querés tomar un mate?";
+            String russian = "Хочешь выпить мате?";
+            String originalStoryBody = store.stories().get(0).body();
+            assertEquals(Store.StoryWordSave.ADDED,
+                    StoryVocabulary.add(getContext(), store, "Querés", spanish, russian));
+            assertEquals(original + 1, store.vocabulary().size());
+            Store.Card saved = null;
+            for (Store.Card c : store.vocabulary()) {
+                if ("Querés".equals(c.spanish())) { saved = c; break; }
+            }
+            assertNotNull(saved);
+            assertEquals(1, saved.category());
+            assertTrue(saved.meaning().contains("querer"));
+            assertTrue(saved.meaning().contains(spanish));
+            assertTrue(saved.meaning().contains(russian));
+            assertTrue(new java.io.File(getContext().getFilesDir(),
+                    "card-images/" + CardImageLoader.key("Querés") + ".svg").isFile());
+            assertEquals(Store.StoryWordSave.ALREADY_STUDYING,
+                    StoryVocabulary.add(getContext(), store, "querés", spanish, russian));
+            assertEquals(original + 1, store.vocabulary().size());
+
+            store.setMastered(saved.id(), true);
+            assertEquals(Store.StoryWordSave.RESTORED,
+                    StoryVocabulary.add(getContext(), store, "QUERÉS", spanish, russian));
+            assertEquals(original + 1, store.vocabulary().size());
+            assertFalse(store.vocabulary().stream().filter(c -> c.id() == saved.id())
+                    .findFirst().orElseThrow().mastered());
+
+            assertEquals(Store.StoryWordSave.ADDED,
+                    StoryVocabulary.add(getContext(), store, "caminábamos",
+                            "Antes caminábamos juntos.", "Раньше мы гуляли вместе."));
+            Store.Card unknown = store.vocabulary().get(store.vocabulary().size() - 1);
+            assertEquals("caminábamos", unknown.spanish());
+            assertEquals(0, unknown.category());
+            assertTrue(unknown.meaning().contains("Раньше мы гуляли вместе."));
+            assertEquals(originalStoryBody, store.stories().get(0).body());
+        }
+        getContext().deleteDatabase(db);
+    }
+
     public void testRemoteContentImportsOnceWithoutApkUpdate() {
         String database = "test-remote-content.db";
         getContext().deleteDatabase(database);

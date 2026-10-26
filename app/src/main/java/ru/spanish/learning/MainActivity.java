@@ -20,6 +20,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputFilter;
+import android.text.Layout;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
+import android.view.GestureDetector;
+import android.view.HapticFeedbackConstants;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.*;
 import java.util.List;
@@ -646,8 +653,10 @@ public final class MainActivity extends Activity {
         Store.Story selected = null; for(Store.Story s : store.stories()) if(s.id() == storyId) selected = s;
         if(selected == null) { text("Рассказ не найден", 22); return; }
         text(selected.title(), 25); text(selected.source(), 14);
+        text("Удерживайте незнакомое испанское слово, чтобы добавить его в карточки.", 14);
         storyTranslations = Sentences.split(selected.translation());
-        sentence = text(player.current(), 27); sentence.setTextIsSelectable(true);
+        sentence = text(player.current(), 27);
+        attachStoryWordGesture(sentence, this::currentTranslation);
         sentenceRu = text(currentTranslation(), 20); sentenceRu.setTextIsSelectable(true);
         sentenceRu.setTextColor(secondaryText());
         playbackStatus = text("", 16);
@@ -659,9 +668,95 @@ public final class MainActivity extends Activity {
             updatePlayer();
         });
         repeat = button("Повторить предложение", player::repeat);
-        button("Читать весь рассказ", () -> { player.pause(); new AlertDialog.Builder(this).setTitle("Текст рассказа").setMessage(fullStoryText()).setPositiveButton("Закрыть",null).show(); });
+        button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
         button("← Библиотека", () -> navigate("stories"));
     }
+    private interface TranslationText { String get(); }
+
+    private void attachStoryWordGesture(TextView label, TranslationText translation) {
+        label.setTextIsSelectable(false);
+        GestureDetector gesture = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override public boolean onDown(MotionEvent event) { return true; }
+            @Override public void onLongPress(MotionEvent event) {
+                captureStoryWord(label, translation.get(), event.getX(), event.getY());
+            }
+        });
+        label.setOnTouchListener((view, event) -> {
+            gesture.onTouchEvent(event);
+            return true; // no Android selection/copy handles; parent ScrollView still handles scroll
+        });
+    }
+
+    private void captureStoryWord(TextView label, String russian, float x, float y) {
+        Layout layout = label.getLayout();
+        if (layout == null || label.getText() == null) return;
+        String source = label.getText().toString();
+        float insideY = y - label.getTotalPaddingTop() + label.getScrollY();
+        if (insideY < 0 || insideY >= layout.getHeight()) return;
+        int line = layout.getLineForVertical((int) insideY);
+        float insideX = x - label.getTotalPaddingLeft() + label.getScrollX();
+        if (insideX < layout.getLineLeft(line) || insideX > layout.getLineRight(line)) return;
+        int position = layout.getOffsetForHorizontal(line, insideX);
+        StoryWordPicker.Match match = StoryWordPicker.at(source, position);
+        if (match == null) return;
+        try {
+            Store.StoryWordSave result = StoryVocabulary.add(this, store, match.word(), source, russian);
+            label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            SpannableString highlighted = new SpannableString(source);
+            highlighted.setSpan(new BackgroundColorSpan(darkTheme ? 0xFF526A66 : 0xFFFFE39A),
+                    match.start(), match.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            label.setText(highlighted);
+            cardSpeechHandler.postDelayed(() -> {
+                if (label.getText() == highlighted) label.setText(source);
+            }, 600);
+            String message = switch (result) {
+                case ADDED -> "В изучение: " + match.word();
+                case RESTORED -> "Снова в изучении: " + match.word();
+                case ALREADY_STUDYING -> "Уже в карточках: " + match.word();
+            };
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Не удалось добавить слово в карточки", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showFullStory() {
+        Store.Story selected = null;
+        for (Store.Story story : store.stories()) if (story.id() == storyId) selected = story;
+        if (selected == null) return;
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout lines = new LinearLayout(this);
+        lines.setPadding(dp(18), dp(8), dp(18), dp(16));
+        lines.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(lines);
+        TextView hint = new TextView(this);
+        hint.setText("Удерживайте испанское слово для добавления в карточки.");
+        hint.setTextSize(14);
+        hint.setTextColor(secondaryText());
+        lines.addView(hint);
+        List<String> spanish = Sentences.split(selected.body());
+        List<String> russian = Sentences.split(selected.translation());
+        for (int index = 0; index < spanish.size(); index++) {
+            String es = spanish.get(index);
+            String ru = index < russian.size() ? russian.get(index) : "";
+            TextView original = new TextView(this);
+            original.setText(es);
+            original.setTextSize(22);
+            original.setTextColor(primaryText());
+            original.setPadding(0, dp(16), 0, dp(2));
+            attachStoryWordGesture(original, () -> ru);
+            lines.addView(original);
+            TextView translated = new TextView(this);
+            translated.setText(ru);
+            translated.setTextSize(17);
+            translated.setTextColor(secondaryText());
+            translated.setPadding(0, dp(2), 0, dp(9));
+            lines.addView(translated);
+        }
+        new AlertDialog.Builder(this).setTitle("Текст рассказа")
+                .setView(scroll).setPositiveButton("Закрыть", null).show();
+    }
+
     private String findBody() { for(Store.Story s : store.stories()) if(s.id() == storyId) return s.body(); return ""; }
     private String currentTranslation() {
         if (storyTranslations.isEmpty()) return "";
