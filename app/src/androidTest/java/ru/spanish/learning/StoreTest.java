@@ -55,6 +55,42 @@ public class StoreTest extends AndroidTestCase {
         getContext().deleteDatabase("test-learning.db");
     }
 
+
+    public void testAssistantReceivesAllMasteredAndStudyCards() {
+        String database = "test-assistant-vocabulary.db";
+        getContext().deleteDatabase(database);
+        try (Store store = new Store(getContext(), database)) {
+            java.util.List<Store.Card> original = store.vocabulary();
+            assertEquals(950, original.size());
+
+            // The 301st–320th mastered cards used to be missing from assistant context.
+            store.getWritableDatabase().execSQL(
+                    "UPDATE cards SET mastered=1 WHERE id IN (SELECT id FROM cards ORDER BY id ASC LIMIT 320)");
+            store.addCard("palabra nueva para aprender", "новое слово для изучения", 0, 1);
+            store.addCard("frase nueva para estudiar", "новое выражение для изучения", 1, 0);
+            assertEquals(952, store.vocabulary().size());
+            assertEquals(320, store.mastered().size());
+
+            ChatGptAssistant assistant = new ChatGptAssistant(getContext());
+            try {
+                String instructions = assistant.buildInstructions(store);
+                assertTrue(instructions.contains("Всего карточек в локальном словаре: 952"));
+                assertTrue(instructions.contains("Освоено (320)"));
+                assertTrue(instructions.contains("В изучении (632)"));
+                Store.Card beyond300 = original.get(319);
+                assertTrue("The 320th learned card must be in the assistant context",
+                        instructions.contains(beyond300.spanish() + " = " + beyond300.meaning()));
+                assertTrue("New unmastered words must be available",
+                        instructions.contains("palabra nueva para aprender = новое слово для изучения"));
+                assertTrue("New unmastered phrases must be available",
+                        instructions.contains("frase nueva para estudiar = новое выражение для изучения"));
+            } finally {
+                assistant.close();
+            }
+        }
+        getContext().deleteDatabase(database);
+    }
+
     public void testRemoteContentImportsOnceWithoutApkUpdate() {
         String database = "test-remote-content.db";
         getContext().deleteDatabase(database);

@@ -81,6 +81,18 @@ public final class Store extends SQLiteOpenHelper {
         return result;
     }
 
+    /** Complete local dictionary, independent of mastery status and review scheduling. */
+    public List<Card> vocabulary() {
+        List<Card> result = new ArrayList<>();
+        String[] columns = {"id","spanish","meaning","kind","category","mastered","last_result","review_count","next_due"};
+        try (Cursor c = getReadableDatabase().query("cards", columns, null, null, null, null, "id ASC")) {
+            while (c.moveToNext()) {
+                result.add(new Card(c.getLong(0), c.getString(1), c.getString(2), c.getInt(3), c.getInt(4), c.getInt(5) == 1, c.getInt(6), c.getInt(7), c.getLong(8)));
+            }
+        }
+        return result;
+    }
+
     public void addCard(String spanish, String meaning, int kind) {
         addCard(spanish, meaning, kind, kind == 0 ? 1 : 0);
     }

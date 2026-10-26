@@ -32,7 +32,13 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull(find(root, "ChatGPT — голос / текст"));
             assertNull(find(root, "⚙"));
         });
-        tap("Освоенное"); tap("← К изучению");
+        getInstrumentation().runOnMainSync(() -> {
+            View root = getActivity().getWindow().getDecorView();
+            assertNull("Mastered archive must not be exposed", find(root, "Освоенное"));
+            assertNull("No archive return action", find(root, "← К изучению"));
+            assertNull("No archived card listing", find(root, "Вернуть к изучению"));
+            assertNotNull(find(root, "Карточки"));
+        });
         tap("Сказки");
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();

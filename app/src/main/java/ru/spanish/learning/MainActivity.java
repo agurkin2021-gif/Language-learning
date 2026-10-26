@@ -42,7 +42,6 @@ public final class MainActivity extends Activity {
     private TextView sentence, sentenceRu, playbackStatus;
     private Button toggle, repeat;
     private List<String> storyTranslations = new java.util.ArrayList<>();
-    private boolean archive;
     private boolean darkTheme;
     private int kind;
     private int category;
@@ -74,7 +73,7 @@ public final class MainActivity extends Activity {
         assistant = new ChatGptAssistant(this);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
-        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); reviewStep = prefs.getLong("reviewStep", 0); archive = prefs.getBoolean("archive", false);
+        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); reviewStep = prefs.getLong("reviewStep", 0);
         long last = prefs.getLong("story", -1);
         if ("player".equals(screen)) {
             for (Store.Story story : store.stories()) if (story.id() == last) { openStory(story); return; }
@@ -112,7 +111,7 @@ public final class MainActivity extends Activity {
         cancelCardSpeech();
         Runnable speech = () -> {
             pendingCardSpeech = null;
-            if (!"cards".equals(screen) || archive || isFinishing() || isDestroyed()
+            if (!"cards".equals(screen) || isFinishing() || isDestroyed()
                     || !word.isAttachedToWindow() || !Boolean.TRUE.equals(word.getTag())) return;
             player.speakCard(spanish);
         };
@@ -120,7 +119,7 @@ public final class MainActivity extends Activity {
         cardSpeechHandler.postDelayed(speech, CARD_PRONUNCIATION_DELAY_MS);
     }
     private void remember() {
-        prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).putBoolean("archive", archive)
+        prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).remove("archive")
                 .putInt("category", category).putInt("reviewIndex", reviewIndex).putLong("reviewStep", reviewStep).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
@@ -426,7 +425,7 @@ public final class MainActivity extends Activity {
 
     private void cards() {
         player.pause();
-        text(archive ? "Освоенное" : "Карточки", 28);
+        text("Карточки", 28);
 
         LinearLayout maintenance = new LinearLayout(this);
         maintenance.setOrientation(LinearLayout.HORIZONTAL);
@@ -438,10 +437,8 @@ public final class MainActivity extends Activity {
         maintenance.addView(buildButton, buildParams);
         content.addView(maintenance, new LinearLayout.LayoutParams(-1, -2));
 
-        if (!archive) {
-            text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
-            button("ChatGPT — голос / текст", this::showAssistant);
-        }
+        text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
+        button("ChatGPT — голос / текст", this::showAssistant);
 
         LinearLayout filters = new LinearLayout(this);
         filters.setOrientation(LinearLayout.HORIZONTAL);
@@ -472,49 +469,20 @@ public final class MainActivity extends Activity {
         }
         content.addView(filters, new LinearLayout.LayoutParams(-1, -2));
 
-        LinearLayout cardActions = new LinearLayout(this);
-        cardActions.setOrientation(LinearLayout.HORIZONTAL);
-        Button masteredButton = rowButton(archive ? "← К изучению" : "Освоенное", () -> {
-            archive = !archive;
-            reviewIndex = 0;
-            cardRevealed = false;
-            render();
-        });
-        cardActions.addView(masteredButton, new LinearLayout.LayoutParams(-1, -2));
-        content.addView(cardActions, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout addActions = new LinearLayout(this);
+        addActions.setOrientation(LinearLayout.HORIZONTAL);
+        Button addWordButton = rowButton("＋ Слово", () -> addCard(0));
+        Button addPhraseButton = rowButton("＋ Устойчивое выражение", () -> addCard(1));
+        addActions.addView(addWordButton, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, -2, 1);
+        phraseParams.setMarginStart(dp(6));
+        addActions.addView(addPhraseButton, phraseParams);
+        content.addView(addActions, new LinearLayout.LayoutParams(-1, -2));
 
-        if (!archive) {
-            LinearLayout addActions = new LinearLayout(this);
-            addActions.setOrientation(LinearLayout.HORIZONTAL);
-            Button addWordButton = rowButton("＋ Слово", () -> addCard(0));
-            Button addPhraseButton = rowButton("＋ Устойчивое выражение", () -> addCard(1));
-            addActions.addView(addWordButton, new LinearLayout.LayoutParams(0, -2, 1));
-            LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, -2, 1);
-            phraseParams.setMarginStart(dp(6));
-            addActions.addView(addPhraseButton, phraseParams);
-            content.addView(addActions, new LinearLayout.LayoutParams(-1, -2));
-        }
-
-        List<Store.Card> cards = archive
-                ? store.cards(true, kind, kind == 0 ? category : 0)
-                : store.cardsForReview(kind, kind == 0 ? category : 0, reviewStep);
+        // Study view shows only active cards; mastered items remain stored for the assistant.
+        List<Store.Card> cards = store.cardsForReview(kind, kind == 0 ? category : 0, reviewStep);
         text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
         if (cards.isEmpty()) return;
-
-        if (archive) {
-            for (Store.Card card : cards) {
-                text(card.spanish(), 24);
-                text(card.meaning(), 18);
-                button("Вернуть к изучению", () -> {
-                    store.setMastered(card.id(), false);
-                    render();
-                });
-                View line = new View(this);
-                line.setBackgroundColor(borderColor());
-                content.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
-            }
-            return;
-        }
 
         if (reviewIndex < 0 || reviewIndex >= cards.size()) reviewIndex = 0;
         Store.Card card = cards.get(reviewIndex);
