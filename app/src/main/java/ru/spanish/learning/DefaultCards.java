@@ -312,9 +312,9 @@ pesado|тяжёлый
 ligero|лёгкий
 """);
     private static final String[] EXPRESSIONS = lines("""
-tener ganas de|хотеть, иметь желание
-darse cuenta de|осознавать, замечать
-tener en cuenta|принимать во внимание
+tengo ganas de comer|мне хочется поесть
+me doy cuenta de eso|я это понимаю
+lo tengo en cuenta|я это учитываю
 por supuesto|конечно
 de acuerdo|согласен, договорились
 no pasa nada|ничего страшного
@@ -342,26 +342,26 @@ ni idea|без понятия
 me parece que|мне кажется, что
 creo que|я думаю, что
 supongo que|я полагаю, что
-estoy seguro de|я уверен в
+estoy seguro de eso|я в этом уверен
 no estoy seguro|я не уверен
 qué lástima|как жаль
 qué suerte|как повезло
-tengo que|мне нужно, я должен
-hay que|нужно, следует
-acabar de|только что сделать
-volver a|снова сделать
-dejar de|перестать делать
-seguir + gerundio|продолжать делать
-estar por|собираться, быть на грани
-estar de acuerdo|быть согласным
-tener razón|быть правым
-no tener razón|быть неправым
-echar de menos|скучать по
-hacer falta|быть нужным, не хватать
-dar igual|быть безразличным
+tengo que trabajar|мне нужно работать
+hay que estudiar|нужно учиться
+acabo de llegar|я только что пришёл
+vuelvo a intentarlo|я пробую ещё раз
+dejé de hacerlo|я перестал это делать
+sigo aprendiendo|я продолжаю учиться
+estoy por salir|я собираюсь выходить
+estoy de acuerdo|я согласен
+tengo razón|я прав
+no tengo razón|я не прав
+te extraño|я по тебе скучаю
+me hace falta tiempo|мне не хватает времени
+me da igual|мне всё равно
 qué tal|как дела, как
 para siempre|навсегда
-salir para|отправляться в, выходить к
+salgo para el trabajo|я выхожу на работу
 """);
 
     static void seed(SQLiteDatabase db) {

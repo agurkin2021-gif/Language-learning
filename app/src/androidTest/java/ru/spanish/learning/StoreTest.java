@@ -190,7 +190,7 @@ public class StoreTest extends AndroidTestCase {
 
             assertTrue(s.importRemoteCard("word-1", "barco", "лодка", 0, 2));
             assertFalse(s.importRemoteCard("word-1", "barco", "лодка", 0, 2));
-            assertTrue(s.importRemoteCard("phrase-1", "tener ganas de", "хотеть, иметь желание", 1, 0));
+            assertTrue(s.importRemoteCard("phrase-1", "tengo ganas de comer", "мне хочется поесть", 1, 0));
             assertTrue(s.importRemoteStory("story-1", "El pescador", "El pescador mira el mar. Vuelve a casa.", "Рыбак смотрит на море. Он возвращается домой."));
 
             assertEquals(words + 1, s.cards(false, 0).size());
@@ -391,6 +391,29 @@ public class StoreTest extends AndroidTestCase {
         }
     }
 
+
+    /** New phones receive 50 ready-to-speak expressions, not dictionary infinitives. */
+    public void testSeedExpressionsAreConversationalOnFreshInstall() {
+        String database = "test-conversational-seed.db";
+        getContext().deleteDatabase(database);
+        try (Store spanish = new Store(getContext(), database)) {
+            java.util.List<Store.Card> phrases = spanish.cards(false, 1);
+            assertEquals(50, phrases.size());
+            boolean foundTengo = false, foundGanas = false, foundAPesar = false;
+            for (Store.Card card : phrases) {
+                assertFalse("Infinitive starter expression: " + card.spanish(),
+                        SpanishPhrasePolicy.startsWithInfinitive(card.spanish()));
+                assertFalse("Unfinished 'tengo que' should include an action",
+                        "tengo que".equals(card.spanish()));
+                if ("tengo razón".equals(card.spanish())) foundTengo = true;
+                if ("tengo ganas de comer".equals(card.spanish())) foundGanas = true;
+                if ("a pesar de".equals(card.spanish())) foundAPesar = true;
+            }
+            assertTrue(foundTengo && foundGanas && foundAPesar);
+        } finally {
+            getContext().deleteDatabase(database);
+        }
+    }
 
     /** A phrase's infinitive head is forbidden, but stories and plain verbs remain free. */
     public void testInfinitiveExpressionPolicyOnlyForNewSpanishPhrases() {

@@ -28,6 +28,10 @@ public final class MissingCardIllustrationsTest extends AndroidTestCase {
 
             assertTrue("Starter emoji SVG is a placeholder, not a true drawing",
                     CardImageLoader.isBundledEmojiPlaceholder(getContext(), "ser"));
+            assertTrue("New starter phrase image is a placeholder",
+                    CardImageLoader.isBundledEmojiPlaceholder(getContext(), "tengo ganas de comer"));
+            assertTrue("Old installed phrase remains eligible for image regeneration",
+                    CardImageLoader.isBundledEmojiPlaceholder(getContext(), "tener ganas de"));
             assertFalse("The app should offer to redraw starter emoji cards",
                     CardImageLoader.hasIllustration(getContext(), "ser", false));
             List<Store.Card> missing = MissingCardIllustrations.pending(getContext(), store);

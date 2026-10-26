@@ -82,6 +82,14 @@ final class CardImageLoader {
                         if (!key.isEmpty() && !item.optString("visual").isEmpty())
                             placeholders.add(key + ".svg");
                     }
+                    // Keep existing users' old starter cards eligible for image replacement.
+                    JSONArray legacy = index.optJSONArray("legacy_placeholder_keys");
+                    if (legacy != null) {
+                        for (int i = 0; i < legacy.length(); i++) {
+                            String key = legacy.optString(i, "");
+                            if (!key.isEmpty()) placeholders.add(key + ".svg");
+                        }
+                    }
                     bundledEmojiPlaceholders = Collections.unmodifiableSet(placeholders);
                 } catch (JSONException invalid) {
                     throw new IOException("Invalid card image index", invalid);

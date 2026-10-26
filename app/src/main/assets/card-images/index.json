@@ -7209,25 +7209,25 @@
       "category": 3
     },
     {
-      "spanish": "tener ganas de",
-      "meaning": "хотеть, иметь желание",
-      "key": "tener-ganas-de-svsy41",
+      "spanish": "tengo ganas de comer",
+      "meaning": "мне хочется поесть",
+      "key": "tengo-ganas-de-comer-1xudtt0",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "darse cuenta de",
-      "meaning": "осознавать, замечать",
-      "key": "darse-cuenta-de-57lhk0",
+      "spanish": "me doy cuenta de eso",
+      "meaning": "я это понимаю",
+      "key": "me-doy-cuenta-de-eso-1ba8di8",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "tener en cuenta",
-      "meaning": "принимать во внимание",
-      "key": "tener-en-cuenta-17yifex",
+      "spanish": "lo tengo en cuenta",
+      "meaning": "я это учитываю",
+      "key": "lo-tengo-en-cuenta-2dlbhj",
       "visual": "👩‍👧",
       "kind": 1,
       "category": 0
@@ -7449,9 +7449,9 @@
       "category": 0
     },
     {
-      "spanish": "estoy seguro de",
-      "meaning": "я уверен в",
-      "key": "estoy-seguro-de-1szgbbo",
+      "spanish": "estoy seguro de eso",
+      "meaning": "я в этом уверен",
+      "key": "estoy-seguro-de-eso-17135it",
       "visual": "💬",
       "kind": 1,
       "category": 0
@@ -7481,105 +7481,105 @@
       "category": 0
     },
     {
-      "spanish": "tengo que",
-      "meaning": "мне нужно, я должен",
-      "key": "tengo-que-177ct7q",
+      "spanish": "tengo que trabajar",
+      "meaning": "мне нужно работать",
+      "key": "tengo-que-trabajar-qkce5v",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "hay que",
-      "meaning": "нужно, следует",
-      "key": "hay-que-blbm0x",
+      "spanish": "hay que estudiar",
+      "meaning": "нужно учиться",
+      "key": "hay-que-estudiar-bck6uc",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "acabar de",
-      "meaning": "только что сделать",
-      "key": "acabar-de-4zzrhp",
+      "spanish": "acabo de llegar",
+      "meaning": "я только что пришёл",
+      "key": "acabo-de-llegar-4mkcvy",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "volver a",
-      "meaning": "снова сделать",
-      "key": "volver-a-144bbch",
+      "spanish": "vuelvo a intentarlo",
+      "meaning": "я пробую ещё раз",
+      "key": "vuelvo-a-intentarlo-1thf7io",
       "visual": "🆕",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "dejar de",
-      "meaning": "перестать делать",
-      "key": "dejar-de-cjo67b",
+      "spanish": "dejé de hacerlo",
+      "meaning": "я перестал это делать",
+      "key": "deje-de-hacerlo-1a4qt4r",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "seguir + gerundio",
-      "meaning": "продолжать делать",
-      "key": "seguir-gerundio-z2wjmx",
+      "spanish": "sigo aprendiendo",
+      "meaning": "я продолжаю учиться",
+      "key": "sigo-aprendiendo-bhm5k3",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "estar por",
-      "meaning": "собираться, быть на грани",
-      "key": "estar-por-1kz2e3u",
+      "spanish": "estoy por salir",
+      "meaning": "я собираюсь выходить",
+      "key": "estoy-por-salir-1uw4eoa",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "estar de acuerdo",
-      "meaning": "быть согласным",
-      "key": "estar-de-acuerdo-1hfp439",
+      "spanish": "estoy de acuerdo",
+      "meaning": "я согласен",
+      "key": "estoy-de-acuerdo-g2x7g",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "tener razón",
-      "meaning": "быть правым",
-      "key": "tener-razon-npdcfk",
+      "spanish": "tengo razón",
+      "meaning": "я прав",
+      "key": "tengo-razon-11bffvv",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "no tener razón",
-      "meaning": "быть неправым",
-      "key": "no-tener-razon-1ibamvl",
+      "spanish": "no tengo razón",
+      "meaning": "я не прав",
+      "key": "no-tengo-razon-1vxcqbw",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "echar de menos",
-      "meaning": "скучать по",
-      "key": "echar-de-menos-1rht4ww",
+      "spanish": "te extraño",
+      "meaning": "я по тебе скучаю",
+      "key": "te-extrano-1prq133",
       "visual": "🥱",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "hacer falta",
-      "meaning": "быть нужным, не хватать",
-      "key": "hacer-falta-bn5uhh",
+      "spanish": "me hace falta tiempo",
+      "meaning": "мне не хватает времени",
+      "key": "me-hace-falta-tiempo-1gxzcbf",
       "visual": "💬",
       "kind": 1,
       "category": 0
     },
     {
-      "spanish": "dar igual",
-      "meaning": "быть безразличным",
-      "key": "dar-igual-51bjnb",
+      "spanish": "me da igual",
+      "meaning": "мне всё равно",
+      "key": "me-da-igual-bu9t47",
       "visual": "💬",
       "kind": 1,
       "category": 0
@@ -7601,12 +7601,32 @@
       "category": 0
     },
     {
-      "spanish": "salir para",
-      "meaning": "отправляться в, выходить к",
-      "key": "salir-para-envk61",
+      "spanish": "salgo para el trabajo",
+      "meaning": "я выхожу на работу",
+      "key": "salgo-para-el-trabajo-1hb8clw",
       "visual": "📨",
       "kind": 1,
       "category": 0
     }
+  ],
+  "legacy_placeholder_keys": [
+    "tener-ganas-de-svsy41",
+    "darse-cuenta-de-57lhk0",
+    "tener-en-cuenta-17yifex",
+    "acabar-de-4zzrhp",
+    "volver-a-144bbch",
+    "dejar-de-cjo67b",
+    "seguir-gerundio-z2wjmx",
+    "estar-por-1kz2e3u",
+    "estar-de-acuerdo-1hfp439",
+    "tener-razon-npdcfk",
+    "no-tener-razon-1ibamvl",
+    "echar-de-menos-1rht4ww",
+    "hacer-falta-bn5uhh",
+    "dar-igual-51bjnb",
+    "salir-para-envk61",
+    "tengo-que-177ct7q",
+    "hay-que-blbm0x",
+    "estoy-seguro-de-1szgbbo"
   ]
 }

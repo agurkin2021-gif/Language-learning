@@ -28,6 +28,8 @@ final class SpanishPhrasePolicy {
         String normalized = Normalizer.normalize(
                 phrase.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "");
+        // "a pesar de" is a fixed prepositional phrase; pesar is a noun here.
+        if (normalized.matches("^a\\s+pesar\\s+de(?:\\s+.*)?$")) return false;
         Matcher tokens = WORD.matcher(normalized);
         int particles = 0;
         while (tokens.find()) {
