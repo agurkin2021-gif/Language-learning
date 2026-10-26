@@ -198,6 +198,16 @@ public final class Store extends SQLiteOpenHelper {
         return StoryWordSave.ADDED;
     }
 
+    /** Duplicate check includes the hidden mastered archive; comparisons ignore case. */
+    boolean containsCard(String text, int kind) {
+        String candidate = text == null ? "" : text.trim();
+        for (Card card : vocabulary()) {
+            if (card.kind() == kind && card.spanish().trim().equalsIgnoreCase(candidate))
+                return true;
+        }
+        return false;
+    }
+
     public boolean addCardIfMissing(String spanish, String meaning, int kind, int category) {
         String cleanSpanish = spanish == null ? "" : spanish.trim();
         String cleanMeaning = meaning == null ? "" : meaning.trim();
@@ -205,11 +215,7 @@ public final class Store extends SQLiteOpenHelper {
         if (kind == 1 && !english) SpanishPhrasePolicy.requireConversationalForm(cleanSpanish);
         if (kind == 0 && (category < 1 || category > 3)) throw new IllegalArgumentException("category");
         if (kind == 1) category = 0;
-        try (Cursor c = getReadableDatabase().query("cards", new String[]{"id"},
-                "spanish=? AND kind=?", new String[]{cleanSpanish, Integer.toString(kind)},
-                null, null, null, "1")) {
-            if (c.moveToFirst()) return false;
-        }
+        if (containsCard(cleanSpanish, kind)) return false;
         addCard(cleanSpanish, cleanMeaning, kind, category);
         return true;
     }
