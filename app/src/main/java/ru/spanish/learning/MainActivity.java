@@ -1263,7 +1263,7 @@ public final class MainActivity extends Activity {
         imageRepairStatus = text(imageRepairRunning ? imageRepairMessage
                 : imagesMissing.isEmpty()
                     ? "У всех изучаемых карточек есть рисунки"
-                    : "Неосвоенных карточек без рисунков: " + imagesMissing.size(), 14);
+                    : "Изучаемых карточек без рисунка или с эмодзи-заглушкой: " + imagesMissing.size(), 14);
         imageRepairStatus.setTextColor(secondaryText());
         if (!imageRepairRunning && !imageRepairMessage.isEmpty()) {
             TextView lastRun = text(imageRepairMessage, 13);
@@ -1308,7 +1308,7 @@ public final class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("Дорисовать " + missing.size() + " карточек?")
-                .setMessage("Будут созданы картинки только для слов и выражений, которые ещё изучаются и у которых нет изображения. Освоенные карточки и готовые рисунки останутся без изменений. Для работы потребуется интернет и ChatGPT; большое количество картинок может создаваться долго.")
+                .setMessage("Создам настоящие SVG-иллюстрации только для неосвоенных слов и выражений без рисунков или с эмодзи-заглушками. Освоенные карточки и готовые полноценные изображения не изменятся. При большом количестве генерация через ChatGPT займёт значительное время.")
                 .setNegativeButton("Отмена", null)
                 .setPositiveButton("Создать", (d, w) -> runImageRepair())
                 .show();

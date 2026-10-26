@@ -19,21 +19,75 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 final class CardImageLoader {
     private CardImageLoader() {}
 
     private static volatile Set<String> bundledSpanishImages;
+    private static volatile Set<String> bundledEmojiPlaceholders;
 
-    /** Packaged images and generated phone images should not be regenerated. */
+    /**
+     * A colored background with a Unicode emoji does not count as a real
+     * illustration: many devices cannot render the emoji in an SVG WebView.
+     * The shipped 950-card index identifies those existing placeholders.
+     */
     static boolean hasIllustration(Context context, String word, boolean english) {
         File dynamic = imageFile(context, word, english);
         if (dynamic.isFile() && dynamic.length() > 100L) return true;
         if (english) return false;
+        String asset = key(word) + ".svg";
         try {
-            return bundledSpanishImages(context).contains(key(word) + ".svg");
+            if (!bundledSpanishImages(context).contains(asset)) return false;
+            try {
+                return !bundledEmojiPlaceholders(context).contains(asset);
+            } catch (IOException indexMissing) {
+                // Do not regenerate the entire bundled dictionary if its
+                // metadata index cannot be read on a particular phone.
+                return true;
+            }
         } catch (IOException unavailable) {
             return false;
+        }
+    }
+
+    static boolean isBundledEmojiPlaceholder(Context context, String word) {
+        try {
+            return bundledEmojiPlaceholders(context).contains(key(word) + ".svg");
+        } catch (IOException missing) {
+            return false;
+        }
+    }
+
+    private static Set<String> bundledEmojiPlaceholders(Context context) throws IOException {
+        Set<String> cached = bundledEmojiPlaceholders;
+        if (cached != null) return cached;
+        synchronized (CardImageLoader.class) {
+            if (bundledEmojiPlaceholders == null) {
+                try (InputStream input = context.getAssets().open("card-images/index.json");
+                     ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                    byte[] bytes = new byte[4096];
+                    for (int n; (n = input.read(bytes)) != -1; )
+                        output.write(bytes, 0, n);
+                    JSONObject index = new JSONObject(
+                            new String(output.toByteArray(), StandardCharsets.UTF_8));
+                    JSONArray entries = index.getJSONArray("cards");
+                    Set<String> placeholders = new HashSet<>();
+                    for (int i = 0; i < entries.length(); i++) {
+                        JSONObject item = entries.getJSONObject(i);
+                        String key = item.optString("key");
+                        if (!key.isEmpty() && !item.optString("visual").isEmpty())
+                            placeholders.add(key + ".svg");
+                    }
+                    bundledEmojiPlaceholders = Collections.unmodifiableSet(placeholders);
+                } catch (JSONException invalid) {
+                    throw new IOException("Invalid card image index", invalid);
+                }
+            }
+            return bundledEmojiPlaceholders;
         }
     }
 
