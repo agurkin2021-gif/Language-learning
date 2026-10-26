@@ -759,14 +759,14 @@ public final class ChatGptAssistant {
                     default -> throw new IllegalArgumentException("Неизвестная категория");
                 };
                 boolean added = store.addCardIfMissing(spanish, russian, 0, cat);
-                saveSvg(spanish, args.getString("svg"));
+                saveSvg(store, spanish, args.getString("svg"));
                 return new JSONObject().put("ok", true).put("status", added ? "added" : "already_exists").toString();
             }
             if ("add_phrase".equals(call.name)) {
                 String spanish = args.getString("spanish").trim();
                 String russian = args.getString("russian").trim();
                 boolean added = store.addCardIfMissing(spanish, russian, 1, 0);
-                saveSvg(spanish, args.getString("svg"));
+                saveSvg(store, spanish, args.getString("svg"));
                 return new JSONObject().put("ok", true).put("status", added ? "added" : "already_exists").toString();
             }
             if ("add_story".equals(call.name)) {
@@ -783,7 +783,7 @@ public final class ChatGptAssistant {
         }
     }
 
-    private void saveSvg(String spanish, String svg) throws Exception {
+    private void saveSvg(Store store, String spanish, String svg) throws Exception {
         String clean = svg == null ? "" : svg.trim();
         String lower = clean.toLowerCase(Locale.ROOT);
         if (!clean.contains("<svg") || !clean.contains("</svg>")
@@ -795,9 +795,9 @@ public final class ChatGptAssistant {
                 || lower.matches("(?s).*\\son[a-z]+\\s*=.*"))
             throw new IllegalArgumentException("SVG содержит запрещённые элементы");
         if (clean.length() > 40_000) throw new IllegalArgumentException("SVG слишком большой");
-        File dir = new File(context.getFilesDir(), "card-images");
+        File file = CardImageLoader.imageFile(context, spanish, store.isEnglish());
+        File dir = file.getParentFile();
         if (!dir.exists() && !dir.mkdirs()) throw new IllegalStateException("Не удалось создать папку картинок");
-        File file = new File(dir, CardImageLoader.key(spanish) + ".svg");
         try (FileOutputStream out = new FileOutputStream(file, false)) {
             out.write(clean.getBytes(StandardCharsets.UTF_8));
         }

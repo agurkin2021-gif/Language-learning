@@ -1,6 +1,7 @@
 package ru.spanish.learning;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Color;
 import android.util.Base64;
 import android.view.View;
@@ -27,13 +28,21 @@ final class CardImageLoader {
         return normalized + "-" + Integer.toUnsignedString(spanish.trim().toLowerCase(Locale.ROOT).hashCode(), 36);
     }
 
-    static void load(Activity activity, WebView target, View fallback, String spanish) {
+    /** English illustrations never share a directory with Spanish cards. */
+    static File imageFile(Context context, String word, boolean english) {
+        return new File(new File(context.getFilesDir(), english ? "card-images-en" : "card-images"),
+                key(word) + ".svg");
+    }
+
+    static void load(Activity activity, WebView target, View fallback, String spanish, boolean english) {
         target.setVisibility(View.GONE);
         if (fallback != null) fallback.setVisibility(View.VISIBLE);
 
         byte[] svg;
         String imageKey = key(spanish);
-        File dynamic = new File(new File(activity.getFilesDir(), "card-images"), imageKey + ".svg");
+        File dynamic = imageFile(activity, spanish, english);
+        // The bundled SVGs are exclusively Spanish: never show one in English mode.
+        if (english && !dynamic.isFile()) return;
         try (InputStream input = dynamic.isFile()
                     ? new FileInputStream(dynamic)
                     : activity.getAssets().open("card-images/" + imageKey + ".svg");

@@ -102,7 +102,7 @@ public final class MainActivity extends Activity {
         assistant = new ChatGptAssistant(this);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.setLearningLanguage(studyLanguage);
-        player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
+        player.speed = prefs.getFloat(prefKey("speed"), .85f); player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         screen = prefs.getString(prefKey("screen"), "cards");
         kind = prefs.getInt(prefKey("kind"), 0);
         category = prefs.getInt(prefKey("category"), 0);
@@ -139,6 +139,9 @@ public final class MainActivity extends Activity {
         if (studyingEnglish() && englishStore == null) englishStore = Store.english(this);
         store = studyingEnglish() ? englishStore : spanishStore;
         player.setLearningLanguage(studyLanguage);
+        player.speed = prefs.getFloat(prefKey("speed"), .85f);
+        player.pauseMs = prefs.getInt(prefKey("pause"), 1500);
+        player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         kind = prefs.getInt(prefKey("kind"), 0);
         category = prefs.getInt(prefKey("category"), 0);
         reviewIndex = prefs.getInt(prefKey("reviewIndex"), 0);
@@ -226,8 +229,8 @@ public final class MainActivity extends Activity {
                 .remove(prefKey("archive")).putInt(prefKey("category"), category)
                 .putInt(prefKey("reviewIndex"), reviewIndex)
                 .putLong(prefKey("reviewStep"), reviewStep)
-                .putFloat("speed", player.speed).putInt("pause", player.pauseMs)
-                .putBoolean("sentenceMode", player.sentenceMode).apply();
+                .putFloat(prefKey("speed"), player.speed).putInt(prefKey("pause"), player.pauseMs)
+                .putBoolean(prefKey("sentenceMode"), player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
     }
@@ -356,11 +359,15 @@ public final class MainActivity extends Activity {
     }
 
     private void confirmResetDatabase(AlertDialog settingsDialog) {
+        if (assistantRequestInFlight) {
+            Toast.makeText(this, "Дождитесь завершения ChatGPT перед сбросом базы", Toast.LENGTH_LONG).show();
+            return;
+        }
         new AlertDialog.Builder(this)
                 .setTitle("Сбросить базу?")
                 .setMessage("Будут удалены слова, выражения, сказки и прогресс "
                         + (studyingEnglish() ? "АНГЛИЙСКОГО" : "ИСПАНСКОГО")
-                        + " языка на этом телефоне. Другая база останется нетронутой. Отменить удаление нельзя.")
+                        + " языка и его история ChatGPT на этом телефоне. Другая база и её история останутся нетронутыми. Отменить удаление нельзя.")
                 .setNegativeButton("Отмена", null)
                 .setPositiveButton("Продолжить", (first, which) ->
                         new AlertDialog.Builder(this)
@@ -375,6 +382,7 @@ public final class MainActivity extends Activity {
     private void resetDatabase(AlertDialog settingsDialog) {
         try {
             store.resetLearningData();
+            assistant.clearHistory(store);
         } catch (RuntimeException e) {
             new AlertDialog.Builder(this)
                     .setTitle("База не сброшена")
@@ -1116,7 +1124,7 @@ public final class MainActivity extends Activity {
         visual.addView(fallback, new FrameLayout.LayoutParams(-1, -1));
         android.webkit.WebView picture = new android.webkit.WebView(this);
         visual.addView(picture, new FrameLayout.LayoutParams(-1, -1));
-        CardImageLoader.load(this, picture, fallback, card.spanish());
+        CardImageLoader.load(this, picture, fallback, card.spanish(), studyingEnglish());
 
         TextView word = new TextView(this);
         word.setText(revealed ? card.meaning() : card.spanish());
@@ -1138,7 +1146,7 @@ public final class MainActivity extends Activity {
         if (!card.spanish().equals(face.picture().getTag())) {
             face.picture().setTag(card.spanish());
             face.fallback().setText(CardVisualHint.forCard(card));
-            CardImageLoader.load(this, face.picture(), face.fallback(), card.spanish());
+            CardImageLoader.load(this, face.picture(), face.fallback(), card.spanish(), studyingEnglish());
         }
         face.word().setText(card.spanish());
         face.word().setTag(true);
@@ -1261,7 +1269,7 @@ public final class MainActivity extends Activity {
         text(selected.title(), 25);
         TextView source = text(selected.source(), 14);
         source.setTextColor(secondaryText());
-        TextView hint = text("Удерживайте незнакомое испанское слово, чтобы добавить его в карточки.", 14);
+        TextView hint = text(studyingEnglish() ? "Удерживайте незнакомое английское слово, чтобы добавить его в карточки." : "Удерживайте незнакомое испанское слово, чтобы добавить его в карточки.", 14);
         hint.setTextColor(secondaryText());
         hint.setPadding(0, dp(4), 0, dp(12));
 
@@ -1375,7 +1383,7 @@ public final class MainActivity extends Activity {
         lines.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(lines);
         TextView hint = new TextView(this);
-        hint.setText("Удерживайте испанское слово для добавления в карточки.");
+        hint.setText(studyingEnglish() ? "Удерживайте английское слово для добавления в карточки." : "Удерживайте испанское слово для добавления в карточки.");
         hint.setTextSize(14);
         hint.setTextColor(secondaryText());
         lines.addView(hint);

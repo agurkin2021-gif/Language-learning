@@ -53,7 +53,7 @@ final class StoryVocabulary {
         if (!es.isEmpty()) meaning.append("\nКонтекст: ").append(es);
         if (!ru.isEmpty()) meaning.append("\nПеревод предложения: ").append(ru);
 
-        ensureIllustration(context, word, lemma);
+        ensureIllustration(context, store, word, lemma);
         return store.addStoryWord(word, meaning.toString(), category);
     }
 
@@ -86,20 +86,22 @@ final class StoryVocabulary {
         };
     }
 
-    private static void ensureIllustration(Context context, String word, String lemma) throws IOException {
-        File directory = new File(context.getFilesDir(), "card-images");
+    private static void ensureIllustration(Context context, Store store, String word, String lemma) throws IOException {
+        File target = CardImageLoader.imageFile(context, word, store.isEnglish());
+        File directory = target.getParentFile();
         if (!directory.exists() && !directory.mkdirs()) throw new IOException("Cannot create card-images");
         String key = CardImageLoader.key(word);
-        File target = new File(directory, key + ".svg");
         if (target.isFile()) return;
-        // An unchanged dictionary form already has its built-in image.
-        try (InputStream present = context.getAssets().open("card-images/" + key + ".svg")) {
-            if (present.read() != -1) return;
-        } catch (IOException ignored) { }
+        // The bundled card illustrations only belong to Spanish lessons.
+        if (!store.isEnglish()) {
+            try (InputStream present = context.getAssets().open("card-images/" + key + ".svg")) {
+                if (present.read() != -1) return;
+            } catch (IOException ignored) { }
+        }
 
         byte[] svg = null;
         for (String base : lemma.split("/")) {
-            if (base.isEmpty()) continue;
+            if (store.isEnglish() || base.isEmpty()) continue;
             try (InputStream asset = context.getAssets().open("card-images/" + CardImageLoader.key(base) + ".svg");
                  ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[4096];
