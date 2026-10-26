@@ -30,7 +30,7 @@ final class StoryVocabulary {
             }
         }
 
-        String lemma = irregularLemma(word);
+        String lemma = store.isEnglish() ? "" : irregularLemma(word);
         int category = lemma.isEmpty() ? 0 : 1; // 0 = unclassified word, visible under "Все слова"
         StringBuilder meaning = new StringBuilder();
         if (!lemma.isEmpty()) {
@@ -44,7 +44,9 @@ final class StoryVocabulary {
                 }
             }
         } else {
-            meaning.append("Словоформа из сказки. Точный перевод уточняется по контексту.");
+            meaning.append(store.isEnglish()
+                    ? "Слово из английской сказки. Точный перевод уточняется по контексту."
+                    : "Словоформа из сказки. Точный перевод уточняется по контексту.");
         }
         String es = compact(spanishSentence, 240);
         String ru = compact(russianSentence, 240);

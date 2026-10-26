@@ -23,7 +23,8 @@ public final class SpeechPlayer {
     private final AudioFocusRequest focus;
     private TextToSpeech tts;
     private List<String> sentences = new ArrayList<>();
-    private boolean ready, closed;
+    private boolean ready, closed, ttsInitialized;
+    private String learningLanguage = "es";
     private int resumeOffset;
     private int utteranceBaseOffset;
     private String activeToken = "";
@@ -42,18 +43,8 @@ public final class SpeechPlayer {
             if (closed) return;
             if (status != TextToSpeech.SUCCESS) { voiceDescription = "Синтезатор речи недоступен"; listener.changed(); return; }
             tts.setAudioAttributes(attributes);
-            List<Voice> voices = new ArrayList<>();
-            if (tts.getVoices() != null) for (Voice v : tts.getVoices()) {
-                if ("es".equals(v.getLocale().getLanguage()) && !v.isNetworkConnectionRequired()
-                        && !v.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) voices.add(v);
-            }
-            voices.sort(Comparator.comparingInt((Voice v) -> "AR".equals(v.getLocale().getCountry()) ? 0 : "MX".equals(v.getLocale().getCountry()) ? 1 : 2).thenComparing(Voice::getName));
-            for (Voice v : voices) if (tts.setVoice(v) == TextToSpeech.SUCCESS) {
-                ready = true;
-                voiceDescription = "Офлайн-голос: " + v.getLocale().toLanguageTag() + ("AR".equals(v.getLocale().getCountry()) ? " • Аргентина" : " • аргентинский голос недоступен");
-                break;
-            }
-            if (!ready) voiceDescription = "Нет установленного офлайн-голоса испанского. Установите его в настройках синтеза речи Android и откройте приложение заново.";
+            ttsInitialized = true;
+            chooseOfflineVoice();
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) {}
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
@@ -74,6 +65,53 @@ public final class SpeechPlayer {
             });
             listener.changed();
         }));
+    }
+    /**
+     * Switches between es-AR/es-MX and en-US/en-GB offline voices using one
+     * TextToSpeech instance. No Spanish fallback in English mode.
+     */
+    void setLearningLanguage(String code) {
+        String normalized = "en".equals(code) ? "en" : "es";
+        if (learningLanguage.equals(normalized) && ttsInitialized) return;
+        pause();
+        learningLanguage = normalized;
+        if (ttsInitialized) chooseOfflineVoice();
+    }
+
+    String learningLanguage() { return learningLanguage; }
+
+    private void chooseOfflineVoice() {
+        ready = false;
+        if (closed || tts == null) return;
+        List<Voice> voices = new ArrayList<>();
+        if (tts.getVoices() != null) for (Voice voice : tts.getVoices()) {
+            if (learningLanguage.equals(voice.getLocale().getLanguage())
+                    && !voice.isNetworkConnectionRequired()
+                    && (voice.getFeatures() == null ||
+                        !voice.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)))
+                voices.add(voice);
+        }
+        voices.sort(Comparator.comparingInt((Voice voice) -> {
+            String country = voice.getLocale().getCountry();
+            if ("en".equals(learningLanguage))
+                return "US".equals(country) ? 0 : "GB".equals(country) ? 1 : 2;
+            return "AR".equals(country) ? 0 : "MX".equals(country) ? 1 : 2;
+        }).thenComparing(Voice::getName));
+        for (Voice voice : voices) {
+            if (tts.setVoice(voice) == TextToSpeech.SUCCESS) {
+                ready = true;
+                voiceDescription = "Офлайн-голос: " + voice.getLocale().toLanguageTag()
+                        + ("en".equals(learningLanguage) ? " • английский"
+                          : "AR".equals(voice.getLocale().getCountry())
+                              ? " • Аргентина" : " • аргентинский голос недоступен");
+                break;
+            }
+        }
+        if (!ready)
+            voiceDescription = "Нет установленного офлайн-голоса "
+                    + ("en".equals(learningLanguage) ? "английского" : "испанского")
+                    + ". Установите его в настройках синтеза речи Android.";
+        listener.changed();
     }
     public boolean ready() { return ready; }
 

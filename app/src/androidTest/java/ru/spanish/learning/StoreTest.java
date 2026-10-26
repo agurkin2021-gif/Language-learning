@@ -294,4 +294,60 @@ public class StoreTest extends AndroidTestCase {
         }
     }
 
+
+    /** English starts empty; Spanish database and progress remain untouched. */
+    public void testEnglishWorkspaceIndependentFromSpanish() {
+        String esDb = "test-es-independent.db", enDb = "test-en-independent.db";
+        getContext().deleteDatabase(esDb);
+        getContext().deleteDatabase(enDb);
+        try {
+            try (Store spanish = new Store(getContext(), esDb);
+                 Store english = Store.englishForTest(getContext(), enDb)) {
+                assertFalse(spanish.isEnglish());
+                assertTrue(english.isEnglish());
+                assertEquals(950, spanish.vocabulary().size());
+                assertEquals(1, spanish.stories().size());
+                assertEquals(0, english.vocabulary().size());
+                assertEquals(0, english.stories().size());
+                assertTrue(english.sharedContentDisabled());
+                assertFalse(english.importRemoteCard("remote-es", "hola", "привет", 0, 1));
+
+                english.addCard("cat", "кот", 0, 2);
+                english.addCard("take care", "береги себя", 1, 0);
+                english.addStory("The cat", "The cat sleeps.", "Кот спит.", "English story");
+                assertEquals(2, english.vocabulary().size());
+                assertEquals(1, english.stories().size());
+                assertEquals(950, spanish.vocabulary().size());
+                assertEquals(1, spanish.stories().size());
+
+                ChatGptAssistant assistant = new ChatGptAssistant(getContext());
+                try {
+                    String en = assistant.buildInstructions(english);
+                    assertTrue(en.contains("изучения АНГЛИЙСКОГО языка"));
+                    assertTrue(en.contains("cat = кот"));
+                    assertTrue(en.contains("take care = береги себя"));
+                    assertFalse(en.contains("vos/tenés"));
+                    String es = assistant.buildInstructions(spanish);
+                    assertTrue(es.contains("Rioplatense Spanish"));
+                    assertFalse(es.contains("cat = кот"));
+                } finally { assistant.close(); }
+
+                english.resetLearningData();
+                assertEquals(0, english.vocabulary().size());
+                assertEquals(0, english.stories().size());
+                assertEquals(950, spanish.vocabulary().size());
+            }
+            try (Store english = Store.englishForTest(getContext(), enDb);
+                 Store spanish = new Store(getContext(), esDb)) {
+                assertEquals(0, english.vocabulary().size());
+                assertTrue(english.sharedContentDisabled());
+                assertEquals(950, spanish.vocabulary().size());
+                assertEquals(1, spanish.stories().size());
+            }
+        } finally {
+            getContext().deleteDatabase(esDb);
+            getContext().deleteDatabase(enDb);
+        }
+    }
+
 }
