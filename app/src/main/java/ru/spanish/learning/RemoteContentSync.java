@@ -27,6 +27,11 @@ public final class RemoteContentSync {
             int rejected = 0;
             String error = "";
             try {
+                // The user deliberately reset this device to a private, empty library.
+                if (store.sharedContentDisabled()) {
+                    callback.done(0, 0, "");
+                    return;
+                }
                 JSONObject root = new JSONObject(download());
                 if (root.optInt("version", 1) != 1) throw new IllegalArgumentException("Неподдерживаемая версия контента");
                 JSONArray items = root.optJSONArray("items");
