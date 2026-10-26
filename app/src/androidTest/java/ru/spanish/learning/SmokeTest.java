@@ -17,6 +17,21 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         });
         getInstrumentation().waitForIdleSync();
     }
+    private void openSampleStory() {
+        getInstrumentation().runOnMainSync(() -> {
+            View root = getActivity().getWindow().getDecorView();
+            View name = find(root, "Una tarde en la plaza — пример");
+            assertNotNull("Sample story should appear as a single list row", name);
+            assertEquals("Story title must fit on one line", 1, ((TextView) name).getMaxLines());
+            View row = (View) name.getParent();
+            assertTrue("Tap the whole story row", row.isClickable());
+            int heightDp = Math.round(row.getHeight() / getActivity().getResources().getDisplayMetrics().density);
+            assertTrue("Story row should be compact: " + heightDp + "dp", heightDp >= 48 && heightDp <= 52);
+            assertNull("Large action button must be removed from the list", find(root, "Открыть и слушать"));
+            row.performClick();
+        });
+        getInstrumentation().waitForIdleSync();
+    }
     public void testNavigationAndPlayerSurviveRepeatedTaps() {
         getActivity(); tap("Карточки");
         getInstrumentation().runOnMainSync(() -> {
@@ -55,7 +70,7 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull("Language button in corner of Stories",
                     find(root, "ES ▾"));
         });
-        tap("Открыть и слушать");
+        openSampleStory();
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();
             assertNotNull(find(root, "Лусия живёт в маленьком доме."));
@@ -74,7 +89,7 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
         getInstrumentation().waitForIdleSync();
         for(int i=0;i<8;i++) tap("Повторить предложение");
-        tap("Карточки"); tap("Сказки"); tap("Открыть и слушать");
+        tap("Карточки"); tap("Сказки"); openSampleStory();
         getInstrumentation().runOnMainSync(() -> assertNotNull(find(getActivity().getWindow().getDecorView(),"← Библиотека")));
         tap("← Библиотека");
     }

@@ -33,6 +33,15 @@ public class BuildPreviewTest extends ActivityInstrumentationTestCase2<MainActiv
         getInstrumentation().waitForIdleSync();
     }
 
+    private void openSampleStory() {
+        getInstrumentation().runOnMainSync(() -> {
+            View name = find(getActivity().getWindow().getDecorView(), "Una tarde en la plaza — пример");
+            assertNotNull("Compact story row is missing", name);
+            ((View) name.getParent()).performClick();
+        });
+        getInstrumentation().waitForIdleSync();
+    }
+
     private void capture(String filename) throws Exception {
         getInstrumentation().waitForIdleSync();
         getInstrumentation().getUiAutomation().waitForIdle(300, 5000);
@@ -58,7 +67,8 @@ public class BuildPreviewTest extends ActivityInstrumentationTestCase2<MainActiv
         });
         capture("01-cards.png");
         tap("Сказки");
-        tap("Открыть и слушать");
+        capture("02-story-library.png");
+        openSampleStory();
         capture("02-story-player.png");
     }
 }

@@ -1525,22 +1525,37 @@ public final class MainActivity extends Activity {
         Button chat = button("ChatGPT — голос / текст", this::showAssistant);
         ui.style(chat, UiStyle.Tone.PRIMARY);
         for (Store.Story story : store.stories()) {
-            LinearLayout tile = new LinearLayout(this);
-            tile.setOrientation(LinearLayout.VERTICAL);
-            tile.setPadding(dp(17), dp(15), dp(17), dp(16));
-            tile.setBackground(ui.cardSurface());
-            tile.setElevation(dp(4));
-            TextView name = textInto(tile, story.title(), 22);
+            // One 50dp line per story: the full row opens the existing player.
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), 0, dp(12), 0);
+            row.setBackground(ui.ripple(ui.surface, 10, ui.outline));
+            row.setClickable(true);
+            row.setFocusable(true);
+            row.setContentDescription("Открыть сказку: " + story.title());
+            row.setOnClickListener(v -> openStory(story));
+
+            TextView name = new TextView(this);
+            name.setText(story.title());
+            name.setTextSize(16);
+            name.setTextColor(primaryText());
             name.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            TextView source = textInto(tile, story.source(), 14);
-            source.setTextColor(secondaryText());
-            source.setPadding(0, dp(3), 0, dp(12));
-            Button open = rowButton("Открыть и слушать", () -> openStory(story));
-            ui.style(open, UiStyle.Tone.OUTLINE);
-            tile.addView(open, spaced(0));
-            LinearLayout.LayoutParams tileParams = spaced(14);
-            tileParams.topMargin = dp(2);
-            content.addView(tile, tileParams);
+            name.setSingleLine(true);
+            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            name.setGravity(Gravity.CENTER_VERTICAL);
+            row.addView(name, new LinearLayout.LayoutParams(0, -1, 1));
+
+            TextView chevron = new TextView(this);
+            chevron.setText("›");
+            chevron.setTextColor(secondaryText());
+            chevron.setTextSize(25);
+            chevron.setGravity(Gravity.CENTER);
+            row.addView(chevron, new LinearLayout.LayoutParams(dp(18), -1));
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(50));
+            params.bottomMargin = dp(5);
+            content.addView(row, params);
         }
     }
     private void openStory(Store.Story story) {
