@@ -575,7 +575,9 @@ public final class MainActivity extends Activity {
         });
 
         assistantDialog = new AlertDialog.Builder(this)
-                .setTitle("ChatGPT • Изучение испанского")
+                .setTitle(studyingEnglish()
+                        ? "ChatGPT • Изучение английского"
+                        : "ChatGPT • Изучение испанского")
                 .setView(box)
                 .setNegativeButton("Закрыть", null)
                 .create();
