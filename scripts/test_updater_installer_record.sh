@@ -108,7 +108,7 @@ PY
     # the flashcard. UIAutomator only sees on-screen views; scroll the active
     # ScrollView to expose the actual update button before declaring failure.
     local size width height
-    size=$(adb shell wm size | sed -n 's/.*: \\([0-9][0-9]*\\)x\\([0-9][0-9]*\\).*/\\1 \\2/p' | tail -n 1)
+    size=$(adb shell wm size | sed -n 's/.*: \([0-9][0-9]*\)x\([0-9][0-9]*\).*/\1 \2/p' | tail -n 1)
     read -r width height <<< "${size:-1080 1920}"
     adb shell input swipe "$((width / 2))" "$((height * 75 / 100))" \
                          "$((width / 2))" "$((height * 28 / 100))" 250 || true
