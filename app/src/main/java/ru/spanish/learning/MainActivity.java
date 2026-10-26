@@ -479,18 +479,9 @@ public final class MainActivity extends Activity {
         player.pause();
         text("Карточки", 28);
 
-        LinearLayout maintenance = new LinearLayout(this);
-        maintenance.setOrientation(LinearLayout.HORIZONTAL);
-        Button updateButton = rowButton("Обновление", this::startUpdateNow);
-        Button buildButton = rowButton("Версия / сборка", this::showBuild);
-        maintenance.addView(updateButton, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout.LayoutParams buildParams = new LinearLayout.LayoutParams(0, -2, 1);
-        buildParams.setMarginStart(dp(6));
-        maintenance.addView(buildButton, buildParams);
-        content.addView(maintenance, new LinearLayout.LayoutParams(-1, -2));
-
-        text("Нажмите на карточку для перевода. Листайте влево и вправо. × — слово освоено.", 15);
-        button("ChatGPT — голос / текст", this::showAssistant);
+        TextView hint = text("Нажмите для перевода · листайте в обе стороны · × — освоено", 15);
+        hint.setTextColor(secondaryText());
+        hint.setPadding(0, dp(2), 0, dp(12));
 
         LinearLayout filters = new LinearLayout(this);
         filters.setOrientation(LinearLayout.HORIZONTAL);
@@ -503,6 +494,7 @@ public final class MainActivity extends Activity {
                             cardRevealed = false;
                             render();
                         }).show());
+        ui.style(typeButton, UiStyle.Tone.OUTLINE);
         filters.addView(typeButton, new LinearLayout.LayoutParams(0, -2, 1));
 
         if (kind == 0) {
@@ -515,30 +507,24 @@ public final class MainActivity extends Activity {
                                 cardRevealed = false;
                                 render();
                             }).show());
+            ui.style(categoryButton, UiStyle.Tone.OUTLINE);
             LinearLayout.LayoutParams categoryParams = new LinearLayout.LayoutParams(0, -2, 1);
             categoryParams.setMarginStart(dp(6));
             filters.addView(categoryButton, categoryParams);
         }
-        content.addView(filters, new LinearLayout.LayoutParams(-1, -2));
-
-        LinearLayout addActions = new LinearLayout(this);
-        addActions.setOrientation(LinearLayout.HORIZONTAL);
-        Button addWordButton = rowButton("＋ Слово", () -> addCard(0));
-        Button addPhraseButton = rowButton("＋ Устойчивое выражение", () -> addCard(1));
-        addActions.addView(addWordButton, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, -2, 1);
-        phraseParams.setMarginStart(dp(6));
-        addActions.addView(addPhraseButton, phraseParams);
-        content.addView(addActions, new LinearLayout.LayoutParams(-1, -2));
+        content.addView(filters, spaced(10));
 
         // All unmastered words remain available for bidirectional swiping.
         // Marking a card known changes its status but never deletes it from the AI vocabulary.
         List<Store.Card> cards = store.cards(false, kind, kind == 0 ? category : 0);
-        text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
+        TextView count = text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
+        count.setTextColor(secondaryText());
+        count.setPadding(0, dp(2), 0, dp(10));
         if (cards.isEmpty()) {
             TextView emptyVersion = text("Версия " + BuildConfig.VERSION_NAME, 11);
             emptyVersion.setTextColor(secondaryText());
             emptyVersion.setGravity(Gravity.CENTER);
+            showCardTools();
             return;
         }
 
@@ -546,18 +532,18 @@ public final class MainActivity extends Activity {
         Store.Card card = cards.get(reviewIndex);
 
         FrameLayout cardFrame = new FrameLayout(this);
-        content.addView(cardFrame, new LinearLayout.LayoutParams(-1, -2));
+        cardFrame.setClipChildren(false);
+        cardFrame.setClipToPadding(false);
+        cardFrame.setPadding(dp(3), dp(3), dp(3), dp(6));
+        content.addView(cardFrame, spaced(5));
 
         LinearLayout cardBox = new LinearLayout(this);
         cardBox.setOrientation(LinearLayout.VERTICAL);
         cardBox.setGravity(Gravity.CENTER_HORIZONTAL);
         cardBox.setPadding(dp(12), dp(12), dp(12), dp(12));
-        cardBox.setMinimumHeight(dp(290));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(cardBg());
-        bg.setCornerRadius(dp(22));
-        bg.setStroke(dp(1), borderColor());
-        cardBox.setBackground(bg);
+        cardBox.setMinimumHeight(dp(295));
+        cardBox.setBackground(ui.cardSurface());
+        cardBox.setElevation(dp(5));
         cardFrame.addView(cardBox, new FrameLayout.LayoutParams(-1, -2));
 
         FrameLayout visual = new FrameLayout(this);
@@ -578,7 +564,9 @@ public final class MainActivity extends Activity {
         TextView word = new TextView(this);
         word.setText(cardRevealed ? card.meaning() : card.spanish());
         word.setTag(!cardRevealed);
-        word.setTextSize(30);
+        word.setTextSize(31);
+        word.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        word.setLineSpacing(dp(3), 1.06f);
         word.setTextColor(primaryText());
         word.setGravity(Gravity.CENTER);
         word.setPadding(0, dp(10), 0, dp(10));
@@ -587,16 +575,14 @@ public final class MainActivity extends Activity {
         // Confirmation requires a deliberate second tap; mastery does not delete vocabulary.
         TextView confirmKnown = new TextView(this);
         confirmKnown.setText("УДАЛИТЬ");
-        confirmKnown.setTextSize(16);
-        confirmKnown.setTextColor(darkTheme ? 0xFFFF6B6B : 0xFFC62828);
+        confirmKnown.setTextSize(15);
+        confirmKnown.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        confirmKnown.setTextColor(ui.danger);
         confirmKnown.setGravity(Gravity.CENTER);
         confirmKnown.setPadding(dp(18), 0, dp(18), 0);
         confirmKnown.setContentDescription("Подтвердить: убрать из изучения, сохранить в словаре");
-        GradientDrawable confirmBg = new GradientDrawable();
-        confirmBg.setColor(darkTheme ? 0xFF442929 : 0xFFFFE7E7);
-        confirmBg.setCornerRadius(dp(14));
-        confirmBg.setStroke(dp(1), darkTheme ? 0xFFFF6B6B : 0xFFC62828);
-        confirmKnown.setBackground(confirmBg);
+        confirmKnown.setBackground(ui.ripple(ui.dangerSoft, 14, ui.danger));
+        confirmKnown.setElevation(dp(12));
         confirmKnown.setVisibility(View.GONE);
         confirmKnown.setOnClickListener(v -> {
             cancelCardSpeech();
@@ -659,6 +645,7 @@ public final class MainActivity extends Activity {
                     return true;
             }
         });
+        gestureLayer.setElevation(dp(8)); // Above the elevated card, below the two actions.
         cardFrame.addView(gestureLayer, new FrameLayout.LayoutParams(-1, -1));
 
         FrameLayout.LayoutParams confirmParams = new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END);
@@ -669,14 +656,11 @@ public final class MainActivity extends Activity {
         TextView known = new TextView(this);
         known.setText("×");
         known.setTextSize(27);
-        known.setTextColor(darkTheme ? 0xFFFF6B6B : 0xFFC62828);
+        known.setTextColor(ui.danger);
         known.setGravity(Gravity.CENTER);
         known.setContentDescription("Открыть подтверждение удаления из изучения");
-        GradientDrawable closeBg = new GradientDrawable();
-        closeBg.setShape(GradientDrawable.OVAL);
-        closeBg.setColor(darkTheme ? 0xFF3A4541 : 0xFFF1F3F0);
-        closeBg.setStroke(dp(1), borderColor());
-        known.setBackground(closeBg);
+        known.setBackground(ui.ripple(ui.dangerSoft, 25, Color.TRANSPARENT));
+        known.setElevation(dp(12));
         known.setOnClickListener(v -> confirmKnown.setVisibility(
                 confirmKnown.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
         FrameLayout.LayoutParams knownParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.END);
@@ -690,7 +674,41 @@ public final class MainActivity extends Activity {
         version.setPadding(0, dp(2), 0, dp(2));
         TextView counter = text((reviewIndex + 1) + " / " + cards.size(), 14);
         counter.setGravity(Gravity.CENTER);
+        counter.setTextColor(ui.accent);
+        counter.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        counter.setPadding(0, dp(2), 0, dp(10));
         if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
+        showCardTools();
+    }
+
+    /** Secondary actions are intentionally below the card, keeping study in the first viewport. */
+    private void showCardTools() {
+        Button chat = button("ChatGPT — голос / текст", this::showAssistant);
+        ui.style(chat, UiStyle.Tone.PRIMARY);
+        LinearLayout addActions = new LinearLayout(this);
+        addActions.setOrientation(LinearLayout.HORIZONTAL);
+        Button addWordButton = rowButton("＋ Слово", () -> addCard(0));
+        Button addPhraseButton = rowButton("＋ Устойчивое выражение", () -> addCard(1));
+        ui.style(addWordButton, UiStyle.Tone.OUTLINE);
+        ui.style(addPhraseButton, UiStyle.Tone.OUTLINE);
+        addActions.addView(addWordButton, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, -2, 1);
+        phraseParams.setMarginStart(dp(6));
+        addActions.addView(addPhraseButton, phraseParams);
+        content.addView(addActions, spaced(10));
+
+        LinearLayout maintenance = new LinearLayout(this);
+        maintenance.setOrientation(LinearLayout.HORIZONTAL);
+        Button updateButton = rowButton("Обновление", this::startUpdateNow);
+        Button buildButton = rowButton("Версия / сборка", this::showBuild);
+        ui.style(updateButton, UiStyle.Tone.SECONDARY);
+        ui.style(buildButton, UiStyle.Tone.OUTLINE);
+        maintenance.addView(updateButton, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams buildParams = new LinearLayout.LayoutParams(0, -2, 1);
+        buildParams.setMarginStart(dp(6));
+        maintenance.addView(buildButton, buildParams);
+        content.addView(maintenance, spaced(16));
+
     }
 
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {
