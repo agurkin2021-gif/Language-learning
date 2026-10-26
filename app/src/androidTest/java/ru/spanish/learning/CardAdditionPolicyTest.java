@@ -23,6 +23,7 @@ public class CardAdditionPolicyTest extends AndroidTestCase {
         assertEquals(2, new CardAdditionPolicy.Batch("Добавь 2 слова").limit);
         assertEquals(3, new CardAdditionPolicy.Batch("Добавь 3 простых испанских слова уровня A1").limit);
         assertEquals(5, new CardAdditionPolicy.Batch("Добавь 5 новых частотных испанских слов").limit);
+        assertEquals(10, new CardAdditionPolicy.Batch("Добавь 100 самых употребительных испанских слов A1").limit);
         assertEquals(4, new CardAdditionPolicy.Batch("Добавь 4 устойчивых выражения").limit);
         assertEquals(10, new CardAdditionPolicy.Batch("Добавь слова А1").limit);
         assertEquals(10, new CardAdditionPolicy.Batch("Добавь 999 слов").limit);
