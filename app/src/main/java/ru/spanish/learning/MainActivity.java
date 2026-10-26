@@ -539,12 +539,40 @@ public final class MainActivity extends Activity {
         word.setPadding(0, dp(10), 0, dp(10));
         cardBox.addView(word, new LinearLayout.LayoutParams(-1, -2));
 
+        // Confirmation requires a deliberate second tap; mastery does not delete vocabulary.
+        TextView confirmKnown = new TextView(this);
+        confirmKnown.setText("УДАЛИТЬ");
+        confirmKnown.setTextSize(16);
+        confirmKnown.setTextColor(darkTheme ? 0xFFFF6B6B : 0xFFC62828);
+        confirmKnown.setGravity(Gravity.CENTER);
+        confirmKnown.setPadding(dp(18), 0, dp(18), 0);
+        confirmKnown.setContentDescription("Подтвердить: убрать из изучения, сохранить в словаре");
+        GradientDrawable confirmBg = new GradientDrawable();
+        confirmBg.setColor(darkTheme ? 0xFF442929 : 0xFFFFE7E7);
+        confirmBg.setCornerRadius(dp(14));
+        confirmBg.setStroke(dp(1), darkTheme ? 0xFFFF6B6B : 0xFFC62828);
+        confirmKnown.setBackground(confirmBg);
+        confirmKnown.setVisibility(View.GONE);
+        confirmKnown.setOnClickListener(v -> {
+            cancelCardSpeech();
+            player.pause();
+            // Mark as mastered, retaining the entry in the complete dictionary for ChatGPT.
+            store.review(card.id(), 2, 0);
+            if (reviewIndex >= cards.size() - 1) reviewIndex = 0;
+            cardRevealed = false;
+            render();
+        });
+
         // A transparent touch surface also covers the WebView illustration, so a
         // gesture works anywhere on the card without triggering text selection.
         View gestureLayer = new View(this);
         gestureLayer.setTag("card-swipe-surface");
         gestureLayer.setContentDescription("Карточка: нажмите для перевода; листайте влево или вправо");
         gestureLayer.setOnClickListener(v -> {
+            if (confirmKnown.getVisibility() == View.VISIBLE) {
+                confirmKnown.setVisibility(View.GONE);
+                return;
+            }
             cancelCardSpeech();
             player.pause();
             cardRevealed = !cardRevealed;
@@ -588,25 +616,24 @@ public final class MainActivity extends Activity {
         });
         cardFrame.addView(gestureLayer, new FrameLayout.LayoutParams(-1, -1));
 
+        FrameLayout.LayoutParams confirmParams = new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END);
+        confirmParams.topMargin = dp(61);
+        confirmParams.rightMargin = dp(8);
+        cardFrame.addView(confirmKnown, confirmParams);
+
         TextView known = new TextView(this);
         known.setText("×");
         known.setTextSize(27);
         known.setTextColor(darkTheme ? 0xFFFF6B6B : 0xFFC62828);
         known.setGravity(Gravity.CENTER);
-        known.setContentDescription("Знаю: убрать карточку из изучения");
+        known.setContentDescription("Открыть подтверждение удаления из изучения");
         GradientDrawable closeBg = new GradientDrawable();
         closeBg.setShape(GradientDrawable.OVAL);
         closeBg.setColor(darkTheme ? 0xFF3A4541 : 0xFFF1F3F0);
         closeBg.setStroke(dp(1), borderColor());
         known.setBackground(closeBg);
-        known.setOnClickListener(v -> {
-            cancelCardSpeech();
-            player.pause();
-            store.review(card.id(), 2, 0);
-            if (reviewIndex >= cards.size() - 1) reviewIndex = 0;
-            cardRevealed = false;
-            render();
-        });
+        known.setOnClickListener(v -> confirmKnown.setVisibility(
+                confirmKnown.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
         FrameLayout.LayoutParams knownParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.END);
         knownParams.topMargin = dp(8);
         knownParams.rightMargin = dp(8);

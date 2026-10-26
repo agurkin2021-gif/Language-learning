@@ -121,12 +121,35 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
 
             getInstrumentation().runOnMainSync(() -> {
                 TextView cross = text(root(), "×");
-                assertNotNull("Top-right known cross", cross);
-                assertEquals("Знаю: убрать карточку из изучения", cross.getContentDescription().toString());
+                assertNotNull("Top-right red known cross", cross);
+                assertEquals("Открыть подтверждение удаления из изучения",
+                        cross.getContentDescription().toString());
                 cross.performClick();
+                TextView confirm = text(root(), "УДАЛИТЬ");
+                assertNotNull("Second-tap confirmation pill", confirm);
+                assertEquals(View.VISIBLE, confirm.getVisibility());
             });
             getInstrumentation().waitForIdleSync();
-            assertEquals(total - 1, counter()[1]);
+            assertEquals("First tap must not remove the current card", total, counter()[1]);
+            for (Store.Card item : store.vocabulary()) {
+                if (item.id() == learnedId[0]) assertFalse("No mastery before confirmation", item.mastered());
+            }
+
+            getInstrumentation().runOnMainSync(() -> {
+                // Tapping the card without confirming closes the pill and keeps the card.
+                View surface = tagged(root(), "card-swipe-surface");
+                assertNotNull(surface);
+                surface.performClick();
+                assertEquals(View.GONE, text(root(), "УДАЛИТЬ").getVisibility());
+
+                TextView cross = text(root(), "×");
+                cross.performClick();
+                TextView confirm = text(root(), "УДАЛИТЬ");
+                assertEquals(View.VISIBLE, confirm.getVisibility());
+                confirm.performClick();
+            });
+            getInstrumentation().waitForIdleSync();
+            assertEquals("Only confirmation marks the card as learned", total - 1, counter()[1]);
             assertEquals("Card is retained in the dictionary", originalVocabularySize, store.vocabulary().size());
             boolean mastered = false;
             for (Store.Card card : store.vocabulary()) {
