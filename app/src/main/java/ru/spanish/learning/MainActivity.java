@@ -45,6 +45,12 @@ public final class MainActivity extends Activity {
     private SpeechRecognizer speechRecognizer;
     private AssistantVoiceOutput assistantVoiceOutput;
     private Button assistantVoiceButton, assistantSendButton;
+    private LinearLayout assistantProgressRow;
+    private TextView assistantProgressLabel;
+    private boolean assistantRequestInFlight;
+    private int assistantRequestId;
+    private String assistantRequestStage = "";
+    private ChatGptAssistant.SavedStory pendingSavedStory;
     private boolean assistantVoiceActive, assistantVoiceProcessing, assistantVoiceReviewPending;
     private int assistantVoiceEpoch, assistantVoiceErrors;
     private final Handler assistantVoiceHandler = new Handler(Looper.getMainLooper());
@@ -417,6 +423,27 @@ public final class MainActivity extends Activity {
         box.addView(actions);
         assistantVoiceButton = mic;
         assistantSendButton = send;
+
+        // In-place, indeterminate feedback for real model work: stays visible
+        // until either the answer or a verified database save is received.
+        assistantProgressRow = new LinearLayout(this);
+        assistantProgressRow.setOrientation(LinearLayout.HORIZONTAL);
+        assistantProgressRow.setGravity(Gravity.CENTER_VERTICAL);
+        assistantProgressRow.setPadding(0, dp(8), 0, dp(3));
+        ProgressBar spinner = new ProgressBar(this, null,
+                android.R.attr.progressBarStyleSmall);
+        spinner.setIndeterminate(true);
+        spinner.getIndeterminateDrawable().setTint(ui.accent);
+        assistantProgressRow.addView(spinner, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        assistantProgressLabel = new TextView(this);
+        assistantProgressLabel.setTextColor(ui.accent);
+        assistantProgressLabel.setTextSize(14);
+        assistantProgressLabel.setPadding(dp(7), 0, 0, 0);
+        assistantProgressRow.addView(assistantProgressLabel,
+                new LinearLayout.LayoutParams(0, -2, 1));
+        assistantProgressRow.setVisibility(View.GONE);
+        box.addView(assistantProgressRow);
+
         TextView voiceHelp = new TextView(this);
         voiceHelp.setText("Скажите задачу — ИИ проверит распознавание. Сомнительную фразу можно исправить перед отправкой.");
         voiceHelp.setTextColor(secondaryText());
@@ -431,7 +458,7 @@ public final class MainActivity extends Activity {
                     ? "ChatGPT подключён" + (account.isEmpty() ? "" : " • " + account)
                     : "Нужно один раз подключить этот ChatGPT-аккаунт.");
             connect.setVisibility(connected ? View.GONE : View.VISIBLE);
-            send.setEnabled(connected);
+            send.setEnabled(connected && !assistantRequestInFlight);
         };
         refreshConnection.run();
 
@@ -460,6 +487,7 @@ public final class MainActivity extends Activity {
             }
         });
         send.setOnClickListener(v -> {
+            if (assistantRequestInFlight) return; // never send the same request twice
             boolean voice = assistantVoiceReviewPending;
             if (assistantVoiceActive) stopAssistantVoice();
             assistantVoiceReviewPending = false;
@@ -482,9 +510,17 @@ public final class MainActivity extends Activity {
             assistantStatus = null;
             assistantVoiceButton = null;
             assistantSendButton = null;
+            assistantProgressRow = null;
+            assistantProgressLabel = null;
             if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
         });
         assistantDialog.show();
+        if (assistantRequestInFlight) updateAssistantBusy(true, assistantRequestStage);
+        else if (pendingSavedStory != null) {
+            ChatGptAssistant.SavedStory ready = pendingSavedStory;
+            pendingSavedStory = null;
+            showStoryReadyDialog(ready);
+        }
     }
 
     private void updateAssistantVoiceButton() {
@@ -510,8 +546,52 @@ public final class MainActivity extends Activity {
         updateAssistantVoiceButton();
     }
 
+    /** Show a spinner and a changed Send button while a request is genuinely running. */
+    void updateAssistantBusy(boolean busy, String stage) {
+        assistantRequestInFlight = busy;
+        if (stage != null && !stage.trim().isEmpty()) assistantRequestStage = stage;
+        if (assistantProgressLabel != null) assistantProgressLabel.setText(assistantRequestStage);
+        if (assistantProgressRow != null)
+            assistantProgressRow.setVisibility(busy ? View.VISIBLE : View.GONE);
+        if (assistantSendButton != null) {
+            assistantSendButton.setText(busy ? "⏳ Генерирую…" : "Отправить");
+            assistantSendButton.setEnabled(!busy && assistant.isConnected());
+        }
+        if (assistantInput != null) assistantInput.setEnabled(!busy);
+        if (assistantVoiceButton != null)
+            assistantVoiceButton.setEnabled(!busy || assistantVoiceActive);
+        if (busy && assistantStatus != null) assistantStatus.setText(assistantRequestStage);
+    }
+
+    /** The popup is based on the database ID returned from successful add_story. */
+    private void showStoryReadyDialog(ChatGptAssistant.SavedStory saved) {
+        if (isFinishing() || isDestroyed()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("СКАЗКА ГОТОВА")
+                .setMessage("«" + saved.title() + "»\n\nСказка сохранена в библиотеке.")
+                .setPositiveButton("Открыть сказку", (dialog, which) -> {
+                    Store.Story selected = null;
+                    for (Store.Story story : store.stories()) {
+                        if (story.id() == saved.id()) {
+                            selected = story;
+                            break;
+                        }
+                    }
+                    if (selected == null) {
+                        Toast.makeText(this, "Не удалось найти сохранённую сказку",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if (assistantDialog != null && assistantDialog.isShowing())
+                        assistantDialog.dismiss();
+                    openStory(selected);
+                })
+                .setNegativeButton("Позже", null)
+                .show();
+    }
+
     private void sendAssistantMessage(String message, boolean fromVoice) {
-        if (assistantInput == null) return;
+        if (assistantInput == null || assistantRequestInFlight) return;
         if (message.isEmpty()) {
             assistantInput.setError("Введите сообщение");
             if (fromVoice) stopAssistantVoice();
@@ -522,44 +602,84 @@ public final class MainActivity extends Activity {
             if (fromVoice) stopAssistantVoice();
             return;
         }
-        if (assistantSendButton != null) assistantSendButton.setEnabled(false);
         assistantVoiceProcessing = true;
-        final int epoch = assistantVoiceEpoch;
-        assistantStatus.setText("Отправляю в ChatGPT…");
-        assistant.send(store, message, (ok, answer) -> runOnUiThread(() -> {
-            if (assistantDialog == null || !assistantDialog.isShowing()
-                    || isFinishing() || isDestroyed()) return;
-            if (fromVoice && (!assistantVoiceActive || epoch != assistantVoiceEpoch)) return;
-            assistantVoiceProcessing = false;
-            if (assistantSendButton != null) assistantSendButton.setEnabled(assistant.isConnected());
-            if (!ok) {
-                if (fromVoice) stopAssistantVoice();
-                assistantStatus.setText(answer);
-                return;
+        final int voiceEpoch = assistantVoiceEpoch;
+        final int requestId = ++assistantRequestId;
+        updateAssistantBusy(true, "Отправляю запрос в ChatGPT…");
+
+        assistant.sendWithProgress(store, message, new ChatGptAssistant.SendUpdates() {
+            @Override public void progress(String stage) {
+                runOnUiThread(() -> {
+                    if (requestId != assistantRequestId || isFinishing() || isDestroyed()) return;
+                    updateAssistantBusy(true, stage);
+                });
             }
-            if (assistantInput != null) assistantInput.setText("");
-            if (assistantHistory != null) assistantHistory.setText(assistant.historyText());
-            if (!fromVoice) {
-                assistantStatus.setText("Готово");
-                return;
+
+            @Override public void finished(boolean ok, String answer,
+                                           ChatGptAssistant.SavedStory savedStory) {
+                runOnUiThread(() -> {
+                    if (requestId != assistantRequestId || isFinishing() || isDestroyed()) return;
+                    assistantVoiceProcessing = false;
+                    updateAssistantBusy(false, null);
+                    boolean visible = assistantDialog != null && assistantDialog.isShowing();
+                    boolean storedStory = savedStory != null;
+
+                    if (!visible) {
+                        if (storedStory) {
+                            pendingSavedStory = savedStory;
+                            Toast.makeText(MainActivity.this,
+                                    "Сказка «" + savedStory.title() + "» готова",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                        return;
+                    }
+                    if (!ok && !storedStory) {
+                        if (fromVoice) stopAssistantVoice();
+                        assistantStatus.setText(answer);
+                        return;
+                    }
+                    if (assistantInput != null) assistantInput.setText("");
+                    if (assistantHistory != null)
+                        assistantHistory.setText(assistant.historyText());
+                    if (storedStory) {
+                        if (fromVoice) stopAssistantVoice();
+                        assistantStatus.setText("Сказка сохранена: " + savedStory.title());
+                        showStoryReadyDialog(savedStory);
+                        return;
+                    }
+                    if (!ok) {
+                        assistantStatus.setText(answer);
+                        return;
+                    }
+                    if (!fromVoice) {
+                        assistantStatus.setText("Готово");
+                        return;
+                    }
+                    if (!assistantVoiceActive || voiceEpoch != assistantVoiceEpoch) {
+                        assistantStatus.setText("Готово");
+                        return;
+                    }
+                    if (assistantVoiceOutput == null)
+                        assistantVoiceOutput = new AssistantVoiceOutput(MainActivity.this);
+                    assistantStatus.setText("ChatGPT отвечает вслух…");
+                    assistantVoiceOutput.speak(answer, spoken -> {
+                        if (!assistantVoiceActive || voiceEpoch != assistantVoiceEpoch) return;
+                        if (!spoken) {
+                            stopAssistantVoice();
+                            assistantStatus.setText("Нет русского голоса синтеза Android. Установите русский голос в настройках телефона.");
+                            return;
+                        }
+                        assistantStatus.setText("Продолжаем разговор…");
+                        pendingVoiceRestart = () -> {
+                            pendingVoiceRestart = null;
+                            if (assistantVoiceActive && voiceEpoch == assistantVoiceEpoch)
+                                startAssistantVoice();
+                        };
+                        assistantVoiceHandler.postDelayed(pendingVoiceRestart, 650);
+                    });
+                });
             }
-            if (assistantVoiceOutput == null) assistantVoiceOutput = new AssistantVoiceOutput(this);
-            assistantStatus.setText("ChatGPT отвечает вслух…");
-            assistantVoiceOutput.speak(answer, spoken -> {
-                if (!assistantVoiceActive || epoch != assistantVoiceEpoch) return;
-                if (!spoken) {
-                    stopAssistantVoice();
-                    assistantStatus.setText("Нет русского голоса синтеза Android. Установите русский голос в настройках телефона.");
-                    return;
-                }
-                assistantStatus.setText("Продолжаем разговор…");
-                pendingVoiceRestart = () -> {
-                    pendingVoiceRestart = null;
-                    if (assistantVoiceActive && epoch == assistantVoiceEpoch) startAssistantVoice();
-                };
-                assistantVoiceHandler.postDelayed(pendingVoiceRestart, 650);
-            });
-        }));
+        });
     }
 
     private void startAssistantVoice() {

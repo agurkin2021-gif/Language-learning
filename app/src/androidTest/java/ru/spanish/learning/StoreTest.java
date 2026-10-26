@@ -261,4 +261,37 @@ public class StoreTest extends AndroidTestCase {
         }
         getContext().deleteDatabase(database);
     }
+
+    public void testChatGptStorySaveProducesVerifiedCompletionReceipt() throws Exception {
+        String database = "test-chatgpt-story-receipt.db";
+        getContext().deleteDatabase(database);
+        try (Store s = new Store(getContext(), database)) {
+            String result = ChatGptAssistant.saveGeneratedStory(s, "El gato y el coche",
+                    "El gato mira un coche. El coche se mueve.",
+                    "Кот смотрит на машинку. Машинка едет.");
+            ChatGptAssistant.SavedStory saved =
+                    ChatGptAssistant.savedStoryFromToolResponse("add_story", result);
+            assertNotNull("Only a real database save can produce a popup", saved);
+            assertEquals("El gato y el coche", saved.title());
+            assertTrue(saved.id() > 0);
+            assertEquals("El gato y el coche", s.stories().get(0).title());
+            assertEquals(saved.id(), s.stories().get(0).id());
+
+            String duplicate = ChatGptAssistant.saveGeneratedStory(s, "El gato y el coche",
+                    "El gato mira un coche. El coche se mueve.",
+                    "Кот смотрит на машинку. Машинка едет.");
+            assertNull("A duplicate must not announce a NEW story",
+                    ChatGptAssistant.savedStoryFromToolResponse("add_story", duplicate));
+            assertNull("Prose or another tool must not trigger the story popup",
+                    ChatGptAssistant.savedStoryFromToolResponse("add_word", result));
+            assertNull(ChatGptAssistant.savedStoryFromToolResponse("add_story",
+                    "{\"ok\":false,\"status\":\"added\",\"story_id\":9,\"title\":\"Fake\"}"));
+            assertNull(ChatGptAssistant.savedStoryFromToolResponse("add_story",
+                    "{\"ok\":true,\"status\":\"added\",\"title\":\"No ID\"}"));
+            assertNull(ChatGptAssistant.savedStoryFromToolResponse("add_story", "broken JSON"));
+        } finally {
+            getContext().deleteDatabase(database);
+        }
+    }
+
 }

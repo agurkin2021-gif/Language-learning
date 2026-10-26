@@ -130,23 +130,94 @@ public final class ChatGptAssistant {
         });
     }
 
+    /** A saved story is confirmed by SQLite, not inferred from AI prose. */
+    public record SavedStory(long id, String title) {}
+
+    public interface SendUpdates {
+        void progress(String stage);
+        void finished(boolean ok, String answer, SavedStory story);
+    }
+
+    /** Preserve the original simple callback for legacy integrations. */
     public void send(Store store, String userText, MessageCallback callback) {
+        sendWithProgress(store, userText, new SendUpdates() {
+            @Override public void progress(String stage) {}
+            @Override public void finished(boolean ok, String answer, SavedStory story) {
+                callback.finished(ok, answer);
+            }
+        });
+    }
+
+    /** Only a newly inserted, successful add_story call produces a completion receipt. */
+    static SavedStory savedStoryFromToolResponse(String tool, String response) {
+        if (!"add_story".equals(tool)) return null;
+        try {
+            JSONObject result = new JSONObject(response);
+            if (!result.optBoolean("ok", false) || !"added".equals(result.optString("status")))
+                return null;
+            long id = result.optLong("story_id", -1);
+            String title = result.optString("title", "").trim();
+            if (id <= 0 || title.isEmpty()) return null;
+            return new SavedStory(id, title);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Persist a generated story and provide the real database ID to the UI.
+     * A duplicate is not announced as a newly generated story.
+     */
+    static String saveGeneratedStory(Store store, String title, String spanish,
+                                     String russian) throws Exception {
+        boolean added = store.addStoryIfMissing(title, spanish, russian,
+                "ChatGPT • добавлено из приложения");
+        String cleanTitle = title.trim();
+        long id = -1;
+        for (Store.Story story : store.stories()) {
+            if (cleanTitle.equals(story.title())) {
+                id = story.id();
+                break;
+            }
+        }
+        if (id <= 0) throw new IllegalStateException("Сказка не найдена после сохранения");
+        return new JSONObject().put("ok", true)
+                .put("status", added ? "added" : "already_exists")
+                .put("title", cleanTitle).put("story_id", id).toString();
+    }
+
+    /**
+     * Report truthful stages while the model works. Do not fake percentages.
+     * The final story receipt is reported even when a later reply fails.
+     */
+    public void sendWithProgress(Store store, String userText, SendUpdates callback) {
         String clean = userText == null ? "" : userText.trim();
         if (clean.isEmpty()) {
-            callback.finished(false, "Введите сообщение");
+            callback.finished(false, "Введите сообщение", null);
             return;
         }
         worker.execute(() -> {
+            SavedStory savedStory = null;
             try {
+                callback.progress("Проверяю подключение ChatGPT…");
                 Session session = ensureSession();
                 String model = chooseModel(session.accessToken);
+                callback.progress("Подготавливаю ваш словарь и выражения…");
                 JSONArray input = buildInput(clean);
                 String instructions = buildInstructions(store);
                 String finalText = "";
                 boolean executedAny = false;
                 boolean toolSucceeded = false;
+                String lower = clean.toLowerCase(Locale.ROOT);
+                boolean storyIntent = lower.contains("сказк") || lower.contains("рассказ")
+                        || lower.contains("истори") || lower.contains("cuento")
+                        || lower.contains("historia");
 
                 for (int round = 0; round < 4; round++) {
+                    callback.progress(round == 0
+                            ? storyIntent ? "ChatGPT сочиняет сказку по вашим словам…"
+                                          : "ChatGPT готовит ответ…"
+                            : "ChatGPT завершает ответ…");
                     ResponseTurn turn = request(session.accessToken, model, instructions, input);
                     if (turn.calls.isEmpty()) {
                         finalText = turn.text.trim();
@@ -157,10 +228,15 @@ public final class ChatGptAssistant {
                     executedAny = true;
                     for (JSONObject outputItem : turn.outputItems) input.put(outputItem);
                     for (ToolCall call : turn.calls) {
+                        callback.progress("add_story".equals(call.name)
+                                ? "Сохраняю сказку в вашей библиотеке…"
+                                : "Добавляю материалы в ваш словарь…");
                         String result = executeTool(store, call);
                         try {
                             if (new JSONObject(result).optBoolean("ok", false)) toolSucceeded = true;
                         } catch (Exception ignored) {}
+                        SavedStory receipt = savedStoryFromToolResponse(call.name, result);
+                        if (receipt != null) savedStory = receipt;
                         JSONObject output = new JSONObject();
                         output.put("type", "function_call_output");
                         output.put("call_id", call.callId);
@@ -171,15 +247,15 @@ public final class ChatGptAssistant {
 
                 if (finalText.isEmpty()) {
                     if (toolSucceeded) finalText = "Готово.";
-                    else if (executedAny) throw new IllegalStateException("Не удалось выполнить действие в приложении");
+                    else if (executedAny)
+                        throw new IllegalStateException("Не удалось выполнить действие в приложении");
                     else finalText = "Не удалось получить ответ.";
                 }
                 appendHistory("user", clean);
                 appendHistory("assistant", finalText);
-                String answer = finalText;
-                callback.finished(true, answer);
+                callback.finished(true, finalText, savedStory);
             } catch (Exception e) {
-                callback.finished(false, readable(e));
+                callback.finished(false, readable(e), savedStory);
             }
         });
     }
@@ -640,12 +716,8 @@ public final class ChatGptAssistant {
                 return new JSONObject().put("ok", true).put("status", added ? "added" : "already_exists").toString();
             }
             if ("add_story".equals(call.name)) {
-                boolean added = store.addStoryIfMissing(
-                        args.getString("title"),
-                        args.getString("spanish"),
-                        args.getString("russian"),
-                        "ChatGPT • добавлено из приложения");
-                return new JSONObject().put("ok", true).put("status", added ? "added" : "already_exists").toString();
+                return saveGeneratedStory(store, args.getString("title"),
+                        args.getString("spanish"), args.getString("russian"));
             }
             throw new IllegalArgumentException("Неизвестный инструмент");
         } catch (Exception e) {
