@@ -64,7 +64,14 @@ public final class StudyLanguageSwitchTest
         getInstrumentation().getTargetContext()
                 .getSharedPreferences("ui", Context.MODE_PRIVATE)
                 .edit().putString("studyLanguage", "es")
-                .putString("screen", "cards").commit();
+                .putString("screen", "cards")
+                .putInt("kind", 0).putInt("category", 0).putInt("reviewIndex", 0)
+                .commit();
+        final int spanishCount;
+        try (Store spanish = new Store(getInstrumentation().getTargetContext())) {
+            spanishCount = spanish.cards(false, 0).size();
+        }
+        assertTrue("There must be some Spanish words to test retention", spanishCount > 0);
         getActivity();
         getInstrumentation().waitForIdleSync();
 
@@ -72,7 +79,7 @@ public final class StudyLanguageSwitchTest
             View root = getActivity().getWindow().getDecorView();
             assertNotNull(find(root, "ES ▾"));
             assertNotNull(find(root, "Испанский • аргентинский вариант"));
-            assertNotNull(find(root, "Карточек: 950"));
+            assertNotNull(find(root, "Карточек: " + spanishCount));
         });
         tap("ES ▾");
         select("Английский (EN)");
@@ -81,7 +88,7 @@ public final class StudyLanguageSwitchTest
             assertNotNull(find(root, "EN ▾"));
             assertNotNull(find(root, "Английский • личный словарь"));
             assertNull("Spanish starter set must not appear in English",
-                    find(root, "Карточек: 950"));
+                    find(root, "Карточек: " + spanishCount));
             assertNotNull(find(root, "ChatGPT — голос / текст"));
         });
 
@@ -99,7 +106,7 @@ public final class StudyLanguageSwitchTest
             View root = getActivity().getWindow().getDecorView();
             assertNotNull(find(root, "ES ▾"));
             assertNotNull(find(root, "Испанский • аргентинский вариант"));
-            assertNotNull(find(root, "Карточек: 950"));
+            assertNotNull(find(root, "Карточек: " + spanishCount));
         });
     }
 }
