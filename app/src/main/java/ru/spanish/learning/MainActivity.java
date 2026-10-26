@@ -769,36 +769,93 @@ public final class MainActivity extends Activity {
     }
     private void stories() {
         text("Библиотека сказок", 28);
-        text("Слушайте целиком или по одному предложению.", 17);
-        button("ChatGPT — голос / текст", this::showAssistant);
-        for (Store.Story s : store.stories()) {
-            text(s.title(), 23); text(s.source(), 14); button("Открыть и слушать", () -> openStory(s));
+        TextView subtitle = text("Слушайте целиком или по одному предложению.", 16);
+        subtitle.setTextColor(secondaryText());
+        subtitle.setPadding(0, dp(3), 0, dp(12));
+        Button chat = button("ChatGPT — голос / текст", this::showAssistant);
+        ui.style(chat, UiStyle.Tone.PRIMARY);
+        for (Store.Story story : store.stories()) {
+            LinearLayout tile = new LinearLayout(this);
+            tile.setOrientation(LinearLayout.VERTICAL);
+            tile.setPadding(dp(17), dp(15), dp(17), dp(16));
+            tile.setBackground(ui.cardSurface());
+            tile.setElevation(dp(4));
+            TextView name = textInto(tile, story.title(), 22);
+            name.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            TextView source = textInto(tile, story.source(), 14);
+            source.setTextColor(secondaryText());
+            source.setPadding(0, dp(3), 0, dp(12));
+            Button open = rowButton("Открыть и слушать", () -> openStory(story));
+            ui.style(open, UiStyle.Tone.OUTLINE);
+            tile.addView(open, spaced(0));
+            LinearLayout.LayoutParams tileParams = spaced(14);
+            tileParams.topMargin = dp(2);
+            content.addView(tile, tileParams);
         }
     }
     private void openStory(Store.Story story) {
         player.pause(); remember(); storyId = story.id(); screen = "player"; player.load(story.body(), story.position()); render();
     }
     private void storyPlayer() {
-        Store.Story selected = null; for(Store.Story s : store.stories()) if(s.id() == storyId) selected = s;
+        Store.Story selected = null; for(Store.Story story : store.stories()) if(story.id() == storyId) selected = story;
         if(selected == null) { text("Рассказ не найден", 22); return; }
-        text(selected.title(), 25); text(selected.source(), 14);
-        text("Удерживайте незнакомое испанское слово, чтобы добавить его в карточки.", 14);
+        text(selected.title(), 25);
+        TextView source = text(selected.source(), 14);
+        source.setTextColor(secondaryText());
+        TextView hint = text("Удерживайте незнакомое испанское слово, чтобы добавить его в карточки.", 14);
+        hint.setTextColor(secondaryText());
+        hint.setPadding(0, dp(4), 0, dp(12));
+
         storyTranslations = Sentences.split(selected.translation());
-        sentence = text(player.current(), 27);
+        LinearLayout readingPanel = new LinearLayout(this);
+        readingPanel.setOrientation(LinearLayout.VERTICAL);
+        readingPanel.setPadding(dp(18), dp(16), dp(18), dp(16));
+        readingPanel.setBackground(ui.cardSurface());
+        readingPanel.setElevation(dp(4));
+        content.addView(readingPanel, spaced(15));
+
+        sentence = textInto(readingPanel, player.current(), 26);
+        sentence.setLineSpacing(dp(5), 1.07f);
+        sentence.setPadding(0, dp(3), 0, dp(13));
         attachStoryWordGesture(sentence, this::currentTranslation);
-        sentenceRu = text(currentTranslation(), 20); sentenceRu.setTextIsSelectable(true);
+
+        View divider = new View(this);
+        divider.setBackgroundColor(borderColor());
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
+        dividerParams.bottomMargin = dp(10);
+        readingPanel.addView(divider, dividerParams);
+
+        sentenceRu = textInto(readingPanel, currentTranslation(), 19);
+        sentenceRu.setTextIsSelectable(true);
         sentenceRu.setTextColor(secondaryText());
-        playbackStatus = text("", 16);
-        toggle = button("Слушать", () -> { if(player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING)) player.pause(); else player.play(); });
-        toggle.setTextSize(24); toggle.setMinHeight(dp(76));
+        sentenceRu.setLineSpacing(dp(4), 1.05f);
+
+        playbackStatus = text("", 15);
+        playbackStatus.setTextColor(ui.accent);
+        playbackStatus.setBackground(ui.rounded(ui.soft, 13, Color.TRANSPARENT));
+        playbackStatus.setPadding(dp(14), dp(10), dp(14), dp(10));
+        playbackStatus.setLayoutParams(spaced(12));
+
+        toggle = button("Слушать", () -> {
+            if (player.state.phase == PlaybackState.Phase.SPEAKING ||
+                    (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
+                player.pause();
+            else player.play();
+        });
+        ui.style(toggle, UiStyle.Tone.PRIMARY);
+        toggle.setTextSize(20);
+        toggle.setMinHeight(dp(70));
+
         button("▶ Весь рассказ с начала", () -> {
             player.playAllFromStart();
             remember();
             updatePlayer();
         });
         repeat = button("Повторить предложение", player::repeat);
-        button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
-        button("← Библиотека", () -> navigate("stories"));
+        Button readAll = button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
+        ui.style(readAll, UiStyle.Tone.OUTLINE);
+        Button back = button("← Библиотека", () -> navigate("stories"));
+        ui.style(back, UiStyle.Tone.OUTLINE);
     }
     private interface TranslationText { String get(); }
 
@@ -868,19 +925,26 @@ public final class MainActivity extends Activity {
         for (int index = 0; index < spanish.size(); index++) {
             String es = spanish.get(index);
             String ru = index < russian.size() ? russian.get(index) : "";
+            LinearLayout paragraph = new LinearLayout(this);
+            paragraph.setOrientation(LinearLayout.VERTICAL);
+            paragraph.setPadding(dp(14), dp(9), dp(14), dp(11));
+            paragraph.setBackground(ui.rounded(ui.surface, 16, ui.outline));
+            lines.addView(paragraph, spaced(10));
             TextView original = new TextView(this);
             original.setText(es);
             original.setTextSize(22);
             original.setTextColor(primaryText());
-            original.setPadding(0, dp(16), 0, dp(2));
+            original.setLineSpacing(dp(3), 1.06f);
+            original.setPadding(0, dp(6), 0, dp(5));
             attachStoryWordGesture(original, () -> ru);
-            lines.addView(original);
+            paragraph.addView(original, new LinearLayout.LayoutParams(-1, -2));
             TextView translated = new TextView(this);
             translated.setText(ru);
             translated.setTextSize(17);
             translated.setTextColor(secondaryText());
-            translated.setPadding(0, dp(2), 0, dp(9));
-            lines.addView(translated);
+            translated.setLineSpacing(dp(2), 1.04f);
+            translated.setPadding(0, dp(4), 0, dp(5));
+            paragraph.addView(translated, new LinearLayout.LayoutParams(-1, -2));
         }
         new AlertDialog.Builder(this).setTitle("Текст рассказа")
                 .setView(scroll).setPositiveButton("Закрыть", null).show();
