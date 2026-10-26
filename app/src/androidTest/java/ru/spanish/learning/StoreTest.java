@@ -193,4 +193,72 @@ public class StoreTest extends AndroidTestCase {
         }
         getContext().deleteDatabase(database);
     }
+
+    /** The first install has starter data; a deliberate reset never restores it. */
+    public void testResetClearsCardsStoriesProgressAndBlocksSharedFeed() {
+        String database = "test-reset-learning.db";
+        getContext().deleteDatabase(database);
+        try (Store s = new Store(getContext(), database)) {
+            assertEquals(950, s.vocabulary().size());
+            assertEquals(1, s.stories().size());
+            assertFalse(s.sharedContentDisabled());
+
+            s.addCard("palabra personal", "личное слово", 0, 1);
+            s.addCard("frase personal", "личное выражение", 1, 0);
+            s.setMastered(s.vocabulary().get(0).id(), true);
+            s.addStory("Mi historia", "Hola.", "Привет.", "Личный рассказ");
+            assertTrue(s.importRemoteCard("shared-word", "barco", "лодка", 0, 2));
+            assertTrue(s.importRemoteStory("shared-story", "Pescador", "Vuelve.", "Возвращается."));
+            assertEquals(953, s.vocabulary().size());
+            assertEquals(3, s.stories().size());
+
+            s.resetLearningData();
+            assertTrue("Shared GitHub feed is disabled only for this database", s.sharedContentDisabled());
+            assertEquals(0, s.vocabulary().size());
+            assertEquals(0, s.mastered().size());
+            assertEquals(0, s.cards(false, 0).size());
+            assertEquals(0, s.cards(false, 1).size());
+            assertEquals(0, s.cardsForReview(0, 0, 0).size());
+            assertEquals(0, s.stories().size());
+            assertFalse("Remote cards must not refill an explicitly cleared database",
+                    s.importRemoteCard("new-shared-word", "flor", "цветок", 0, 2));
+            assertFalse("Remote stories must not refill an explicitly cleared database",
+                    s.importRemoteStory("new-shared-story", "Otra", "Hola.", "Привет."));
+            s.addCard("nuevo", "новое личное слово", 0, 1);
+            s.addStory("Nuevo cuento", "Hola.", "Привет.", "Личный рассказ");
+        }
+
+        try (Store s = new Store(getContext(), database)) {
+            assertTrue(s.sharedContentDisabled());
+            assertEquals("A user can add words again after the reset", 1, s.vocabulary().size());
+            assertEquals("A user can add stories again after the reset", 1, s.stories().size());
+            assertEquals("nuevo", s.vocabulary().get(0).spanish());
+            assertEquals("Nuevo cuento", s.stories().get(0).title());
+            // Simulate the next DB migration: no starter words must come back.
+            s.onUpgrade(s.getWritableDatabase(), 7, 8);
+            assertEquals(1, s.vocabulary().size());
+            assertEquals(1, s.stories().size());
+            assertTrue(s.sharedContentDisabled());
+        }
+        getContext().deleteDatabase(database);
+    }
+
+    /** Upgrading existing v6 installs must not resurrect cards deleted before the update. */
+    public void testUpgradeFromVersionSixKeepsRemovedStarterWordsRemoved() {
+        String database = "test-upgrade-v6-no-reseed.db";
+        getContext().deleteDatabase(database);
+        try (Store s = new Store(getContext(), database)) {
+            assertEquals(950, s.vocabulary().size());
+            android.database.sqlite.SQLiteDatabase db = s.getWritableDatabase();
+            db.execSQL("DELETE FROM cards WHERE id=(SELECT id FROM cards ORDER BY id LIMIT 1)");
+            db.execSQL("DROP TABLE app_state");
+            db.setVersion(6);
+        }
+        try (Store s = new Store(getContext(), database)) {
+            assertEquals("Schema upgrade must not restore manually deleted cards", 949, s.vocabulary().size());
+            assertFalse(s.sharedContentDisabled());
+            assertEquals(1, s.stories().size());
+        }
+        getContext().deleteDatabase(database);
+    }
 }
