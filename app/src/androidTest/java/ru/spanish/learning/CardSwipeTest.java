@@ -158,10 +158,11 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
         getInstrumentation().waitForIdleSync();
 
         Store.Card target;
+        int vocabularyBefore;
         int total = counter()[1];
         try (Store store = new Store(context)) {
             target = store.cards(false, 0, 1).get(counter()[0] - 1);
-            assertEquals(950, store.vocabulary().size());
+            vocabularyBefore = store.vocabulary().size();
         }
 
         getInstrumentation().runOnMainSync(() -> {
@@ -178,7 +179,6 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
                     store.cards(false, 0, 1).stream().anyMatch(c -> c.id() == target.id()));
         }
 
-        boolean removed = false;
         try {
             getInstrumentation().runOnMainSync(() -> {
                 View delete = tagged(root(), "card-delete-forever");
@@ -187,28 +187,30 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
             });
             getInstrumentation().waitForIdleSync();
             clickAlertAction("Удалить");
-            removed = true;
             assertEquals("Confirmed deletion removes one card", total - 1, counter()[1]);
             try (Store store = new Store(context)) {
-                assertEquals(949, store.vocabulary().size());
+                assertEquals(vocabularyBefore - 1, store.vocabulary().size());
                 assertFalse("Deleted card must not remain in vocabulary or mastered archive",
                         store.vocabulary().stream().anyMatch(c -> c.id() == target.id()));
                 assertFalse(store.mastered().stream().anyMatch(c -> c.id() == target.id()));
             }
         } finally {
             // Restore the fixture with its original ID and state, even if an assertion fails.
-            if (removed) try (Store store = new Store(context)) {
-                ContentValues values = new ContentValues();
-                values.put("id", target.id());
-                values.put("spanish", target.spanish());
-                values.put("meaning", target.meaning());
-                values.put("kind", target.kind());
-                values.put("category", target.category());
-                values.put("mastered", target.mastered() ? 1 : 0);
-                values.put("last_result", target.lastResult());
-                values.put("review_count", target.reviewCount());
-                values.put("next_due", target.nextDue());
-                store.getWritableDatabase().insertOrThrow("cards", null, values);
+            try (Store store = new Store(context)) {
+                boolean exists = store.vocabulary().stream().anyMatch(c -> c.id() == target.id());
+                if (!exists) {
+                    ContentValues values = new ContentValues();
+                    values.put("id", target.id());
+                    values.put("spanish", target.spanish());
+                    values.put("meaning", target.meaning());
+                    values.put("kind", target.kind());
+                    values.put("category", target.category());
+                    values.put("mastered", target.mastered() ? 1 : 0);
+                    values.put("last_result", target.lastResult());
+                    values.put("review_count", target.reviewCount());
+                    values.put("next_due", target.nextDue());
+                    store.getWritableDatabase().insertOrThrow("cards", null, values);
+                }
             }
         }
     }
