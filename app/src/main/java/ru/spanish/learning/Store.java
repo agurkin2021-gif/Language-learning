@@ -17,7 +17,7 @@ public final class Store extends SQLiteOpenHelper {
 
     public Store(Context context) { this(context, "learning.db"); }
     Store(Context context, String databaseName) {
-        super(context, databaseName, null, 6);
+        super(context, databaseName, null, 7);
         this.context = context.getApplicationContext();
     }
 
@@ -27,6 +27,7 @@ public final class Store extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE cards(id INTEGER PRIMARY KEY, spanish TEXT NOT NULL, meaning TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN(0,1)), category INTEGER NOT NULL DEFAULT 0 CHECK(category IN(0,1,2,3)), mastered INTEGER NOT NULL DEFAULT 0 CHECK(mastered IN(0,1)), last_result INTEGER NOT NULL DEFAULT 0 CHECK(last_result IN(0,1,2)), review_count INTEGER NOT NULL DEFAULT 0, next_due INTEGER NOT NULL DEFAULT 0)");
         db.execSQL("CREATE TABLE stories(id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, translation TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)");
         db.execSQL("CREATE TABLE remote_items(external_id TEXT PRIMARY KEY NOT NULL, item_type TEXT NOT NULL, local_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE app_state(key TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)");
         ContentValues v = new ContentValues();
         v.put("title", "Una tarde en la plaza — пример");
         v.put("body", "Lucía vive en una casa pequeña. Una tarde, sale a caminar. En la plaza ve a su amigo Tomás.\n—¿Cómo estás? —pregunta Lucía.\n—Muy bien. ¿Querés tomar un mate?\nLucía dice que sí. Los dos se sientan bajo un árbol. Tomás comparte el mate con ella. Hablan de su día y miran los pájaros. Después, Lucía vuelve a casa contenta.");
@@ -56,7 +57,45 @@ public final class Store extends SQLiteOpenHelper {
         if (oldVersion < 6) {
             db.execSQL("CREATE TABLE IF NOT EXISTS remote_items(external_id TEXT PRIMARY KEY NOT NULL, item_type TEXT NOT NULL, local_id INTEGER NOT NULL)");
         }
-        DefaultCards.seed(db);
+        if (oldVersion < 7) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS app_state(key TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)");
+        }
+        // Existing installations already have their initial cards. Future schema
+        // upgrades must never restore words that a user deliberately deleted.
+        if (oldVersion < 6) DefaultCards.seed(db);
+    }
+
+    private boolean sharedContentDisabled(SQLiteDatabase db) {
+        try (Cursor cursor = db.rawQuery("SELECT value FROM app_state WHERE key=?",
+                new String[]{"shared_content_disabled"})) {
+            return cursor.moveToFirst() && cursor.getInt(0) != 0;
+        }
+    }
+
+    public boolean sharedContentDisabled() {
+        return sharedContentDisabled(getReadableDatabase());
+    }
+
+    /** Clear learning data without deleting the database file, which would re-seed starter cards. */
+    public void resetLearningData() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.delete("cards", null, null);
+            db.delete("stories", null, null);
+            db.delete("remote_items", null, null);
+
+            // Keep this phone independent: the shared GitHub feed must not
+            // silently repopulate it after an explicit full reset.
+            ContentValues state = new ContentValues();
+            state.put("key", "shared_content_disabled");
+            state.put("value", 1);
+            db.insertWithOnConflict("app_state", null, state, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        changed();
     }
 
     public List<Card> cards(boolean mastered, int kind) { return cards(mastered, kind, 0); }
@@ -260,7 +299,7 @@ public final class Store extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            if (remoteImported(db, externalId)) {
+            if (sharedContentDisabled(db) || remoteImported(db, externalId)) {
                 db.setTransactionSuccessful();
                 return false;
             }
@@ -289,7 +328,7 @@ public final class Store extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            if (remoteImported(db, externalId)) {
+            if (sharedContentDisabled(db) || remoteImported(db, externalId)) {
                 db.setTransactionSuccessful();
                 return false;
             }
