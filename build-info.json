@@ -1,12 +1,12 @@
 {
-  "apk_sha256": "0c42e3b5c430eaa88b1cb88a0898a79827901b43f7a0fd415526e5a6f958fb24",
+  "apk_sha256": "071a9d506cb9368064028aae3b0add8ccb94140424eef5a981d8742968e3b4b2",
   "application_id": "ru.spanish.learning.updater",
   "certificate_sha256": "ea5402c00a64b4a6e1940624743c58c38593a12b15ca6c85e955b05ba5ac641d",
   "channel": "updater-builds",
   "repository": "agurkin2021-gif/Language-learning",
-  "run_id": "40256307487",
-  "run_number": 156,
-  "source_revision": "463f260a56232b0bdc94ebe9ed942a3c70c8ea65",
-  "version_code": 1156,
-  "version_name": "1.0.156"
+  "run_id": "40258554494",
+  "run_number": 164,
+  "source_revision": "cdf9af3854b1f7e1eb32cf7abcbc4c00a35d8fc0",
+  "version_code": 1164,
+  "version_name": "1.0.164"
 }
