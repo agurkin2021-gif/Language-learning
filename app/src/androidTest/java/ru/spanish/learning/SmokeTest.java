@@ -49,9 +49,10 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         tap("Открыть и слушать");
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();
-            TextView spoken = (TextView) find(root, "Лусия живёт в маленьком доме.");
-            assertNotNull(spoken);
-            assertFalse("Spanish story text has no selection handles", spoken.isTextSelectable());
+            assertNotNull(find(root, "Лусия живёт в маленьком доме."));
+            TextView spanish = (TextView) find(root, "Lucía vive en una casa pequeña.");
+            assertNotNull("Spanish story sentence is visible", spanish);
+            assertFalse("Spanish story text has no selection handles", spanish.isTextSelectable());
             assertNull(find(root, "Обновление"));
             assertNotNull(find(root, "⚙"));
         });
