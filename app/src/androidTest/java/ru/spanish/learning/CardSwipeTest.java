@@ -64,7 +64,11 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
     private void gesture(float fromFraction, float toFraction) {
         getInstrumentation().runOnMainSync(() -> {
             View surface = tagged(root(), "card-swipe-surface");
-            assertNotNull("Swipe surface must cover the card", surface);
+            View front = tagged(root(), "card-swipe-front");
+            View next = tagged(root(), "card-swipe-next");
+            assertNotNull("Swipe touch surface", surface);
+            assertNotNull("Current card view", front);
+            assertNotNull("Neighboring card view", next);
             assertTrue(surface.getWidth() > 200);
             long time = SystemClock.uptimeMillis();
             float y = surface.getHeight() / 2f;
@@ -76,11 +80,34 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
             MotionEvent move = MotionEvent.obtain(time, time + 30, MotionEvent.ACTION_MOVE, end, y, 0);
             surface.dispatchTouchEvent(move);
             move.recycle();
+            if (fromFraction != toFraction) {
+                float delta = end - start;
+                assertEquals("Current card follows the finger horizontally",
+                        delta, front.getTranslationX(), 1.5f);
+                assertTrue("Adjacent card enters the viewport during swipe",
+                        delta < 0 ? next.getTranslationX() < surface.getWidth()
+                                : tagged(root(), "card-swipe-previous").getTranslationX() > -surface.getWidth());
+            }
             MotionEvent up = MotionEvent.obtain(time, time + 60, MotionEvent.ACTION_UP, end, y, 0);
             surface.dispatchTouchEvent(up);
             up.recycle();
         });
+        if (fromFraction != toFraction) SystemClock.sleep(380);
         getInstrumentation().waitForIdleSync();
+    }
+
+    public void testShortDragReturnsToSameCard() {
+        getActivity();
+        getInstrumentation().waitForIdleSync();
+        int[] before = counter();
+        gesture(.52f, .43f); // Less than 18% of the card width: animate back.
+        assertEquals(before[0], counter()[0]);
+        assertEquals(before[1], counter()[1]);
+        getInstrumentation().runOnMainSync(() -> {
+            View front = tagged(root(), "card-swipe-front");
+            assertEquals("Canceled swipe snaps back to its original place",
+                    0f, front.getTranslationX(), 1.5f);
+        });
     }
 
     public void testBothSwipeDirectionsTapAndKnownCross() {

@@ -705,45 +705,15 @@ public final class MainActivity extends Activity {
         FrameLayout cardFrame = new FrameLayout(this);
         cardFrame.setClipChildren(false);
         cardFrame.setClipToPadding(false);
-        cardFrame.setPadding(dp(3), dp(3), dp(3), dp(6));
+        cardFrame.setPadding(dp(3), dp(3), dp(3), dp(3));
         content.addView(cardFrame, spaced(5));
 
-        LinearLayout cardBox = new LinearLayout(this);
-        cardBox.setOrientation(LinearLayout.VERTICAL);
-        cardBox.setGravity(Gravity.CENTER_HORIZONTAL);
-        cardBox.setPadding(dp(12), dp(12), dp(12), dp(12));
-        cardBox.setMinimumHeight(dp(295));
-        cardBox.setBackground(ui.cardSurface());
-        cardBox.setElevation(dp(5));
-        cardFrame.addView(cardBox, new FrameLayout.LayoutParams(-1, -2));
+        int size = cards.size();
+        CardFace previous = makeCardFace(cards.get((reviewIndex + size - 1) % size), false);
+        CardFace front = makeCardFace(card, cardRevealed);
+        CardFace next = makeCardFace(cards.get((reviewIndex + 1) % size), false);
+        TextView word = front.word();
 
-        FrameLayout visual = new FrameLayout(this);
-        LinearLayout.LayoutParams visualParams = new LinearLayout.LayoutParams(-1, dp(150));
-        visualParams.bottomMargin = dp(4);
-        cardBox.addView(visual, visualParams);
-
-        TextView visualHint = new TextView(this);
-        visualHint.setText(CardVisualHint.forCard(card));
-        visualHint.setTextSize(54);
-        visualHint.setGravity(Gravity.CENTER);
-        visual.addView(visualHint, new FrameLayout.LayoutParams(-1, -1));
-
-        android.webkit.WebView picture = new android.webkit.WebView(this);
-        visual.addView(picture, new FrameLayout.LayoutParams(-1, -1));
-        CardImageLoader.load(this, picture, visualHint, card.spanish());
-
-        TextView word = new TextView(this);
-        word.setText(cardRevealed ? card.meaning() : card.spanish());
-        word.setTag(!cardRevealed);
-        word.setTextSize(31);
-        word.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        word.setLineSpacing(dp(3), 1.06f);
-        word.setTextColor(primaryText());
-        word.setGravity(Gravity.CENTER);
-        word.setPadding(0, dp(10), 0, dp(10));
-        cardBox.addView(word, new LinearLayout.LayoutParams(-1, -2));
-
-        // Confirmation requires a deliberate second tap; mastery does not delete vocabulary.
         TextView confirmKnown = new TextView(this);
         confirmKnown.setText("УДАЛИТЬ");
         confirmKnown.setTextSize(15);
@@ -758,71 +728,11 @@ public final class MainActivity extends Activity {
         confirmKnown.setOnClickListener(v -> {
             cancelCardSpeech();
             player.pause();
-            // Mark as mastered, retaining the entry in the complete dictionary for ChatGPT.
             store.review(card.id(), 2, 0);
             if (reviewIndex >= cards.size() - 1) reviewIndex = 0;
             cardRevealed = false;
             render();
         });
-
-        // A transparent touch surface also covers the WebView illustration, so a
-        // gesture works anywhere on the card without triggering text selection.
-        View gestureLayer = new View(this);
-        gestureLayer.setTag("card-swipe-surface");
-        gestureLayer.setContentDescription("Карточка: нажмите для перевода; листайте влево или вправо");
-        gestureLayer.setOnClickListener(v -> {
-            if (confirmKnown.getVisibility() == View.VISIBLE) {
-                confirmKnown.setVisibility(View.GONE);
-                return;
-            }
-            cancelCardSpeech();
-            player.pause();
-            cardRevealed = !cardRevealed;
-            word.setText(cardRevealed ? card.meaning() : card.spanish());
-            word.setTag(!cardRevealed);
-            if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
-        });
-        final float[] touchStart = new float[2];
-        gestureLayer.setOnTouchListener((view, event) -> {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    touchStart[0] = event.getX();
-                    touchStart[1] = event.getY();
-                    return true;
-                case MotionEvent.ACTION_MOVE: {
-                    float dx = event.getX() - touchStart[0];
-                    float dy = event.getY() - touchStart[1];
-                    if (Math.abs(dx) > dp(12) && Math.abs(dx) > Math.abs(dy) * 1.2f) {
-                        view.getParent().requestDisallowInterceptTouchEvent(true);
-                    }
-                    return true;
-                }
-                case MotionEvent.ACTION_UP: {
-                    float dx = event.getX() - touchStart[0];
-                    float dy = event.getY() - touchStart[1];
-                    if (Math.abs(dx) >= dp(48) && Math.abs(dx) > Math.abs(dy) * 1.25f) {
-                        // Left goes forward, right goes backward. Both ends wrap.
-                        reviewIndex = (reviewIndex + (dx < 0 ? 1 : cards.size() - 1)) % cards.size();
-                        cardRevealed = false;
-                        render(); // cancels old speech, shows Spanish, schedules it after 1 s
-                    } else if (Math.abs(dx) <= dp(14) && Math.abs(dy) <= dp(14)) {
-                        view.performClick();
-                    }
-                    return true;
-                }
-                case MotionEvent.ACTION_CANCEL:
-                    return true;
-                default:
-                    return true;
-            }
-        });
-        gestureLayer.setElevation(dp(8)); // Above the elevated card, below the two actions.
-        cardFrame.addView(gestureLayer, new FrameLayout.LayoutParams(-1, -1));
-
-        FrameLayout.LayoutParams confirmParams = new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END);
-        confirmParams.topMargin = dp(61);
-        confirmParams.rightMargin = dp(8);
-        cardFrame.addView(confirmKnown, confirmParams);
 
         TextView known = new TextView(this);
         known.setText("×");
@@ -834,9 +744,49 @@ public final class MainActivity extends Activity {
         known.setElevation(dp(12));
         known.setOnClickListener(v -> confirmKnown.setVisibility(
                 confirmKnown.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
-        FrameLayout.LayoutParams knownParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.END);
-        knownParams.topMargin = dp(8);
-        knownParams.rightMargin = dp(8);
+
+        CardSwipePager strip = new CardSwipePager(this,
+                previous.view(), front.view(), next.view(), size > 1,
+                new CardSwipePager.Listener() {
+                    @Override public void onTap() {
+                        if (confirmKnown.getVisibility() == View.VISIBLE) {
+                            confirmKnown.setVisibility(View.GONE);
+                            return;
+                        }
+                        cancelCardSpeech();
+                        player.pause();
+                        cardRevealed = !cardRevealed;
+                        word.setText(cardRevealed ? card.meaning() : card.spanish());
+                        word.setTag(!cardRevealed);
+                        if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
+                    }
+                    @Override public void onDragStarted() {
+                        cancelCardSpeech();
+                        player.pause();
+                        confirmKnown.setVisibility(View.GONE);
+                    }
+                    @Override public void onOffset(float dx) {
+                        known.setTranslationX(dx);
+                        confirmKnown.setTranslationX(dx);
+                    }
+                    @Override public void onPageChanged(int delta) {
+                        reviewIndex = (reviewIndex + delta + cards.size()) % cards.size();
+                        cardRevealed = false;
+                        render();
+                    }
+                });
+        strip.setTag("card-swipe-viewport");
+        cardFrame.addView(strip, new FrameLayout.LayoutParams(-1, dp(315)));
+
+        FrameLayout.LayoutParams confirmParams =
+                new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END);
+        confirmParams.topMargin = dp(62);
+        confirmParams.rightMargin = dp(10);
+        cardFrame.addView(confirmKnown, confirmParams);
+        FrameLayout.LayoutParams knownParams =
+                new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.END);
+        knownParams.topMargin = dp(9);
+        knownParams.rightMargin = dp(10);
         cardFrame.addView(known, knownParams);
 
         TextView version = text("Версия " + BuildConfig.VERSION_NAME, 11);
@@ -852,6 +802,43 @@ public final class MainActivity extends Activity {
         showCardTools();
     }
 
+    private record CardFace(LinearLayout view, TextView word) {}
+
+    private CardFace makeCardFace(Store.Card card, boolean revealed) {
+        LinearLayout face = new LinearLayout(this);
+        face.setOrientation(LinearLayout.VERTICAL);
+        face.setGravity(Gravity.CENTER_HORIZONTAL);
+        face.setPadding(dp(12), dp(12), dp(12), dp(12));
+        face.setBackground(ui.cardSurface());
+        face.setElevation(dp(5));
+
+        FrameLayout visual = new FrameLayout(this);
+        LinearLayout.LayoutParams pictureParams = new LinearLayout.LayoutParams(-1, dp(150));
+        pictureParams.bottomMargin = dp(6);
+        face.addView(visual, pictureParams);
+        TextView fallback = new TextView(this);
+        fallback.setText(CardVisualHint.forCard(card));
+        fallback.setTextSize(54);
+        fallback.setGravity(Gravity.CENTER);
+        visual.addView(fallback, new FrameLayout.LayoutParams(-1, -1));
+        android.webkit.WebView picture = new android.webkit.WebView(this);
+        visual.addView(picture, new FrameLayout.LayoutParams(-1, -1));
+        CardImageLoader.load(this, picture, fallback, card.spanish());
+
+        TextView word = new TextView(this);
+        word.setText(revealed ? card.meaning() : card.spanish());
+        word.setTag(!revealed);
+        word.setTextSize(31);
+        word.setMaxLines(5);
+        word.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        word.setLineSpacing(dp(3), 1.06f);
+        word.setTextColor(primaryText());
+        word.setGravity(Gravity.CENTER);
+        word.setPadding(0, dp(11), 0, dp(11));
+        face.addView(word, new LinearLayout.LayoutParams(-1, -2));
+        return new CardFace(face, word);
+    }
+
     /** Secondary actions are intentionally below the card, keeping study in the first viewport. */
     private void showCardTools() {
         Button chat = button("ChatGPT — голос / текст", this::showAssistant);
@@ -862,8 +849,10 @@ public final class MainActivity extends Activity {
         Button addPhraseButton = rowButton("＋ Устойчивое выражение", () -> addCard(1));
         ui.style(addWordButton, UiStyle.Tone.OUTLINE);
         ui.style(addPhraseButton, UiStyle.Tone.OUTLINE);
-        addActions.addView(addWordButton, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, -2, 1);
+        addWordButton.setMinHeight(dp(70));
+        addPhraseButton.setMinHeight(dp(70));
+        addActions.addView(addWordButton, new LinearLayout.LayoutParams(0, dp(70), 1));
+        LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, dp(70), 1);
         phraseParams.setMarginStart(dp(6));
         addActions.addView(addPhraseButton, phraseParams);
         content.addView(addActions, spaced(10));

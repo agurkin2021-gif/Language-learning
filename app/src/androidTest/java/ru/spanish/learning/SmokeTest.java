@@ -22,7 +22,12 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();
             assertNotNull(find(root, "＋ Слово"));
-            assertNotNull(find(root, "＋ Устойчивое выражение"));
+            View addWord = find(root, "＋ Слово");
+            View addPhrase = find(root, "＋ Устойчивое выражение");
+            assertNotNull(addWord);
+            assertNotNull(addPhrase);
+            assertEquals("The two bottom buttons share one height", addWord.getHeight(), addPhrase.getHeight());
+            assertEquals("Both bottom buttons align along their top edge", addWord.getTop(), addPhrase.getTop());
             assertNull("No update button on the cards screen", find(root, "Обновление"));
             assertNull("No build details button on the cards screen", find(root, "Версия / сборка"));
             TextView version = (TextView) find(root, "Версия " + BuildConfig.VERSION_NAME);
