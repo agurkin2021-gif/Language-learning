@@ -1,6 +1,7 @@
 package ru.spanish.learning;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -22,6 +23,7 @@ public final class SpeechPlayer {
     private final AudioManager audio;
     private final AudioFocusRequest focus;
     private TextToSpeech tts;
+    private final SharedPreferences voicePrefs;
     private List<String> sentences = new ArrayList<>();
     private boolean ready, closed, ttsInitialized;
     private String learningLanguage = "es";
@@ -35,6 +37,7 @@ public final class SpeechPlayer {
     public String error = "";
     public SpeechPlayer(Context context, Listener listener) {
         this.listener = listener;
+        voicePrefs = context.getSharedPreferences("tts_voice_settings", Context.MODE_PRIVATE);
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
         focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
@@ -44,7 +47,7 @@ public final class SpeechPlayer {
             if (status != TextToSpeech.SUCCESS) { voiceDescription = "Синтезатор речи недоступен"; listener.changed(); return; }
             tts.setAudioAttributes(attributes);
             ttsInitialized = true;
-            chooseOfflineVoice();
+            chooseVoice();
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) {}
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
@@ -67,52 +70,136 @@ public final class SpeechPlayer {
         }));
     }
     /**
-     * Switches between es-AR/es-MX and en-US/en-GB offline voices using one
-     * TextToSpeech instance. No Spanish fallback in English mode.
+     * Prefer Argentina (es-AR), then Uruguay (es-UY), then Latin American
+     * Spanish. Never silently select es-ES or an undifferentiated es voice.
+     * The actual ll/y sound depends on the installed TTS voice, not only
+     * its BCP-47 locale. Let learners audition and choose the exact voice.
      */
     void setLearningLanguage(String code) {
         String normalized = "en".equals(code) ? "en" : "es";
         if (learningLanguage.equals(normalized) && ttsInitialized) return;
         pause();
         learningLanguage = normalized;
-        if (ttsInitialized) chooseOfflineVoice();
+        if (ttsInitialized) chooseVoice();
     }
 
     String learningLanguage() { return learningLanguage; }
 
-    private void chooseOfflineVoice() {
-        ready = false;
-        if (closed || tts == null) return;
+    static final class VoiceChoice {
+        final String name;
+        final String label;
+        VoiceChoice(String name, String label) {
+            this.name = name;
+            this.label = label;
+        }
+    }
+
+    private List<Voice> availableVoices() {
         List<Voice> voices = new ArrayList<>();
-        if (tts.getVoices() != null) for (Voice voice : tts.getVoices()) {
-            if (learningLanguage.equals(voice.getLocale().getLanguage())
-                    && !voice.isNetworkConnectionRequired()
-                    && (voice.getFeatures() == null ||
-                        !voice.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)))
-                voices.add(voice);
+        if (closed || tts == null || tts.getVoices() == null) return voices;
+        for (Voice voice : tts.getVoices()) {
+            if (voice.getLocale() == null
+                    || !learningLanguage.equals(voice.getLocale().getLanguage())
+                    || (voice.getFeatures() != null
+                        && voice.getFeatures().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)))
+                continue;
+            if ("es".equals(learningLanguage)) {
+                if (SpanishVoicePreference.regionRank(voice.getLocale()) < 0) continue;
+            } else if (voice.isNetworkConnectionRequired()) {
+                // Retain the existing offline-only English behavior.
+                continue;
+            }
+            voices.add(voice);
         }
         voices.sort(Comparator.comparingInt((Voice voice) -> {
-            String country = voice.getLocale().getCountry();
             if ("en".equals(learningLanguage))
-                return "US".equals(country) ? 0 : "GB".equals(country) ? 1 : 2;
-            return "AR".equals(country) ? 0 : "MX".equals(country) ? 1 : 2;
-        }).thenComparing(Voice::getName));
-        for (Voice voice : voices) {
-            if (tts.setVoice(voice) == TextToSpeech.SUCCESS) {
-                ready = true;
-                voiceDescription = "Офлайн-голос: " + voice.getLocale().toLanguageTag()
-                        + ("en".equals(learningLanguage) ? " • английский"
-                          : "AR".equals(voice.getLocale().getCountry())
-                              ? " • Аргентина" : " • аргентинский голос недоступен");
-                break;
-            }
+                return "US".equals(voice.getLocale().getCountry()) ? 0
+                        : "GB".equals(voice.getLocale().getCountry()) ? 1 : 2;
+            return SpanishVoicePreference.regionRank(voice.getLocale());
+        }).thenComparingInt(voice -> voice.isNetworkConnectionRequired() ? 1 : 0)
+          .thenComparing((Voice voice) -> -voice.getQuality())
+          .thenComparing(Voice::getName));
+        return voices;
+    }
+
+    private boolean activateVoice(Voice voice) {
+        try {
+            if (tts.setVoice(voice) != TextToSpeech.SUCCESS) return false;
+        } catch (RuntimeException ignored) {
+            return false;
         }
-        if (!ready)
-            voiceDescription = "Нет установленного офлайн-голоса "
-                    + ("en".equals(learningLanguage) ? "английского" : "испанского")
-                    + ". Установите его в настройках синтеза речи Android.";
+        ready = true;
+        String locale = voice.getLocale().toLanguageTag();
+        String connection = voice.isNetworkConnectionRequired() ? "через интернет" : "офлайн";
+        if ("en".equals(learningLanguage))
+            voiceDescription = "Английский голос: " + locale + " • " + connection;
+        else if ("AR".equals(voice.getLocale().getCountry()))
+            voiceDescription = "Голос Аргентины: " + locale + " • " + connection;
+        else if ("UY".equals(voice.getLocale().getCountry()))
+            voiceDescription = "Голос Уругвая (Рио-де-ла-Плата): " + locale
+                    + " • " + connection;
+        else
+            voiceDescription = "Латиноамериканский голос (не Аргентина): "
+                    + locale + " • " + connection;
+        listener.changed();
+        return true;
+    }
+
+    private void chooseVoice() {
+        ready = false;
+        if (closed || tts == null) return;
+        List<Voice> voices = availableVoices();
+        String saved = "es".equals(learningLanguage)
+                ? voicePrefs.getString("selected_es_voice", "") : "";
+        if (!saved.isEmpty()) {
+            for (Voice voice : voices) {
+                if (saved.equals(voice.getName()) && activateVoice(voice)) return;
+            }
+            voicePrefs.edit().remove("selected_es_voice").apply();
+        }
+        for (Voice voice : voices) {
+            if (activateVoice(voice)) return;
+        }
+        voiceDescription = "Нет доступного "
+                + ("en".equals(learningLanguage)
+                    ? "английского офлайн-голоса."
+                    : "голоса Аргентины или Латинской Америки. Установите es-AR либо es-MX в настройках синтеза Android.");
         listener.changed();
     }
+
+    List<VoiceChoice> spanishVoiceChoices() {
+        List<VoiceChoice> choices = new ArrayList<>();
+        if (!"es".equals(learningLanguage) || !ttsInitialized) return choices;
+        for (Voice voice : availableVoices()) {
+            choices.add(new VoiceChoice(voice.getName(),
+                    SpanishVoicePreference.regionLabel(voice.getLocale())
+                            + " (" + voice.getLocale().toLanguageTag() + ")"
+                            + (voice.isNetworkConnectionRequired()
+                                ? " • интернет" : " • офлайн")
+                            + " • " + voice.getName()));
+        }
+        return choices;
+    }
+
+    String selectedSpanishVoiceName() {
+        Voice current = ready && tts != null ? tts.getVoice() : null;
+        return "es".equals(learningLanguage) && current != null
+                ? current.getName() : "";
+    }
+
+    boolean selectSpanishVoice(String voiceName) {
+        if (!ttsInitialized || !"es".equals(learningLanguage)
+                || voiceName == null || voiceName.isEmpty()) return false;
+        for (Voice voice : availableVoices()) {
+            if (!voiceName.equals(voice.getName())) continue;
+            pause();
+            if (!activateVoice(voice)) return false;
+            voicePrefs.edit().putString("selected_es_voice", voiceName).apply();
+            return true;
+        }
+        return false;
+    }
+
     public boolean ready() { return ready; }
 
     public void speakCard(String spanish) {

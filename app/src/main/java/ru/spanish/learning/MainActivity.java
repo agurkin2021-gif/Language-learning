@@ -62,7 +62,7 @@ public final class MainActivity extends Activity {
     private SpeechPlayer player;
     private SharedPreferences prefs;
     private LinearLayout content;
-    private TextView sentence, sentenceRu, playbackStatus;
+    private TextView sentence, sentenceRu, playbackStatus, cardVoiceStatus;
     private Button toggle, repeat;
     private List<String> storyTranslations = new java.util.ArrayList<>();
     private boolean darkTheme;
@@ -237,7 +237,8 @@ public final class MainActivity extends Activity {
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
     private void render() {
         cancelCardSpeech();
-        rendering = true; sentence = null; sentenceRu = null; playbackStatus = null; toggle = null; repeat = null;
+        rendering = true; sentence = null; sentenceRu = null; playbackStatus = null;
+        cardVoiceStatus = null; toggle = null; repeat = null;
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
@@ -306,6 +307,48 @@ public final class MainActivity extends Activity {
                             updatePlayer();
                         }).show());
         box.addView(mode, spaced(10));
+
+        TextView selectedVoice = textInto(box, player.voiceDescription, 14);
+        selectedVoice.setTextColor(secondaryText());
+        box.addView(selectedVoice, spaced(studyingEnglish() ? 12 : 8));
+        if (!studyingEnglish()) {
+            Button voicePreview = rowButton("Проверить ll/y: ladrillo, lluvia", () -> {
+                if (player.ready()) {
+                    player.speakCard("El ladrillo amarillo. La lluvia llegó ayer.");
+                } else {
+                    Toast.makeText(this, player.voiceDescription, Toast.LENGTH_LONG).show();
+                }
+            });
+            box.addView(voicePreview, spaced(8));
+            Button selectVoice = rowButton("Выбрать испанский голос", () -> {
+                List<SpeechPlayer.VoiceChoice> choices = player.spanishVoiceChoices();
+                if (choices.isEmpty()) {
+                    new AlertDialog.Builder(this).setTitle("Нет голоса Латинской Америки")
+                            .setMessage("Установите испанский голос Аргентины (es-AR) или Мексики (es-MX) в настройках синтеза речи Android. Европейский es-ES не используется.")
+                            .setPositiveButton("Закрыть", null).show();
+                    return;
+                }
+                String[] labels = new String[choices.size()];
+                int selected = -1;
+                for (int i = 0; i < choices.size(); i++) {
+                    labels[i] = choices.get(i).label;
+                    if (choices.get(i).name.equals(player.selectedSpanishVoiceName()))
+                        selected = i;
+                }
+                new AlertDialog.Builder(this)
+                        .setTitle("Выбор испанского голоса")
+                        .setSingleChoiceItems(labels, selected, (dialog, index) -> {
+                            if (player.selectSpanishVoice(choices.get(index).name)) {
+                                selectedVoice.setText(player.voiceDescription);
+                                dialog.dismiss();
+                                player.speakCard("El ladrillo amarillo. La lluvia llegó ayer.");
+                            } else {
+                                Toast.makeText(this, "Не удалось выбрать голос", Toast.LENGTH_LONG).show();
+                            }
+                        }).setNegativeButton("Отмена", null).show();
+            });
+            box.addView(selectVoice, spaced(12));
+        }
 
         Button speed = rowButton("Скорость речи: " + player.speed + "× (сказки и карточки)", null);
         speed.setOnClickListener(v ->
@@ -913,6 +956,8 @@ public final class MainActivity extends Activity {
         TextView label = text(studyingEnglish()
                 ? "Английский • личный словарь" : "Испанский • аргентинский вариант", 13);
         label.setTextColor(secondaryText());
+        cardVoiceStatus = text(player.voiceDescription, 12);
+        cardVoiceStatus.setTextColor(secondaryText());
 
         TextView hint = text("Нажмите для перевода · листайте в обе стороны · × — освоено", 15);
         hint.setTextColor(secondaryText());
@@ -1440,6 +1485,7 @@ public final class MainActivity extends Activity {
     }
     private void updatePlayer() {
         if (player == null || rendering) return;
+        if (cardVoiceStatus != null) cardVoiceStatus.setText(player.voiceDescription);
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
         if (sentence == null) return;
         sentence.setText(player.current()); if (sentenceRu != null) sentenceRu.setText(currentTranslation());
