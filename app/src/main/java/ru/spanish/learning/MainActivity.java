@@ -55,7 +55,7 @@ public final class MainActivity extends Activity {
     private int reviewIndex;
     private long reviewStep;
     private boolean cardRevealed;
-    private static final long CARD_PRONUNCIATION_DELAY_MS = 2000L;
+    private static final long CARD_PRONUNCIATION_DELAY_MS = 1000L;
     private final Handler cardSpeechHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingCardSpeech;
     private String screen = "cards";
