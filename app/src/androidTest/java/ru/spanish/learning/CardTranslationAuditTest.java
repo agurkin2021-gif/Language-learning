@@ -2,6 +2,7 @@ package ru.spanish.learning;
 
 import android.test.AndroidTestCase;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** Regression checks for the three independent model reviews before storage. */
@@ -22,8 +23,8 @@ public final class CardTranslationAuditTest extends AndroidTestCase {
                     return "{\"ok\":true,\"reason\":\"\"}";
                 }, progress::add);
         assertEquals("я имею желание поесть (мне хочется поесть)", value);
-        assertEquals(List.of(1, 2, 3), called);
-        assertEquals(List.of(1, 2, 3), progress);
+        assertEquals(Arrays.asList(1, 2, 3), called);
+        assertEquals(Arrays.asList(1, 2, 3), progress);
     }
 
     public void testSimpleNounNeedsNoUnnecessarySemanticGloss() throws Exception {
@@ -50,7 +51,7 @@ public final class CardTranslationAuditTest extends AndroidTestCase {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("Аудит 2/3"));
         }
-        assertEquals(List.of(1, 2), passes);
+        assertEquals(Arrays.asList(1, 2), passes);
     }
 
     public void testThirdAuditCanVetoAfterTwoApprovals() throws Exception {
@@ -69,7 +70,7 @@ public final class CardTranslationAuditTest extends AndroidTestCase {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("Аудит 3/3"));
         }
-        assertEquals(List.of(1, 2, 3), passes);
+        assertEquals(Arrays.asList(1, 2, 3), passes);
     }
 
     public void testMissingOrMalformedAuditResultsFailClosed() throws Exception {
