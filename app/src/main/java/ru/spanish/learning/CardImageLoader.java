@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.util.Base64;
 import android.view.View;
+import android.widget.TextView;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -37,6 +38,7 @@ final class CardImageLoader {
      */
     static boolean hasIllustration(Context context, String word, boolean english) {
         File dynamic = imageFile(context, word, english);
+        if (!CardAdditionPolicy.savedEmoji(context, word, english).isEmpty()) return true;
         if (dynamic.isFile() && dynamic.length() > 100L) return true;
         if (english) return false;
         String asset = key(word) + ".svg";
@@ -131,6 +133,13 @@ final class CardImageLoader {
     static void load(Activity activity, WebView target, View fallback, String spanish, boolean english) {
         target.setVisibility(View.GONE);
         if (fallback != null) fallback.setVisibility(View.VISIBLE);
+
+        // Emoji is Android TextView text, not an SVG glyph that may render as a blank square.
+        String emoji = CardAdditionPolicy.savedEmoji(activity, spanish, english);
+        if (!emoji.isEmpty()) {
+            if (fallback instanceof TextView) ((TextView) fallback).setText(emoji);
+            return;
+        }
 
         byte[] svg;
         String imageKey = key(spanish);
