@@ -36,6 +36,8 @@ public final class VocabularyGapTopicsTest {
             assertTrue(prompt.contains("рассказ"));
             assertTrue(prompt.contains("SVG"));
             assertTrue(prompt.contains("точный русский"));
+            assertTrue(prompt.contains("три независимых аудита"));
+            assertTrue(prompt.contains("ДОСЛОВНЫЙ"));
             assertTrue(prompt.contains("никаких инфинитивных заготовок"));
             assertTrue(prompt.contains(VocabularyGapTopics.names()[i]));
             assertEquals(10, new CardAdditionPolicy.Batch(prompt).limit);
