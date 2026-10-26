@@ -249,12 +249,21 @@ public final class MainActivity extends Activity {
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
 
+        Button resetButton = rowButton("Сброс базы", null);
+        ui.style(resetButton, UiStyle.Tone.OUTLINE);
+        resetButton.setTextColor(ui.danger);
+        box.addView(resetButton, spaced(18));
+
+        // Keep the destructive action reachable even on small screens.
+        ScrollView settingsScroll = new ScrollView(this);
+        settingsScroll.addView(box);
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Настройки")
-                .setView(box)
+                .setView(settingsScroll)
                 .setNegativeButton("Закрыть", null)
                 .create();
 
+        resetButton.setOnClickListener(v -> confirmResetDatabase(dialog));
         darkSwitch.setOnCheckedChangeListener((v, checked) -> {
             if (checked == darkTheme) return;
             darkTheme = checked;
@@ -264,6 +273,48 @@ public final class MainActivity extends Activity {
             recreate();
         });
         dialog.show();
+    }
+
+    private void confirmResetDatabase(AlertDialog settingsDialog) {
+        new AlertDialog.Builder(this)
+                .setTitle("Сбросить базу?")
+                .setMessage("Будут удалены все слова, устойчивые выражения, сказки и прогресс изучения на этом телефоне. Отменить удаление после подтверждения нельзя.")
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Продолжить", (first, which) ->
+                        new AlertDialog.Builder(this)
+                                .setTitle("Точно удалить всё?")
+                                .setMessage("Это второе и последнее подтверждение. База останется пустой после перезапуска и обновления приложения. Общий контент из GitHub больше не будет автоматически загружаться на этом телефоне.")
+                                .setNegativeButton("Отмена", null)
+                                .setPositiveButton("Удалить всё", (second, selected) -> resetDatabase(settingsDialog))
+                                .show())
+                .show();
+    }
+
+    private void resetDatabase(AlertDialog settingsDialog) {
+        try {
+            store.resetLearningData();
+        } catch (RuntimeException e) {
+            new AlertDialog.Builder(this)
+                    .setTitle("База не сброшена")
+                    .setMessage("Не удалось удалить данные. Ничего не изменено.")
+                    .setPositiveButton("Закрыть", null)
+                    .show();
+            return;
+        }
+        settingsDialog.dismiss();
+        stopAssistantVoice();
+        cancelCardSpeech();
+        player.pause();
+        clearCardDraft();
+        storyId = -1;
+        reviewIndex = 0;
+        reviewStep = 0;
+        kind = 0;
+        category = 0;
+        cardRevealed = false;
+        screen = "cards";
+        render();
+        Toast.makeText(this, "База очищена", Toast.LENGTH_LONG).show();
     }
 
     private void showBuild() {
