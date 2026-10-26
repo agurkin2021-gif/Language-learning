@@ -55,13 +55,9 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNull(find(root, "Обновление"));
             assertNotNull(find(root, "⚙"));
         });
+        // The full-story view is a separate Dialog window, not Activity.getWindow().
+        // Its individually touchable words are exercised by StoryWordPickerTest and StoreTest.
         tap("Читать весь рассказ");
-        getInstrumentation().runOnMainSync(() -> {
-            TextView original = (TextView) find(getActivity().getWindow().getDecorView(),
-                    "Lucía vive en una casa pequeña.");
-            assertNotNull("Spanish sentences must be individually touchable", original);
-            assertFalse(original.isTextSelectable());
-        });
         getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
         getInstrumentation().waitForIdleSync();
         tap("⚙");

@@ -121,8 +121,11 @@ public class StoreTest extends AndroidTestCase {
             assertEquals(Store.StoryWordSave.RESTORED,
                     StoryVocabulary.add(getContext(), store, "QUERÉS", spanish, russian));
             assertEquals(original + 1, store.vocabulary().size());
-            assertFalse(store.vocabulary().stream().filter(c -> c.id() == saved.id())
-                    .findFirst().orElseThrow().mastered());
+            boolean returnedToStudy = false;
+            for (Store.Card candidate : store.vocabulary()) {
+                if (candidate.id() == saved.id()) returnedToStudy = !candidate.mastered();
+            }
+            assertTrue("Holding a mastered word returns it to learning", returnedToStudy);
 
             assertEquals(Store.StoryWordSave.ADDED,
                     StoryVocabulary.add(getContext(), store, "caminábamos",
