@@ -81,7 +81,7 @@ final class CardAdditionPolicy {
         if (category != 2) return null;
         String key = word.trim().toLowerCase(Locale.ROOT);
         String pair = english ? switch (key) {
-            case "cat" -> "🐈|кот";
+            case "cat" -> "🐈|кот,кошк";
             case "dog" -> "🐕|собак";
             case "house" -> "🏠|дом";
             case "water" -> "💧|вод";
@@ -93,12 +93,12 @@ final class CardAdditionPolicy {
             case "coffee" -> "☕|коф";
             default -> null;
         } : switch (key) {
-            case "gato" -> "🐈|кот";
+            case "gato" -> "🐈|кот,кошк";
             case "perro" -> "🐕|собак";
             case "casa" -> "🏠|дом";
             case "agua" -> "💧|вод";
             case "libro" -> "📖|книг";
-            case "auto", "coche" -> "🚗|машин";
+            case "auto", "coche" -> "🚗|машин,автомобил";
             case "colectivo", "autobús" -> "🚌|автобус";
             case "tren" -> "🚆|поезд";
             case "subte", "metro" -> "🚇|метр";
@@ -155,14 +155,17 @@ final class CardAdditionPolicy {
             case "paraguas" -> "☂️|зонт";
             case "cama" -> "🛏️|кроват";
             case "silla" -> "🪑|стул";
-            case "mesa" -> "🪑|стол";
             default -> null;
         };
         if (pair == null) return null;
         String[] parts = pair.split("\\|", 2);
-        if (!russian.toLowerCase(Locale.ROOT).contains(parts[1]))
-            throw new IllegalArgumentException("Перевод не соответствует слову: " + word);
-        return parts[0];
+        String meaning = russian.toLowerCase(Locale.ROOT);
+        for (String root : parts[1].split(",")) {
+            if (meaning.contains(root)) return parts[0];
+        }
+        // A synonym may be valid; do not reject it on a heuristic match.
+        // Instead require a model-drawn SVG that conveys the supplied meaning.
+        return null;
     }
 
     static void validateSvg(String svg) {
