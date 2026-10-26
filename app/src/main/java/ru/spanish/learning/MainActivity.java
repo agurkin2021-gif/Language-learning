@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.os.Bundle;
@@ -50,6 +51,7 @@ public final class MainActivity extends Activity {
     private Button toggle, repeat;
     private List<String> storyTranslations = new java.util.ArrayList<>();
     private boolean darkTheme;
+    private UiStyle ui;
     private int kind;
     private int category;
     private int reviewIndex;
@@ -70,6 +72,7 @@ public final class MainActivity extends Activity {
         darkTheme = getSharedPreferences("ui", MODE_PRIVATE).getBoolean("darkTheme", false);
         setTheme(darkTheme ? R.style.AppThemeDark : R.style.AppTheme);
         super.onCreate(saved);
+        ui = new UiStyle(this, darkTheme);
         android.app.job.JobScheduler legacyUpdater = getSystemService(android.app.job.JobScheduler.class);
         if (legacyUpdater != null) {
             legacyUpdater.cancel(72101);
@@ -89,22 +92,43 @@ public final class MainActivity extends Activity {
         render();
     }
     private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
-    private int pageBg() { return darkTheme ? Color.rgb(18, 23, 22) : Color.rgb(245, 243, 237); }
-    private int primaryText() { return darkTheme ? Color.rgb(235, 240, 238) : Color.rgb(29, 47, 44); }
-    private int secondaryText() { return darkTheme ? Color.rgb(174, 187, 183) : Color.rgb(76, 90, 87); }
-    private int cardBg() { return darkTheme ? Color.rgb(31, 38, 36) : Color.WHITE; }
-    private int borderColor() { return darkTheme ? Color.rgb(74, 86, 82) : 0xFFD7DDD6; }
-    private TextView text(String value, int size) {
-        TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(primaryText()); t.setPadding(0, dp(8), 0, dp(8)); content.addView(t); return t;
+    private int pageBg() { return ui.background; }
+    private int primaryText() { return ui.foreground; }
+    private int secondaryText() { return ui.muted; }
+    private int cardBg() { return ui.surface; }
+    private int borderColor() { return ui.outline; }
+
+    private TextView textInto(LinearLayout parent, String value, int size) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(primaryText());
+        t.setLineSpacing(dp(2), 1.04f);
+        if (size >= 23) {
+            t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            t.setLetterSpacing(-0.01f);
+        }
+        t.setPadding(0, dp(size >= 23 ? 8 : 5), 0, dp(size >= 23 ? 7 : 5));
+        parent.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        return t;
     }
+    private TextView text(String value, int size) { return textInto(content, value, size); }
+
+    private LinearLayout.LayoutParams spaced(int bottom) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.bottomMargin = dp(bottom);
+        return lp;
+    }
+
     private Button button(String value, Runnable action) {
-        Button b = new Button(this); b.setText(value); b.setAllCaps(false); b.setMinHeight(dp(52)); content.addView(b, new LinearLayout.LayoutParams(-1, -2)); b.setOnClickListener(v -> action.run()); return b;
+        Button b = rowButton(value, action);
+        content.addView(b, spaced(10));
+        return b;
     }
     private Button rowButton(String value, Runnable action) {
         Button b = new Button(this);
         b.setText(value);
-        b.setAllCaps(false);
-        b.setMinHeight(dp(48));
+        ui.style(b, UiStyle.Tone.SECONDARY);
         if (action != null) b.setOnClickListener(v -> action.run());
         return b;
     }
@@ -138,17 +162,32 @@ public final class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
+        tabs.setGravity(Gravity.CENTER_VERTICAL);
+        tabs.setPadding(dp(16), dp(12), dp(16), dp(8));
         for (String label : new String[]{"Карточки", "Сказки"}) {
-            Button tab = new Button(this); tab.setText(label); tab.setAllCaps(false); tabs.addView(tab, new LinearLayout.LayoutParams(0, dp(56), 1));
-            tab.setOnClickListener(v -> navigate(label.equals("Карточки") ? "cards" : "stories"));
+            boolean selected = label.equals("Карточки") ? screen.equals("cards") : !screen.equals("cards");
+            Button tab = rowButton(label, () -> navigate(label.equals("Карточки") ? "cards" : "stories"));
+            ui.style(tab, selected ? UiStyle.Tone.SELECTED : UiStyle.Tone.TAB);
+            LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0, dp(52), 1);
+            tabParams.setMarginEnd(dp(7));
+            tabs.addView(tab, tabParams);
         }
         if (!screen.equals("cards")) {
             Button settingsButton = rowButton("⚙", this::showSettings);
-            settingsButton.setTextSize(24);
-            tabs.addView(settingsButton, new LinearLayout.LayoutParams(dp(64), dp(56)));
+            ui.style(settingsButton, UiStyle.Tone.ICON);
+            tabs.addView(settingsButton, new LinearLayout.LayoutParams(dp(52), dp(52)));
         }
         root.addView(tabs);
-        ScrollView scroll = new ScrollView(this); content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(24)); scroll.addView(content); root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setClipChildren(false);
+        content.setClipToPadding(false);
+        content.setPadding(dp(20), dp(8), dp(20), dp(26));
+        scroll.addView(content);
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
         if (screen.equals("cards")) cards(); else if (screen.equals("player")) storyPlayer(); else stories();
         rendering = false; remember(); updatePlayer();
@@ -163,6 +202,7 @@ public final class MainActivity extends Activity {
         Switch darkSwitch = new Switch(this);
         darkSwitch.setText("Тёмная тема");
         darkSwitch.setTextSize(18);
+        darkSwitch.setTextColor(primaryText());
         darkSwitch.setMinHeight(dp(56));
         darkSwitch.setChecked(darkTheme);
         box.addView(darkSwitch, new LinearLayout.LayoutParams(-1, -2));
@@ -175,7 +215,7 @@ public final class MainActivity extends Activity {
                             remember();
                             updatePlayer();
                         }).show());
-        box.addView(mode, new LinearLayout.LayoutParams(-1, -2));
+        box.addView(mode, spaced(10));
 
         Button speed = rowButton("Скорость речи: " + player.speed + "× (сказки и карточки)", null);
         speed.setOnClickListener(v ->
@@ -187,7 +227,7 @@ public final class MainActivity extends Activity {
                             remember();
                             updatePlayer();
                         }).show());
-        box.addView(speed, new LinearLayout.LayoutParams(-1, -2));
+        box.addView(speed, spaced(10));
 
         Button pause = rowButton("Пауза между предложениями: " + player.pauseMs / 1000f + " с", () ->
                 new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
@@ -197,10 +237,10 @@ public final class MainActivity extends Activity {
                             remember();
                             updatePlayer();
                         }).show());
-        box.addView(pause, new LinearLayout.LayoutParams(-1, -2));
+        box.addView(pause, spaced(10));
 
-        box.addView(rowButton("Обновление", this::startUpdateNow), new LinearLayout.LayoutParams(-1, -2));
-        box.addView(rowButton("Версия / сборка", this::showBuild), new LinearLayout.LayoutParams(-1, -2));
+        box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
+        box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Настройки")
@@ -272,13 +312,14 @@ public final class MainActivity extends Activity {
 
         assistantStatus = new TextView(this);
         assistantStatus.setTextSize(14);
+        assistantStatus.setTextColor(secondaryText());
         assistantStatus.setPadding(0, dp(6), 0, dp(8));
         box.addView(assistantStatus);
 
         Button connect = new Button(this);
-        connect.setAllCaps(false);
         connect.setText("Подключить ChatGPT");
-        box.addView(connect, new LinearLayout.LayoutParams(-1, -2));
+        ui.style(connect, UiStyle.Tone.PRIMARY);
+        box.addView(connect, spaced(12));
 
         ScrollView historyScroll = new ScrollView(this);
         assistantHistory = new TextView(this);
@@ -288,8 +329,11 @@ public final class MainActivity extends Activity {
         assistantHistory.setText(assistant.historyText().isEmpty()
                 ? "Здесь можно говорить или писать. Контекст приложения уже передаётся автоматически."
                 : assistant.historyText());
+        assistantHistory.setPadding(dp(14), dp(14), dp(14), dp(14));
+        historyScroll.setBackground(ui.rounded(ui.soft, 15, ui.outline));
         historyScroll.addView(assistantHistory);
         LinearLayout.LayoutParams historyParams = new LinearLayout.LayoutParams(-1, dp(240));
+        historyParams.bottomMargin = dp(12);
         box.addView(historyScroll, historyParams);
 
         assistantInput = new EditText(this);
@@ -297,16 +341,17 @@ public final class MainActivity extends Activity {
         assistantInput.setMinLines(2);
         assistantInput.setMaxLines(5);
         assistantInput.setTextSize(17);
-        box.addView(assistantInput, new LinearLayout.LayoutParams(-1, -2));
+        ui.styleInput(assistantInput);
+        box.addView(assistantInput, spaced(12));
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Button mic = new Button(this);
         mic.setText("🎤 Голос");
-        mic.setAllCaps(false);
+        ui.style(mic, UiStyle.Tone.OUTLINE);
         Button send = new Button(this);
         send.setText("Отправить");
-        send.setAllCaps(false);
+        ui.style(send, UiStyle.Tone.PRIMARY);
         actions.addView(mic, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(0, -2, 1);
         sendParams.setMarginStart(dp(6));
@@ -649,7 +694,7 @@ public final class MainActivity extends Activity {
     }
 
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {
-        EditText e = new EditText(this); e.setHint(hint); e.setTextSize(18); e.setSingleLine(!multiline); e.setFilters(new InputFilter[]{new InputFilter.LengthFilter(max)}); if(multiline) e.setMinLines(3); box.addView(e); return e;
+        EditText e = new EditText(this); e.setHint(hint); e.setTextSize(18); e.setSingleLine(!multiline); e.setFilters(new InputFilter[]{new InputFilter.LengthFilter(max)}); if(multiline) e.setMinLines(3); ui.styleInput(e); box.addView(e, spaced(10)); return e;
     }
     private LinearLayout form() { LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(20),dp(8),dp(20),dp(8)); return box; }
     private void addCard() { addCard(kind); }
