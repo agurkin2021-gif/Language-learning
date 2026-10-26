@@ -47,6 +47,7 @@ clear_completed_first_installer_ui() {
 
 tap_main_update() {
   local opened_settings=no
+  local opened_stories=no
   for _ in $(seq 1 30); do
     dump_ui > "$reports/main-ui.xml"
     if python3 - "$reports/main-ui.xml" <<'PY' > "$reports/main-tap.txt"
@@ -73,6 +74,10 @@ gear = point_for("⚙")
 if gear:
     print("gear", *gear)
     raise SystemExit(0)
+stories = point_for("Сказки")
+if stories:
+    print("stories", *stories)
+    raise SystemExit(0)
 raise SystemExit(1)
 PY
     then
@@ -85,6 +90,18 @@ PY
         echo "STAGE open settings at $x,$y"
         adb shell input tap "$x" "$y"
         opened_settings=yes
+        sleep 1
+        continue
+      fi
+
+      if [[ $action == stories ]]; then
+        if [[ $opened_stories == yes ]]; then
+          echo "Stories tab was opened but settings did not become available." >&2
+          return 1
+        fi
+        echo "STAGE navigate to Stories tab at $x,$y"
+        adb shell input tap "$x" "$y"
+        opened_stories=yes
         sleep 1
         continue
       fi
@@ -104,9 +121,8 @@ PY
       echo "Settings update action was visible but did not launch Updater." >&2
       return 1
     fi
-    # In the redesigned study screen, secondary actions are deliberately below
-    # the flashcard. UIAutomator only sees on-screen views; scroll the active
-    # ScrollView to expose the actual update button before declaring failure.
+    # Look for the Update control in Settings (Stories tab -> gear), not on Cards.
+    # If a smaller screen hides the button, scroll before retrying.
     local size width height
     size=$(adb shell wm size | sed -n 's/.*: \([0-9][0-9]*\)x\([0-9][0-9]*\).*/\1 \2/p' | tail -n 1)
     read -r width height <<< "${size:-1080 1920}"

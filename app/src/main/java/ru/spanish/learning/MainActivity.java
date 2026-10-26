@@ -868,18 +868,6 @@ public final class MainActivity extends Activity {
         addActions.addView(addPhraseButton, phraseParams);
         content.addView(addActions, spaced(10));
 
-        LinearLayout maintenance = new LinearLayout(this);
-        maintenance.setOrientation(LinearLayout.HORIZONTAL);
-        Button updateButton = rowButton("Обновление", this::startUpdateNow);
-        Button buildButton = rowButton("Версия / сборка", this::showBuild);
-        ui.style(updateButton, UiStyle.Tone.SECONDARY);
-        ui.style(buildButton, UiStyle.Tone.OUTLINE);
-        maintenance.addView(updateButton, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout.LayoutParams buildParams = new LinearLayout.LayoutParams(0, -2, 1);
-        buildParams.setMarginStart(dp(6));
-        maintenance.addView(buildButton, buildParams);
-        content.addView(maintenance, spaced(16));
-
     }
 
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {

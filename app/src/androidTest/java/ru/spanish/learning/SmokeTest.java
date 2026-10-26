@@ -23,8 +23,8 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             View root = getActivity().getWindow().getDecorView();
             assertNotNull(find(root, "＋ Слово"));
             assertNotNull(find(root, "＋ Устойчивое выражение"));
-            assertNotNull(find(root, "Обновление"));
-            assertNotNull(find(root, "Версия / сборка"));
+            assertNull("No update button on the cards screen", find(root, "Обновление"));
+            assertNull("No build details button on the cards screen", find(root, "Версия / сборка"));
             TextView version = (TextView) find(root, "Версия " + BuildConfig.VERSION_NAME);
             assertNotNull("Version label beneath the study card", version);
             float scaledDensity = getActivity().getResources().getDisplayMetrics().scaledDensity;
