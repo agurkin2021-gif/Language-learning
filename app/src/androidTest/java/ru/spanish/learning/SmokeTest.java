@@ -43,6 +43,8 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNull("No archive return action", find(root, "← К изучению"));
             assertNull("No archived card listing", find(root, "Вернуть к изучению"));
             assertNotNull(find(root, "Карточки"));
+            assertNotNull("Language button in corner of Cards",
+                    find(root, "ES ▾"));
         });
         tap("Сказки");
         getInstrumentation().runOnMainSync(() -> {
@@ -50,6 +52,8 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNull(find(root, "Обновление"));
             assertNull(find(root, "Версия / сборка"));
             assertNotNull(find(root, "⚙"));
+            assertNotNull("Language button in corner of Stories",
+                    find(root, "ES ▾"));
         });
         tap("Открыть и слушать");
         getInstrumentation().runOnMainSync(() -> {
