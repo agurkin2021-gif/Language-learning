@@ -19,6 +19,7 @@ final class CardSwipePager extends FrameLayout {
     interface Listener {
         void onTap();
         void onDragStarted();
+        void onPageSettling(int delta);
         void onOffset(float dx);
         void onPageChanged(int delta);
     }
@@ -131,6 +132,7 @@ final class CardSwipePager extends FrameLayout {
     private void settle(int delta) {
         settling = true;
         if (animation != null) animation.cancel();
+        if (delta != 0) listener.onPageSettling(delta);
         final float target = delta == 0 ? 0f : (delta > 0 ? -range() : range());
         animation = ValueAnimator.ofFloat(offset, target);
         animation.setDuration(delta == 0 ? 170 : 205);

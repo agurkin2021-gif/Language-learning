@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.InputFilter;
 import android.text.Layout;
@@ -72,7 +73,8 @@ public final class MainActivity extends Activity {
     private int reviewIndex;
     private long reviewStep;
     private boolean cardRevealed;
-    private static final long CARD_PRONUNCIATION_DELAY_MS = 500L;
+    private static final long CARD_PRONUNCIATION_DELAY_MS = 250L;
+    private long swipeReleasedAtMs = -1L;
     private final Handler cardSpeechHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingCardSpeech;
     private String screen = "cards";
@@ -213,6 +215,9 @@ public final class MainActivity extends Activity {
         }
     }
     private void scheduleCardSpeech(String spanish, TextView word) {
+        scheduleCardSpeech(spanish, word, CARD_PRONUNCIATION_DELAY_MS);
+    }
+    private void scheduleCardSpeech(String spanish, TextView word, long delayMs) {
         cancelCardSpeech();
         Runnable speech = () -> {
             pendingCardSpeech = null;
@@ -221,7 +226,7 @@ public final class MainActivity extends Activity {
             player.speakCard(spanish);
         };
         pendingCardSpeech = speech;
-        cardSpeechHandler.postDelayed(speech, CARD_PRONUNCIATION_DELAY_MS);
+        cardSpeechHandler.postDelayed(speech, Math.max(0L, delayMs));
     }
     private void remember() {
         prefs.edit().putString(prefKey("screen"), screen)
@@ -1083,8 +1088,13 @@ public final class MainActivity extends Activity {
                     }
                     @Override public void onDragStarted() {
                         cancelCardSpeech();
+                        swipeReleasedAtMs = -1L;
                         player.pause();
                         confirmKnown.setVisibility(View.GONE);
+                    }
+                    @Override public void onPageSettling(int delta) {
+                        // Count the 205 ms swipe animation as part of the wait.
+                        swipeReleasedAtMs = SystemClock.uptimeMillis();
                     }
                     @Override public void onOffset(float dx) {
                         // Keep the known action anchored to the card viewport:
@@ -1121,7 +1131,12 @@ public final class MainActivity extends Activity {
                         bindCardFace(recycled, cards.get(farIndex));
                         counter.setText((reviewIndex + 1) + " / " + n);
                         prefs.edit().putInt(prefKey("reviewIndex"), reviewIndex).apply();
-                        scheduleCardSpeech(cards.get(reviewIndex).spanish(), visibleFaces[1].word());
+                        long remaining = CardSpeechTiming.remainingAfterRelease(
+                                swipeReleasedAtMs, SystemClock.uptimeMillis(),
+                                CARD_PRONUNCIATION_DELAY_MS);
+                        swipeReleasedAtMs = -1L;
+                        scheduleCardSpeech(cards.get(reviewIndex).spanish(),
+                                visibleFaces[1].word(), remaining);
                     }
                 });
         strip.setTag("card-swipe-viewport");
