@@ -212,6 +212,17 @@ public final class Store extends SQLiteOpenHelper {
         return true;
     }
 
+    /** Permanently remove a card, including from the mastered archive.
+     * Remote import receipts remain as tombstones so a future sync cannot restore it.
+     */
+    public boolean deleteCard(long id) {
+        if (id <= 0) return false;
+        int removed = getWritableDatabase().delete("cards", "id=?",
+                new String[]{Long.toString(id)});
+        if (removed > 0) changed();
+        return removed > 0;
+    }
+
     public void review(long id, int result) {
         review(id, result, 0);
     }
