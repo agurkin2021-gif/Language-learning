@@ -310,7 +310,7 @@ public final class MainActivity extends Activity {
 
         TextView selectedVoice = textInto(box, player.voiceDescription, 14);
         selectedVoice.setTextColor(secondaryText());
-        box.addView(selectedVoice, spaced(studyingEnglish() ? 12 : 8));
+        selectedVoice.setLayoutParams(spaced(studyingEnglish() ? 12 : 8));
         if (!studyingEnglish()) {
             Button voicePreview = rowButton("Проверить ll/y: ladrillo, lluvia", () -> {
                 if (player.ready()) {
