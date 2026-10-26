@@ -36,6 +36,8 @@ import java.util.ArrayList;
 
 public final class MainActivity extends Activity {
     private Store store;
+    private Store spanishStore, englishStore;
+    private String studyLanguage = "es";
     private RemoteContentSync contentSync;
     private ChatGptAssistant assistant;
     private AlertDialog assistantDialog;
@@ -91,19 +93,72 @@ public final class MainActivity extends Activity {
             legacyUpdater.cancel(72101);
             legacyUpdater.cancel(72102);
         }
-        store = new Store(this); prefs = getSharedPreferences("ui", MODE_PRIVATE);
+        prefs = getSharedPreferences("ui", MODE_PRIVATE);
+        studyLanguage = "en".equals(prefs.getString("studyLanguage", "es")) ? "en" : "es";
+        spanishStore = new Store(this);
+        if ("en".equals(studyLanguage)) englishStore = Store.english(this);
+        store = "en".equals(studyLanguage) ? englishStore : spanishStore;
         contentSync = new RemoteContentSync();
         assistant = new ChatGptAssistant(this);
         player = new SpeechPlayer(this, this::updatePlayer);
+        player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat("speed", .85f); player.pauseMs = prefs.getInt("pause", 1500); player.sentenceMode = prefs.getBoolean("sentenceMode", true);
-        screen = prefs.getString("screen", "cards"); kind = prefs.getInt("kind", 0); category = prefs.getInt("category", 0); reviewIndex = prefs.getInt("reviewIndex", 0); reviewStep = prefs.getLong("reviewStep", 0);
-        long last = prefs.getLong("story", -1);
+        screen = prefs.getString(prefKey("screen"), "cards");
+        kind = prefs.getInt(prefKey("kind"), 0);
+        category = prefs.getInt(prefKey("category"), 0);
+        reviewIndex = prefs.getInt(prefKey("reviewIndex"), 0);
+        reviewStep = prefs.getLong(prefKey("reviewStep"), 0);
+        long last = prefs.getLong(prefKey("story"), -1);
         if ("player".equals(screen)) {
             for (Store.Story story : store.stories()) if (story.id() == last) { openStory(story); return; }
             screen = "stories";
         }
         render();
     }
+    private boolean studyingEnglish() { return "en".equals(studyLanguage); }
+    private String prefKey(String key) { return studyingEnglish() ? "en_" + key : key; }
+
+    private void selectStudyLanguage(String next) {
+        if (!"en".equals(next) && !"es".equals(next)) return;
+        if (next.equals(studyLanguage)) return;
+        if (assistantRequestInFlight) {
+            Toast.makeText(this, "Дождитесь завершения генерации ChatGPT",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        player.pause();
+        cancelCardSpeech();
+        remember();
+        if (cardDialog != null && cardDialog.isShowing()) cardDialog.dismiss();
+        pendingSavedStory = null;
+        studyLanguage = next;
+        prefs.edit().putString("studyLanguage", studyLanguage).commit();
+        if (studyingEnglish() && englishStore == null) englishStore = Store.english(this);
+        store = studyingEnglish() ? englishStore : spanishStore;
+        player.setLearningLanguage(studyLanguage);
+        kind = prefs.getInt(prefKey("kind"), 0);
+        category = prefs.getInt(prefKey("category"), 0);
+        reviewIndex = prefs.getInt(prefKey("reviewIndex"), 0);
+        reviewStep = prefs.getLong(prefKey("reviewStep"), 0);
+        screen = prefs.getString(prefKey("screen"), "cards");
+        if ("player".equals(screen)) screen = "stories";
+        storyId = -1;
+        cardRevealed = false;
+        render();
+        syncContent();
+    }
+
+    private void chooseStudyLanguage() {
+        new AlertDialog.Builder(this)
+                .setTitle("Язык изучения")
+                .setSingleChoiceItems(new String[]{"Испанский (ES)", "Английский (EN)"},
+                        studyingEnglish() ? 1 : 0, (dialog, which) -> {
+                            dialog.dismiss();
+                            selectStudyLanguage(which == 1 ? "en" : "es");
+                        })
+                .setNegativeButton("Отмена", null).show();
+    }
+
     private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
     private int pageBg() { return ui.background; }
     private int primaryText() { return ui.foreground; }
@@ -163,8 +218,13 @@ public final class MainActivity extends Activity {
         cardSpeechHandler.postDelayed(speech, CARD_PRONUNCIATION_DELAY_MS);
     }
     private void remember() {
-        prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).remove("archive")
-                .putInt("category", category).putInt("reviewIndex", reviewIndex).putLong("reviewStep", reviewStep).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
+        prefs.edit().putString(prefKey("screen"), screen)
+                .putLong(prefKey("story"), storyId).putInt(prefKey("kind"), kind)
+                .remove(prefKey("archive")).putInt(prefKey("category"), category)
+                .putInt(prefKey("reviewIndex"), reviewIndex)
+                .putLong(prefKey("reviewStep"), reviewStep)
+                .putFloat("speed", player.speed).putInt("pause", player.pauseMs)
+                .putBoolean("sentenceMode", player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
     }
@@ -185,6 +245,17 @@ public final class MainActivity extends Activity {
             tabParams.setMarginEnd(dp(7));
             tabs.addView(tab, tabParams);
         }
+        Button languageButton = rowButton(studyingEnglish() ? "EN ▾" : "ES ▾",
+                this::chooseStudyLanguage);
+        ui.style(languageButton, UiStyle.Tone.OUTLINE);
+        languageButton.setTextSize(12);
+        languageButton.setPadding(dp(2), 0, dp(2), 0);
+        languageButton.setContentDescription(studyingEnglish()
+                ? "Английский. Выбрать язык изучения"
+                : "Испанский. Выбрать язык изучения");
+        LinearLayout.LayoutParams languageParams = new LinearLayout.LayoutParams(dp(53), dp(52));
+        languageParams.setMarginEnd(dp(6));
+        tabs.addView(languageButton, languageParams);
         if (!screen.equals("cards")) {
             Button settingsButton = rowButton("⚙", this::showSettings);
             ui.style(settingsButton, UiStyle.Tone.ICON);
@@ -284,7 +355,9 @@ public final class MainActivity extends Activity {
     private void confirmResetDatabase(AlertDialog settingsDialog) {
         new AlertDialog.Builder(this)
                 .setTitle("Сбросить базу?")
-                .setMessage("Будут удалены все слова, устойчивые выражения, сказки и прогресс изучения на этом телефоне. Отменить удаление после подтверждения нельзя.")
+                .setMessage("Будут удалены слова, выражения, сказки и прогресс "
+                        + (studyingEnglish() ? "АНГЛИЙСКОГО" : "ИСПАНСКОГО")
+                        + " языка на этом телефоне. Другая база останется нетронутой. Отменить удаление нельзя.")
                 .setNegativeButton("Отмена", null)
                 .setPositiveButton("Продолжить", (first, which) ->
                         new AlertDialog.Builder(this)
@@ -390,9 +463,9 @@ public final class MainActivity extends Activity {
         assistantHistory.setTextSize(16);
         assistantHistory.setTextColor(primaryText());
         assistantHistory.setPadding(0, dp(10), 0, dp(10));
-        assistantHistory.setText(assistant.historyText().isEmpty()
+        assistantHistory.setText(assistant.historyText(store).isEmpty()
                 ? "Здесь можно говорить или писать. Контекст приложения уже передаётся автоматически."
-                : assistant.historyText());
+                : assistant.historyText(store));
         assistantHistory.setPadding(dp(14), dp(14), dp(14), dp(14));
         historyScroll.setBackground(ui.rounded(ui.soft, 15, ui.outline));
         historyScroll.addView(assistantHistory);
@@ -640,7 +713,7 @@ public final class MainActivity extends Activity {
                     }
                     if (assistantInput != null) assistantInput.setText("");
                     if (assistantHistory != null)
-                        assistantHistory.setText(assistant.historyText());
+                        assistantHistory.setText(assistant.historyText(store));
                     if (storedStory) {
                         if (fromVoice) stopAssistantVoice();
                         assistantStatus.setText("Сказка сохранена: " + savedStory.title());
@@ -782,7 +855,11 @@ public final class MainActivity extends Activity {
         intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
         intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
         if (Build.VERSION.SDK_INT >= 33) {
-            ArrayList<String> hints = new ArrayList<>(List.of(
+            ArrayList<String> hints = studyingEnglish()
+                    ? new ArrayList<>(java.util.Arrays.asList(
+                    "English", "word", "phrase", "story", "сказку", "словарь",
+                    "карточки", "английский", "выражение"))
+                    : new ArrayList<>(java.util.Arrays.asList(
                     "vos", "tenés", "querés", "fui", "dijo", "mate", "сказку",
                     "карточки", "словарь", "испанский", "вспомнил", "выражение"));
             for (Store.Card card : store.vocabulary()) {
@@ -820,6 +897,9 @@ public final class MainActivity extends Activity {
     private void cards() {
         player.pause();
         text("Карточки", 28);
+        TextView label = text(studyingEnglish()
+                ? "Английский • личный словарь" : "Испанский • аргентинский вариант", 13);
+        label.setTextColor(secondaryText());
 
         TextView hint = text("Нажмите для перевода · листайте в обе стороны · × — освоено", 15);
         hint.setTextColor(secondaryText());
@@ -982,7 +1062,7 @@ public final class MainActivity extends Activity {
                                 : (reviewIndex + n - 1) % n;
                         bindCardFace(recycled, cards.get(farIndex));
                         counter.setText((reviewIndex + 1) + " / " + n);
-                        prefs.edit().putInt("reviewIndex", reviewIndex).apply();
+                        prefs.edit().putInt(prefKey("reviewIndex"), reviewIndex).apply();
                         scheduleCardSpeech(cards.get(reviewIndex).spanish(), visibleFaces[1].word());
                     }
                 });
@@ -1088,12 +1168,14 @@ public final class MainActivity extends Activity {
     private void addCard(int requestedKind) {
         cancelCardSpeech();
         if (cardDialog != null && cardDialog.isShowing()) return;
-        LinearLayout box = form(); EditText es = field(box, "По-испански", 500, false); EditText ru = field(box, "Русский смысл", 1000, true);
-        boolean restoring = prefs.getBoolean("cardDraftOpen", false);
-        draftKind = restoring ? prefs.getInt("cardDraftKind", requestedKind) : requestedKind;
+        LinearLayout box = form();
+        EditText es = field(box, studyingEnglish() ? "По-английски" : "По-испански", 500, false);
+        EditText ru = field(box, "Русский смысл", 1000, true);
+        boolean restoring = prefs.getBoolean(prefKey("cardDraftOpen"), false);
+        draftKind = restoring ? prefs.getInt(prefKey("cardDraftKind"), requestedKind) : requestedKind;
         int defaultCategory = category >= 1 && category <= 3 ? category : 1;
-        draftCategory = restoring ? prefs.getInt("cardDraftCategory", defaultCategory) : defaultCategory;
-        if (restoring) { es.setText(prefs.getString("cardDraftSpanish", "")); ru.setText(prefs.getString("cardDraftMeaning", "")); }
+        draftCategory = restoring ? prefs.getInt(prefKey("cardDraftCategory"), defaultCategory) : defaultCategory;
+        if (restoring) { es.setText(prefs.getString(prefKey("cardDraftSpanish"), "")); ru.setText(prefs.getString(prefKey("cardDraftMeaning"), "")); }
         draftSpanish = es; draftMeaning = ru;
         draftCategorySpinner = null;
         if (draftKind == 0) {
@@ -1112,7 +1194,10 @@ public final class MainActivity extends Activity {
         cardDialog = dialog;
         dialog.setOnCancelListener(d -> clearCardDraft());
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
-            if (es.getText().toString().trim().isEmpty()) { es.setError("Введите испанский текст"); return; }
+            if (es.getText().toString().trim().isEmpty()) {
+                es.setError(studyingEnglish() ? "Введите английский текст" : "Введите испанский текст");
+                return;
+            }
             if (ru.getText().toString().trim().isEmpty()) { ru.setError("Введите русский смысл"); return; }
             draftCategory = draftKind == 0 && draftCategorySpinner != null ? draftCategorySpinner.getSelectedItemPosition() + 1 : 0;
             store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), draftKind, draftCategory);
@@ -1127,17 +1212,17 @@ public final class MainActivity extends Activity {
         if (cardDialog != null && cardDialog.isShowing() && draftSpanish != null && draftMeaning != null) {
             if (draftKind == 0 && draftCategorySpinner != null)
                 draftCategory = draftCategorySpinner.getSelectedItemPosition() + 1;
-            prefs.edit().putBoolean("cardDraftOpen", true).putInt("cardDraftKind", draftKind).putInt("cardDraftCategory", draftCategory)
-                    .putString("cardDraftSpanish", draftSpanish.getText().toString())
-                    .putString("cardDraftMeaning", draftMeaning.getText().toString()).commit();
+            prefs.edit().putBoolean(prefKey("cardDraftOpen"), true).putInt(prefKey("cardDraftKind"), draftKind).putInt(prefKey("cardDraftCategory"), draftCategory)
+                    .putString(prefKey("cardDraftSpanish"), draftSpanish.getText().toString())
+                    .putString(prefKey("cardDraftMeaning"), draftMeaning.getText().toString()).commit();
         }
     }
     private void clearCardDraft() {
-        prefs.edit().remove("cardDraftOpen").remove("cardDraftKind").remove("cardDraftCategory").remove("cardDraftSpanish").remove("cardDraftMeaning").commit();
+        prefs.edit().remove(prefKey("cardDraftOpen")).remove(prefKey("cardDraftKind")).remove(prefKey("cardDraftCategory")).remove(prefKey("cardDraftSpanish")).remove(prefKey("cardDraftMeaning")).commit();
         draftSpanish = null; draftMeaning = null; draftCategorySpinner = null;
     }
     private void stories() {
-        text("Библиотека сказок", 28);
+        text(studyingEnglish() ? "Библиотека английских сказок" : "Библиотека сказок", 28);
         TextView subtitle = text("Слушайте целиком или по одному предложению.", 16);
         subtitle.setTextColor(secondaryText());
         subtitle.setPadding(0, dp(3), 0, dp(12));
@@ -1352,11 +1437,12 @@ public final class MainActivity extends Activity {
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
     }
     private void syncContent() {
-        if (contentSync == null || syncingContent) return;
+        if (contentSync == null || syncingContent || studyingEnglish()) return;
         syncingContent = true;
-        contentSync.sync(store, (added, rejected, error) -> runOnUiThread(() -> {
+        Store syncedStore = store;
+        contentSync.sync(syncedStore, (added, rejected, error) -> runOnUiThread(() -> {
             syncingContent = false;
-            if (isFinishing() || isDestroyed()) return;
+            if (isFinishing() || isDestroyed() || store != syncedStore) return;
             if (added > 0) {
                 Toast.makeText(this, "Добавлено из ChatGPT: " + added, Toast.LENGTH_SHORT).show();
                 if ((cardDialog == null || !cardDialog.isShowing()) && !"player".equals(screen)) render();
@@ -1367,7 +1453,7 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed() { if (screen.equals("player")) navigate("stories"); else super.onBackPressed(); }
     @Override protected void onResume() {
         super.onResume();
-        if (prefs.getBoolean("cardDraftOpen", false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
+        if (prefs.getBoolean(prefKey("cardDraftOpen"), false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
         syncContent();
     }
     @Override protected void onPause() { stopAssistantVoice(); cancelCardSpeech(); player.pause(); remember(); rememberCardDraft(); super.onPause(); }
@@ -1378,7 +1464,8 @@ public final class MainActivity extends Activity {
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (assistantVoiceOutput != null) assistantVoiceOutput.close();
         player.close();
-        store.close();
+        if (englishStore != null) englishStore.close();
+        if (spanishStore != null) spanishStore.close();
         super.onDestroy();
     }
 }
