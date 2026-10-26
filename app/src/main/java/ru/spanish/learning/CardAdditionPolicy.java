@@ -171,6 +171,7 @@ final class CardAdditionPolicy {
     static void validateSvg(String svg) {
         String s = svg == null ? "" : svg.trim();
         String lower = s.toLowerCase(Locale.ROOT);
+        String withoutSvgNamespace = lower.replace("xmlns=\"http://www.w3.org/2000/svg\"", "");
         if (!s.contains("<svg") || !s.contains("</svg>")
                 || !s.contains("width=\"256\"") || !s.contains("height=\"256\"")
                 || !s.contains("viewBox=\"0 0 256 256\""))
@@ -180,7 +181,8 @@ final class CardAdditionPolicy {
         if (lower.contains("<script") || lower.contains("<text") || lower.contains("<image")
                 || lower.contains("<style") || lower.contains("<use") || lower.contains("<!entity")
                 || lower.contains("<!doctype") || lower.contains("foreignobject")
-                || lower.contains("javascript:") || lower.contains("http://") || lower.contains("https://")
+                || lower.contains("javascript:") || withoutSvgNamespace.contains("http://")
+                || withoutSvgNamespace.contains("https://")
                 || lower.matches("(?s).*\\son[a-z]+\\s*=.*"))
             throw new IllegalArgumentException("SVG содержит запрещённые элементы");
         if (s.length() > 40_000) throw new IllegalArgumentException("SVG слишком большой");
