@@ -56,6 +56,47 @@ public class StoreTest extends AndroidTestCase {
     }
 
 
+    public void testPermanentDeleteRemovesStudyAndMasteredCardsWithoutReseeding() {
+        String database = "test-permanent-card-delete.db";
+        getContext().deleteDatabase(database);
+        try {
+            try (Store store = new Store(getContext(), database)) {
+                assertEquals(950, store.vocabulary().size());
+                long original = store.vocabulary().get(0).id();
+                store.setMastered(original, true);
+                assertTrue(store.deleteCard(original));
+                assertFalse("Already removed card is not deleted twice", store.deleteCard(original));
+                assertFalse("Invalid ID must not delete anything", store.deleteCard(-1));
+                assertEquals(949, store.vocabulary().size());
+                assertEquals(0, store.mastered().size());
+                assertEquals(949, store.cards(false, 0).size() + store.cards(false, 1).size());
+
+                store.addCard("borrar definitivamente", "безвозвратно удалить", 0, 1);
+                long userId = store.vocabulary().get(store.vocabulary().size() - 1).id();
+                assertTrue(store.deleteCard(userId));
+                assertEquals(949, store.vocabulary().size());
+
+                assertTrue(store.importRemoteCard("remote-deletion-tombstone",
+                        "tarjeta remota", "карточка из ленты", 0, 2));
+                long remoteId = store.vocabulary().get(store.vocabulary().size() - 1).id();
+                assertTrue(store.deleteCard(remoteId));
+                assertFalse("Deleted remote card must not reappear after sync",
+                        store.importRemoteCard("remote-deletion-tombstone",
+                                "tarjeta remota", "карточка из ленты", 0, 2));
+            }
+            try (Store reopened = new Store(getContext(), database)) {
+                assertEquals("Deleted words must stay gone after reopening", 949,
+                        reopened.vocabulary().size());
+                assertEquals(0, reopened.mastered().size());
+                reopened.onUpgrade(reopened.getWritableDatabase(), 7, 8);
+                assertEquals("A future DB upgrade must not restore deleted cards", 949,
+                        reopened.vocabulary().size());
+            }
+        } finally {
+            getContext().deleteDatabase(database);
+        }
+    }
+
     public void testAssistantReceivesAllMasteredAndStudyCards() {
         String database = "test-assistant-vocabulary.db";
         getContext().deleteDatabase(database);
