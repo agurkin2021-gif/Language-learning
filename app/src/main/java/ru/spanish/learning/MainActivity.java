@@ -1596,11 +1596,6 @@ public final class MainActivity extends Activity {
         toggle.setTextSize(20);
         toggle.setMinHeight(dp(70));
 
-        button("▶ Весь рассказ с начала", () -> {
-            player.playAllFromStart();
-            remember();
-            updatePlayer();
-        });
         repeat = button("Повторить предложение", player::repeat);
         Button readAll = button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
         ui.style(readAll, UiStyle.Tone.OUTLINE);
