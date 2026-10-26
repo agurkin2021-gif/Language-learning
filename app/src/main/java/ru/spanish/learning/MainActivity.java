@@ -591,7 +591,7 @@ public final class MainActivity extends Activity {
         TextView known = new TextView(this);
         known.setText("×");
         known.setTextSize(27);
-        known.setTextColor(primaryText());
+        known.setTextColor(darkTheme ? 0xFFFF6B6B : 0xFFC62828);
         known.setGravity(Gravity.CENTER);
         known.setContentDescription("Знаю: убрать карточку из изучения");
         GradientDrawable closeBg = new GradientDrawable();
