@@ -1409,7 +1409,13 @@ public final class MainActivity extends Activity {
             }
             if (ru.getText().toString().trim().isEmpty()) { ru.setError("Введите русский смысл"); return; }
             draftCategory = draftKind == 0 && draftCategorySpinner != null ? draftCategorySpinner.getSelectedItemPosition() + 1 : 0;
-            store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), draftKind, draftCategory);
+            try {
+                store.addCard(es.getText().toString().trim(), ru.getText().toString().trim(), draftKind, draftCategory);
+            } catch (IllegalArgumentException invalidPhrase) {
+                es.setError(invalidPhrase.getMessage());
+                es.requestFocus();
+                return;
+            }
             kind = draftKind;
             if (kind == 1) category = 0;
             reviewIndex = 0;

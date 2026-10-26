@@ -391,4 +391,54 @@ public class StoreTest extends AndroidTestCase {
         }
     }
 
+
+    /** A phrase's infinitive head is forbidden, but stories and plain verbs remain free. */
+    public void testInfinitiveExpressionPolicyOnlyForNewSpanishPhrases() {
+        String database = "test-conversational-phrases.db";
+        String englishDatabase = "test-english-phrases.db";
+        getContext().deleteDatabase(database);
+        getContext().deleteDatabase(englishDatabase);
+        try {
+            try (Store spanish = new Store(getContext(), database);
+                 Store english = Store.englishForTest(getContext(), englishDatabase)) {
+                int initial = spanish.vocabulary().size();
+                spanish.addCard("tengo razón", "я прав", 1, 0);
+                assertTrue(spanish.addCardIfMissing("tenés razón", "ты прав", 1, 0));
+                assertTrue(spanish.addCardIfMissing("tengo ganas de comer",
+                        "мне хочется поесть", 1, 0));
+                assertEquals(initial + 3, spanish.vocabulary().size());
+
+                try {
+                    spanish.addCard("tener razón", "быть правым", 1, 0);
+                    fail("Infinitive-based study phrase was accepted");
+                } catch (IllegalArgumentException expected) {
+                    assertTrue(expected.getMessage().contains("разговорная"));
+                }
+                try {
+                    spanish.addCardIfMissing("darse cuenta de", "осознавать", 1, 0);
+                    fail("The assistant must not save an infinitive-based expression");
+                } catch (IllegalArgumentException expected) { }
+                try {
+                    spanish.importRemoteCard("bad-phrase", "estar de acuerdo", "быть согласным", 1, 0);
+                    fail("Remote sync must not import an infinitive-based phrase");
+                } catch (IllegalArgumentException expected) { }
+                assertEquals(initial + 3, spanish.vocabulary().size());
+
+                // Individual verb cards are outside the phrase-only restriction.
+                spanish.addCard("comer", "есть", 0, 1);
+                // Stories may contain infinitives freely.
+                spanish.addStory("Sin límites", "Quiero comer. Voy a salir.",
+                        "Я хочу есть. Я собираюсь выйти.", "Test");
+                assertEquals(2, spanish.stories().size());
+                // English study phrases are outside the Spanish-specific rule.
+                english.addCard("to be honest", "честно говоря", 1, 0);
+                assertEquals(1, english.vocabulary().size());
+            }
+        } finally {
+            getContext().deleteDatabase(database);
+            getContext().deleteDatabase(englishDatabase);
+        }
+    }
+
+
 }

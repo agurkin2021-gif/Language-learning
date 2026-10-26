@@ -164,6 +164,7 @@ public final class Store extends SQLiteOpenHelper {
 
     public void addCard(String spanish, String meaning, int kind, int category) {
         if (kind == 0 && (category < 1 || category > 3)) throw new IllegalArgumentException("category");
+        if (kind == 1 && !english) SpanishPhrasePolicy.requireConversationalForm(spanish);
         if (kind == 1) category = 0;
         ContentValues v = new ContentValues();
         v.put("spanish", spanish);
@@ -201,6 +202,7 @@ public final class Store extends SQLiteOpenHelper {
         String cleanSpanish = spanish == null ? "" : spanish.trim();
         String cleanMeaning = meaning == null ? "" : meaning.trim();
         if (cleanSpanish.isEmpty() || cleanMeaning.isEmpty()) throw new IllegalArgumentException("Пустая карточка");
+        if (kind == 1 && !english) SpanishPhrasePolicy.requireConversationalForm(cleanSpanish);
         if (kind == 0 && (category < 1 || category > 3)) throw new IllegalArgumentException("category");
         if (kind == 1) category = 0;
         try (Cursor c = getReadableDatabase().query("cards", new String[]{"id"},
@@ -327,6 +329,7 @@ public final class Store extends SQLiteOpenHelper {
 
     public boolean importRemoteCard(String externalId, String spanish, String meaning, int kind, int category) {
         if (externalId == null || externalId.trim().isEmpty()) throw new IllegalArgumentException("externalId");
+        if (kind == 1 && !english) SpanishPhrasePolicy.requireConversationalForm(spanish);
         if (spanish == null || spanish.trim().isEmpty() || meaning == null || meaning.trim().isEmpty())
             throw new IllegalArgumentException("Пустая карточка");
         if (kind < 0 || kind > 1) throw new IllegalArgumentException("kind");
