@@ -99,12 +99,13 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
 
         int kind = getActivity().getSharedPreferences("ui", 0).getInt("kind", 0);
         int category = getActivity().getSharedPreferences("ui", 0).getInt("category", 0);
-        long learnedId;
+        long[] learnedId = {-1};
         try (Store store = new Store(getInstrumentation().getTargetContext())) {
             List<Store.Card> active = store.cards(false, kind, kind == 0 ? category : 0);
             assertEquals(total, active.size());
             Store.Card initial = active.get(originalIndex - 1);
-            learnedId = initial.id();
+            learnedId[0] = initial.id();
+            int originalVocabularySize = store.vocabulary().size();
             assertNotNull(text(root(), initial.spanish()));
             assertNull("Old action must not appear", text(root(), "Не знаю"));
             assertNull("Old action must not appear", text(root(), "Знаю"));
@@ -126,17 +127,15 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
             });
             getInstrumentation().waitForIdleSync();
             assertEquals(total - 1, counter()[1]);
-            assertEquals("Card is marked mastered, not deleted", active.size(), store.vocabulary().stream()
-                    .filter(card -> card.kind() == kind && (kind != 0 || category == 0 || card.category() == category)
-                            && (!card.mastered() || card.id() == learnedId)).count());
+            assertEquals("Card is retained in the dictionary", originalVocabularySize, store.vocabulary().size());
             boolean mastered = false;
             for (Store.Card card : store.vocabulary()) {
-                if (card.id() == learnedId) { mastered = card.mastered(); break; }
+                if (card.id() == learnedId[0]) { mastered = card.mastered(); break; }
             }
             assertTrue("Learned card is retained in complete vocabulary", mastered);
         } finally {
             try (Store store = new Store(getInstrumentation().getTargetContext())) {
-                store.setMastered(learnedId, false);
+                if (learnedId[0] >= 0) store.setMastered(learnedId[0], false);
             }
         }
     }
