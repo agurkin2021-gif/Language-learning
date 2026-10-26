@@ -213,8 +213,11 @@ public final class ChatGptAssistant {
                         + " слов/выражений за одно сообщение. Обрабатывай по ОДНОЙ карточке: "
                         + "выбери частотное слово нужного уровня и темы, проверь отсутствие "
                         + "в переданном полном словаре, грамматическую категорию, орфографию "
-                        + "и ОДНО точное русское учебное значение, только потом вызывай "
-                        + "инструмент. Дождись реального результата перед следующим словом. "
+                        + "и ДОСЛОВНЫЙ русский перевод, а смысловой указывай только в скобках "
+                        + "после буквального, если тот звучит коряво. Три независимых "
+                        + "аудита перевода выполняются приложением до сохранения; "
+                        + "не считай кандидата добавленным раньше результата инструмента. "
+                        + "Дождись реального результата перед следующим словом. "
                         + "При запросе A1/А1 используй только повседневную лексику начального "
                         + "уровня; не подменяй A1 редкими/специальными терминами. "
                         + "Для точно узнаваемых существительных (gato, perro, casa, agua, "
@@ -258,7 +261,10 @@ public final class ChatGptAssistant {
                                 ? "Сохраняю сказку в вашей библиотеке…"
                                 : isCard ? "Проверяю карточку " + (Math.min(batch.attempted + 1, batch.limit))
                                         + " из " + batch.limit + "…" : "Выполняю действие…");
-                        String result = runLimitedTool(store, call, batch);
+                        String result = isCard
+                                ? auditCardBeforeSave(store, call, batch,
+                                        session.accessToken, model, callback)
+                                : runLimitedTool(store, call, batch);
                         try {
                             if (new JSONObject(result).optBoolean("ok", false)) toolSucceeded = true;
                         } catch (Exception ignored) {}
@@ -666,6 +672,11 @@ public final class ChatGptAssistant {
 
                 Для добавления слова вызови add_word и классифицируй как verb, noun
                 или adjective. Для устойчивого выражения вызови add_phrase.
+                Русский перевод любой новой карточки — сначала дословный, включая
+                грамматическую форму; только если он неестественен, добавь в
+                скобках краткий смысловой перевод. Не заменяй буквальный
+                перевод пересказом. Перед сохранением приложение выполняет
+                три отдельные проверки точности перевода.
                 Для сказки/рассказа создай естественный английский текст,
                 согласованный русский перевод и вызови add_story для сохранения
                 в английскую базу. Количество английских и русских предложений
@@ -719,6 +730,7 @@ public final class ChatGptAssistant {
                 - ЭТО ПРАВИЛО НЕ ОТНОСИТСЯ К СКАЗКАМ И РАССКАЗАМ: при add_story используй любые естественные грамматические формы, включая инфинитивы; не ограничивай и не искажай текст истории ради карточек. Оно не распространяется на отдельные глаголы в разделе «Слова» и на английские карточки.
 
                 Основная задача: разговаривать с пользователем внутри приложения и выполнять контентные команды прямо в рабочей базе. Если просят добавить слово — вызови add_word. Если устойчивое выражение — add_phrase. Если просят сочинить/добавить сказку — создай естественный испанский текст и синхронный русский перевод и вызови add_story. После инструмента кратко скажи, что сделано. Не утверждай, что что-то добавлено, пока инструмент реально не вызван.
+                Для слов и устойчивых выражений сначала указывай ДОСЛОВНЫЙ перевод с точной грамматической формой. Если дословно звучит коряво, дополняй кратким смысловым вариантом в круглых скобках. Не заменяй дословный перевод смысловым пересказом. Перед сохранением приложения требует три самостоятельных аудита точности; отвергнутые карточки не сохраняются.
 
                 Для нового слова сначала предпочитай точный системный эмодзи из встроенного словаря, если слово и русский перевод однозначно совпадают. Тогда svg можно оставить пустым. Для всех остальных слов и для устойчивых выражений нарисуй понятный SVG 256x256 из геометрических объектов (без текста, скриптов, внешних ссылок и foreignObject). Не используй случайный эмодзи вместо точного смысла.
 
@@ -739,7 +751,7 @@ public final class ChatGptAssistant {
         JSONObject word = baseTool("add_word", "Добавить новое слово на выбранном языке в рабочую базу приложения.");
         JSONObject wp = new JSONObject();
         wp.put("spanish", stringSchema("Слово на выбранном языке: EN — английское, ES — испанское"));
-        wp.put("russian", stringSchema("Точный русский смысл"));
+        wp.put("russian", stringSchema("В первую очередь дословный русский перевод точной формы; если звучит коряво, после него краткий смысловой в скобках"));
         wp.put("category", enumSchema("verb", "noun", "adjective"));
         wp.put("svg", stringSchema("Для точного однозначного существительного с системным эмодзи — пустая строка; иначе полный нарисованный безопасный SVG 256x256 без текста, скриптов и внешних ссылок"));
         word.getJSONObject("parameters").put("properties", wp)
@@ -749,7 +761,7 @@ public final class ChatGptAssistant {
         JSONObject phrase = baseTool("add_phrase", "Добавить устойчивое выражение отдельно от обычных слов. Испанский ES: добавляй готовую разговорную личную форму, не словарный инфинитив как главное действие. Рассказы не ограничивать.");
         JSONObject pp = new JSONObject();
         pp.put("spanish", stringSchema("Устойчивое выражение на выбранном языке; в ES готовая разговорная форма (tengo razón/tenés razón), не инфинитивная заготовка (tener razón)"));
-        pp.put("russian", stringSchema("Русский смысл выражения"));
+        pp.put("russian", stringSchema("Дословный перевод всей формы в приоритете, при необходимости смысловой перевод после него в скобках"));
         pp.put("svg", stringSchema("Полный безопасный SVG 256x256 без текста, скриптов и внешних ссылок"));
         phrase.getJSONObject("parameters").put("properties", pp)
                 .put("required", new JSONArray().put("spanish").put("russian").put("svg"));
@@ -892,7 +904,61 @@ public final class ChatGptAssistant {
         return new EventResult(false, "");
     }
 
-    /** Shared by network processing and offline Android regression tests. */
+    /**
+     * All live ChatGPT additions pass three actual, sequential language-model
+     * reviews before write access. Network failures abort the request, and
+     * failed reviews consume an attempt without saving a card or an image.
+     * Duplicates are counted without wasting three model calls.
+     */
+    private String auditCardBeforeSave(Store store, ToolCall call,
+                                       CardAdditionPolicy.Batch batch,
+                                       String accessToken, String model,
+                                       SendUpdates callback) throws Exception {
+        if (batch.reached()) return runLimitedTool(store, call, batch);
+        JSONObject args = new JSONObject(call.arguments);
+        String foreign = args.getString("spanish").trim();
+        String russian = args.getString("russian").trim();
+        boolean phrase = "add_phrase".equals(call.name);
+        String category = phrase ? "phrase" : args.getString("category");
+        try {
+            CardAdditionPolicy.validate(foreign, russian, phrase);
+            if (!phrase && !("verb".equals(category) || "noun".equals(category)
+                    || "adjective".equals(category)))
+                throw new IllegalArgumentException("Некорректная грамматическая категория");
+            if (phrase && !store.isEnglish())
+                SpanishPhrasePolicy.requireConversationalForm(foreign);
+            // Previously learned cards are never modified, even when the new
+            // suggestion has a different meaning or illustration.
+            if (store.containsCard(foreign, phrase ? 1 : 0))
+                return runLimitedTool(store, call, batch);
+            String verifiedRussian = CardTranslationAudit.review(foreign, russian,
+                    category, phrase, store.isEnglish(),
+                    (pass, instructions, jsonPayload) -> {
+                        JSONObject question = new JSONObject()
+                                .put("role", "user").put("content", jsonPayload);
+                        ResponseTurn reply = request(accessToken, model, instructions,
+                                new JSONArray().put(question), false);
+                        return reply.text;
+                    },
+                    pass -> callback.progress("Карточка "
+                            + Math.min(batch.attempted + 1, batch.limit) + " из "
+                            + batch.limit + ": аудит перевода " + pass + "/3…"));
+            args.put("russian", verifiedRussian);
+            return runLimitedTool(store,
+                    new ToolCall(call.callId, call.name, args.toString()), batch);
+        } catch (IllegalArgumentException rejected) {
+            String result = new JSONObject().put("ok", false)
+                    .put("status", "translation_audit_rejected")
+                    .put("error", rejected.getMessage()).toString();
+            batch.record(result, foreign);
+            return result;
+        }
+    }
+
+    /**
+     * Shared tool executor used by instrumentation tests. Live card calls
+     * MUST go through auditCardBeforeSave(), never directly through here.
+     */
     String runLimitedTool(Store store, ToolCall call, CardAdditionPolicy.Batch batch) {
         boolean card = "add_word".equals(call.name) || "add_phrase".equals(call.name);
         if (card && batch.reached()) {
