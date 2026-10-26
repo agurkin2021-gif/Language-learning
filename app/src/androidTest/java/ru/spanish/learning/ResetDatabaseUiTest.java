@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
-import java.util.List;
 
 /** Verify both destructive confirmations without ever wiping the shared emulator test database. */
 public final class ResetDatabaseUiTest extends ActivityInstrumentationTestCase2<MainActivity> {
@@ -34,16 +33,23 @@ public final class ResetDatabaseUiTest extends ActivityInstrumentationTestCase2<
         getInstrumentation().waitForIdleSync();
     }
 
+    private AccessibilityNodeInfo findAccessibleText(AccessibilityNodeInfo node, String expected) {
+        if (node == null) return null;
+        CharSequence label = node.getText();
+        // Android's native AlertDialog buttons can appear uppercased by the theme.
+        if (label != null && expected.equalsIgnoreCase(label.toString().trim())) return node;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo match = findAccessibleText(node.getChild(i), expected);
+            if (match != null) return match;
+        }
+        return null;
+    }
+
     private AccessibilityNodeInfo inActiveDialog(String expected) {
         UiAutomation ui = getInstrumentation().getUiAutomation();
         for (int attempt = 0; attempt < 20; attempt++) {
-            AccessibilityNodeInfo root = ui.getRootInActiveWindow();
-            if (root != null) {
-                List<AccessibilityNodeInfo> matches = root.findAccessibilityNodeInfosByText(expected);
-                for (AccessibilityNodeInfo node : matches) {
-                    if (expected.contentEquals(node.getText())) return node;
-                }
-            }
+            AccessibilityNodeInfo found = findAccessibleText(ui.getRootInActiveWindow(), expected);
+            if (found != null) return found;
             SystemClock.sleep(120);
         }
         fail("Missing dialog text: " + expected);
