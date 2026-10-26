@@ -444,7 +444,7 @@ public final class MainActivity extends Activity {
         maintenance.addView(buildButton, buildParams);
         content.addView(maintenance, new LinearLayout.LayoutParams(-1, -2));
 
-        text("Сначала вспомните смысл. Перевод откроется только после нажатия на карточку.", 15);
+        text("Нажмите на карточку для перевода. Листайте влево и вправо. × — слово освоено.", 15);
         button("ChatGPT — голос / текст", this::showAssistant);
 
         LinearLayout filters = new LinearLayout(this);
@@ -486,13 +486,22 @@ public final class MainActivity extends Activity {
         addActions.addView(addPhraseButton, phraseParams);
         content.addView(addActions, new LinearLayout.LayoutParams(-1, -2));
 
-        // Study view shows only active cards; mastered items remain stored for the assistant.
-        List<Store.Card> cards = store.cardsForReview(kind, kind == 0 ? category : 0, reviewStep);
+        // All unmastered words remain available for bidirectional swiping.
+        // Marking a card known changes its status but never deletes it from the AI vocabulary.
+        List<Store.Card> cards = store.cards(false, kind, kind == 0 ? category : 0);
         text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
-        if (cards.isEmpty()) return;
+        if (cards.isEmpty()) {
+            TextView emptyVersion = text("Версия " + BuildConfig.VERSION_NAME, 11);
+            emptyVersion.setTextColor(secondaryText());
+            emptyVersion.setGravity(Gravity.CENTER);
+            return;
+        }
 
         if (reviewIndex < 0 || reviewIndex >= cards.size()) reviewIndex = 0;
         Store.Card card = cards.get(reviewIndex);
+
+        FrameLayout cardFrame = new FrameLayout(this);
+        content.addView(cardFrame, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout cardBox = new LinearLayout(this);
         cardBox.setOrientation(LinearLayout.VERTICAL);
@@ -504,7 +513,7 @@ public final class MainActivity extends Activity {
         bg.setCornerRadius(dp(22));
         bg.setStroke(dp(1), borderColor());
         cardBox.setBackground(bg);
-        content.addView(cardBox, new LinearLayout.LayoutParams(-1, -2));
+        cardFrame.addView(cardBox, new FrameLayout.LayoutParams(-1, -2));
 
         FrameLayout visual = new FrameLayout(this);
         LinearLayout.LayoutParams visualParams = new LinearLayout.LayoutParams(-1, dp(150));
@@ -530,55 +539,85 @@ public final class MainActivity extends Activity {
         word.setPadding(0, dp(10), 0, dp(10));
         cardBox.addView(word, new LinearLayout.LayoutParams(-1, -2));
 
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        String[] labels = {"Не знаю", "Знаю"};
-        for (int i = 0; i < labels.length; i++) {
-            final int result = i == 0 ? 0 : 2;
-            Button b = new Button(this);
-            b.setText(labels[i]);
-            b.setAllCaps(false);
-            b.setMinHeight(dp(46));
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1);
-            if (i > 0) p.setMarginStart(dp(6));
-            actions.addView(b, p);
-            b.setOnClickListener(v -> {
-                reviewStep++;
-                long nextDue = result == 0 ? reviewStep + 4 : 0;
-                store.review(card.id(), result, nextDue);
-                reviewIndex = 0;
-                cardRevealed = false;
-                render();
-            });
-        }
-        cardBox.addView(actions, new LinearLayout.LayoutParams(-1, -2));
-
-        if (!cardRevealed) actions.setVisibility(View.GONE);
-        cardBox.setOnClickListener(v -> {
-            if (!cardRevealed) {
-                cancelCardSpeech();
-                player.pause();
-                cardRevealed = true;
-                actions.setVisibility(View.VISIBLE);
-                word.setText(card.meaning());
-                word.setTag(false);
-            } else if (!Boolean.TRUE.equals(word.getTag())) {
-                word.setText(card.spanish());
-                word.setTag(true);
-                scheduleCardSpeech(card.spanish(), word);
-            } else {
-                cancelCardSpeech();
-                player.pause();
-                word.setText(card.meaning());
-                word.setTag(false);
+        // A transparent touch surface also covers the WebView illustration, so a
+        // gesture works anywhere on the card without triggering text selection.
+        View gestureLayer = new View(this);
+        gestureLayer.setTag("card-swipe-surface");
+        gestureLayer.setContentDescription("Карточка: нажмите для перевода; листайте влево или вправо");
+        gestureLayer.setOnClickListener(v -> {
+            cancelCardSpeech();
+            player.pause();
+            cardRevealed = !cardRevealed;
+            word.setText(cardRevealed ? card.meaning() : card.spanish());
+            word.setTag(!cardRevealed);
+            if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
+        });
+        final float[] touchStart = new float[2];
+        gestureLayer.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    touchStart[0] = event.getX();
+                    touchStart[1] = event.getY();
+                    return true;
+                case MotionEvent.ACTION_MOVE: {
+                    float dx = event.getX() - touchStart[0];
+                    float dy = event.getY() - touchStart[1];
+                    if (Math.abs(dx) > dp(12) && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                        view.getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                    return true;
+                }
+                case MotionEvent.ACTION_UP: {
+                    float dx = event.getX() - touchStart[0];
+                    float dy = event.getY() - touchStart[1];
+                    if (Math.abs(dx) >= dp(48) && Math.abs(dx) > Math.abs(dy) * 1.25f) {
+                        // Left goes forward, right goes backward. Both ends wrap.
+                        reviewIndex = (reviewIndex + (dx < 0 ? 1 : cards.size() - 1)) % cards.size();
+                        cardRevealed = false;
+                        render(); // cancels old speech, shows Spanish, schedules it after 1 s
+                    } else if (Math.abs(dx) <= dp(14) && Math.abs(dy) <= dp(14)) {
+                        view.performClick();
+                    }
+                    return true;
+                }
+                case MotionEvent.ACTION_CANCEL:
+                    return true;
+                default:
+                    return true;
             }
         });
+        cardFrame.addView(gestureLayer, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView known = new TextView(this);
+        known.setText("×");
+        known.setTextSize(27);
+        known.setTextColor(primaryText());
+        known.setGravity(Gravity.CENTER);
+        known.setContentDescription("Знаю: убрать карточку из изучения");
+        GradientDrawable closeBg = new GradientDrawable();
+        closeBg.setShape(GradientDrawable.OVAL);
+        closeBg.setColor(darkTheme ? 0xFF3A4541 : 0xFFF1F3F0);
+        closeBg.setStroke(dp(1), borderColor());
+        known.setBackground(closeBg);
+        known.setOnClickListener(v -> {
+            cancelCardSpeech();
+            player.pause();
+            store.review(card.id(), 2, 0);
+            if (reviewIndex >= cards.size() - 1) reviewIndex = 0;
+            cardRevealed = false;
+            render();
+        });
+        FrameLayout.LayoutParams knownParams = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.END);
+        knownParams.topMargin = dp(8);
+        knownParams.rightMargin = dp(8);
+        cardFrame.addView(known, knownParams);
 
         TextView version = text("Версия " + BuildConfig.VERSION_NAME, 11);
         version.setTextColor(secondaryText());
         version.setGravity(Gravity.CENTER);
         version.setPadding(0, dp(2), 0, dp(2));
-        text((reviewIndex + 1) + " / " + cards.size(), 14);
+        TextView counter = text((reviewIndex + 1) + " / " + cards.size(), 14);
+        counter.setGravity(Gravity.CENTER);
         if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
     }
 
