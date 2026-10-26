@@ -48,7 +48,7 @@ public final class MainActivity extends Activity {
     private TextView assistantStatus;
     private SpeechRecognizer speechRecognizer;
     private AssistantVoiceOutput assistantVoiceOutput;
-    private Button assistantVoiceButton, assistantSendButton;
+    private Button assistantVoiceButton, assistantSendButton, assistantGapButton;
     private LinearLayout assistantProgressRow;
     private TextView assistantProgressLabel;
     private boolean assistantRequestInFlight;
@@ -592,6 +592,20 @@ public final class MainActivity extends Activity {
                 {"Магазин", "Добавь 10 новых " + lang + " слов A1 по теме магазина"
                         + region + ". С точным русским переводом и подходящей иллюстрацией. Без дублей."}
         };
+        // The first action in the preset row opens a topic picker and starts
+        // a single capped gap-analysis request on selection.
+        Button gapButton = new Button(this);
+        gapButton.setText("Пробелы в словаре ▾");
+        gapButton.setTextSize(13);
+        gapButton.setAllCaps(false);
+        gapButton.setContentDescription("Анализ недостающих слов и выражений по темам");
+        ui.style(gapButton, UiStyle.Tone.SELECTED);
+        gapButton.setOnClickListener(v -> chooseVocabularyGapTopic());
+        LinearLayout.LayoutParams gapSlot = new LinearLayout.LayoutParams(-2, dp(42));
+        gapSlot.rightMargin = dp(8);
+        presetRow.addView(gapButton, gapSlot);
+        assistantGapButton = gapButton;
+
         for (String[] preset : presets) {
             Button choice = new Button(this);
             choice.setText(preset[0]);
@@ -716,6 +730,7 @@ public final class MainActivity extends Activity {
             assistantStatus = null;
             assistantVoiceButton = null;
             assistantSendButton = null;
+            assistantGapButton = null;
             assistantProgressRow = null;
             assistantProgressLabel = null;
             if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
@@ -727,6 +742,27 @@ public final class MainActivity extends Activity {
             pendingSavedStory = null;
             showStoryReadyDialog(ready);
         }
+    }
+
+    private void chooseVocabularyGapTopic() {
+        if (assistantRequestInFlight || assistantInput == null
+                || assistantDialog == null || !assistantDialog.isShowing()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Пробелы в словаре · до 10 карточек")
+                .setItems(VocabularyGapTopics.names(), (dialog, index) -> {
+                    if (assistantRequestInFlight || assistantInput == null) return;
+                    String request = VocabularyGapTopics.prompt(index, studyingEnglish());
+                    assistantInput.setText(request);
+                    assistantInput.setSelection(assistantInput.length());
+                    if (!assistant.isConnected()) {
+                        if (assistantStatus != null)
+                            assistantStatus.setText("Подключите ChatGPT, затем нажмите «Отправить».");
+                        return;
+                    }
+                    sendAssistantMessage(request, false);
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private void updateAssistantVoiceButton() {
@@ -764,6 +800,7 @@ public final class MainActivity extends Activity {
             assistantSendButton.setEnabled(!busy && assistant.isConnected());
         }
         if (assistantInput != null) assistantInput.setEnabled(!busy);
+        if (assistantGapButton != null) assistantGapButton.setEnabled(!busy);
         if (assistantVoiceButton != null)
             assistantVoiceButton.setEnabled(!busy || assistantVoiceActive);
         if (busy && assistantStatus != null) assistantStatus.setText(assistantRequestStage);

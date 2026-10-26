@@ -231,14 +231,16 @@ public final class ChatGptAssistant {
                 boolean executedAny = false;
                 boolean toolSucceeded = false;
                 String lower = clean.toLowerCase(Locale.ROOT);
-                boolean storyIntent = lower.contains("сказк") || lower.contains("рассказ")
+                boolean gapIntent = VocabularyGapTopics.isGapAnalysis(clean);
+                boolean storyIntent = !gapIntent && (lower.contains("сказк") || lower.contains("рассказ")
                         || lower.contains("истори") || lower.contains("cuento")
-                        || lower.contains("historia");
+                        || lower.contains("historia"));
 
                 for (int round = 0; round < batch.limit + 3; round++) {
                     callback.progress(round == 0
-                            ? storyIntent ? "ChatGPT сочиняет сказку по вашим словам…"
-                                          : "ChatGPT готовит ответ…"
+                            ? gapIntent ? "ChatGPT сравнивает словарь с выбранной темой…"
+                                        : storyIntent ? "ChatGPT сочиняет сказку по вашим словам…"
+                                                      : "ChatGPT готовит ответ…"
                             : "ChatGPT завершает ответ…");
                     if (batch.reached()) break;
                     ResponseTurn turn = request(session.accessToken, model, instructions, input);
@@ -897,7 +899,12 @@ public final class ChatGptAssistant {
             return "{\"ok\":false,\"status\":\"limit_reached\",\"error\":\"Лимит карточек достигнут\"}";
         }
         String result = executeTool(store, call);
-        if (card) batch.record(result);
+        if (card) {
+            String studied = "";
+            try { studied = new JSONObject(call.arguments).optString("spanish", ""); }
+            catch (Exception ignored) {}
+            batch.record(result, studied);
+        }
         return result;
     }
 

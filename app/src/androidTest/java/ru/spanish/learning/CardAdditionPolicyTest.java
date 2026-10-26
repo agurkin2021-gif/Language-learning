@@ -54,6 +54,8 @@ public class CardAdditionPolicyTest extends AndroidTestCase {
                 assertEquals(10, store.vocabulary().size());
                 assertTrue(hundred.report().contains("добавлено 10"));
                 assertTrue(hundred.report().contains("Лимит достигнут"));
+                assertTrue(hundred.report().contains("Добавлены: nuevapalabraa"));
+                assertFalse(hundred.report().contains("nuevapalabrak"));
             } finally { assistant.close(); }
         } finally {
             getContext().deleteDatabase(db);

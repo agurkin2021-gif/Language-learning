@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,6 +28,7 @@ final class CardAdditionPolicy {
         int added;
         int duplicates;
         int rejected;
+        final List<String> savedWords = new ArrayList<>();
 
         Batch(String userText) {
             Matcher matcher = COUNT.matcher(userText == null ? "" : userText);
@@ -39,12 +42,16 @@ final class CardAdditionPolicy {
 
         boolean reached() { return attempted >= limit; }
         boolean hasAttempts() { return attempted > 0; }
-        void record(String result) {
+        void record(String result) { record(result, ""); }
+        void record(String result, String studied) {
             attempted++;
             try {
                 JSONObject response = new JSONObject(result);
                 if (!response.optBoolean("ok", false)) rejected++;
-                else if ("added".equals(response.optString("status"))) added++;
+                else if ("added".equals(response.optString("status"))) {
+                    added++;
+                    if (studied != null && !studied.trim().isEmpty()) savedWords.add(studied.trim());
+                }
                 else if ("already_exists".equals(response.optString("status"))) duplicates++;
                 else rejected++;
             } catch (Exception ignored) { rejected++; }
@@ -53,7 +60,8 @@ final class CardAdditionPolicy {
             return "Карточки: добавлено " + added + ", дубликатов " + duplicates
                     + ", отклонено " + rejected + ". Обработано " + attempted
                     + " из " + limit + " за запрос."
-                    + (reached() ? " Лимит достигнут; следующая партия — отдельным запросом." : "");
+                    + (reached() ? " Лимит достигнут; следующая партия — отдельным запросом." : "")
+                    + (savedWords.isEmpty() ? "" : "\nДобавлены: " + String.join(", ", savedWords) + ".");
         }
     }
 
