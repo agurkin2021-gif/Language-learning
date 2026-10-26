@@ -845,6 +845,7 @@ public final class MainActivity extends Activity {
         ui.style(chat, UiStyle.Tone.PRIMARY);
         LinearLayout addActions = new LinearLayout(this);
         addActions.setOrientation(LinearLayout.HORIZONTAL);
+        addActions.setBaselineAligned(false); // Two-line label must not shift the second button vertically.
         Button addWordButton = rowButton("＋ Слово", () -> addCard(0));
         Button addPhraseButton = rowButton("＋ Устойчивое выражение", () -> addCard(1));
         ui.style(addWordButton, UiStyle.Tone.OUTLINE);
