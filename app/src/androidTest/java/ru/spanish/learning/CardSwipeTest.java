@@ -124,22 +124,32 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
         assertEquals(initialCounter[0], counter()[0]);
     }
 
+    private AccessibilityNodeInfo findClickableAction(AccessibilityNodeInfo root, String label) {
+        if (root == null) return null;
+        CharSequence text = root.getText();
+        if (text != null && label.equalsIgnoreCase(text.toString().trim())) {
+            AccessibilityNodeInfo candidate = root;
+            while (!candidate.isClickable() && candidate.getParent() != null)
+                candidate = candidate.getParent();
+            if (candidate.isClickable()) return candidate;
+        }
+        for (int i = 0; i < root.getChildCount(); i++) {
+            AccessibilityNodeInfo match = findClickableAction(root.getChild(i), label);
+            if (match != null) return match;
+        }
+        return null;
+    }
+
     private void clickAlertAction(String label) {
         for (int attempt = 0; attempt < 35; attempt++) {
-            AccessibilityNodeInfo root = getInstrumentation().getUiAutomation().getRootInActiveWindow();
-            if (root != null) {
-                for (AccessibilityNodeInfo node : root.findAccessibilityNodeInfosByText(label)) {
-                    if (!label.contentEquals(node.getText())) continue;
-                    AccessibilityNodeInfo clickable = node;
-                    while (!clickable.isClickable() && clickable.getParent() != null)
-                        clickable = clickable.getParent();
-                    if (clickable.isClickable()) {
-                        assertTrue("Cannot press dialog action " + label,
-                                clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK));
-                        getInstrumentation().waitForIdleSync();
-                        return;
-                    }
-                }
+            AccessibilityNodeInfo root =
+                    getInstrumentation().getUiAutomation().getRootInActiveWindow();
+            AccessibilityNodeInfo button = findClickableAction(root, label);
+            if (button != null) {
+                assertTrue("Cannot press dialog action " + label,
+                        button.performAction(AccessibilityNodeInfo.ACTION_CLICK));
+                getInstrumentation().waitForIdleSync();
+                return;
             }
             SystemClock.sleep(120);
         }
