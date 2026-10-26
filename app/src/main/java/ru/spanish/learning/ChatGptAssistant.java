@@ -256,14 +256,7 @@ public final class ChatGptAssistant {
                                 ? "Сохраняю сказку в вашей библиотеке…"
                                 : isCard ? "Проверяю карточку " + (Math.min(batch.attempted + 1, batch.limit))
                                         + " из " + batch.limit + "…" : "Выполняю действие…");
-                        String result;
-                        if (isCard && batch.reached()) {
-                            result = new JSONObject().put("ok", false).put("status", "limit_reached")
-                                    .put("error", "Лимит " + batch.limit + " карточек достигнут").toString();
-                        } else {
-                            result = executeTool(store, call);
-                            if (isCard) batch.record(result);
-                        }
+                        String result = runLimitedTool(store, call, batch);
                         try {
                             if (new JSONObject(result).optBoolean("ok", false)) toolSucceeded = true;
                         } catch (Exception ignored) {}
@@ -897,7 +890,18 @@ public final class ChatGptAssistant {
         return new EventResult(false, "");
     }
 
-    private String executeTool(Store store, ToolCall call) {
+    /** Shared by network processing and offline Android regression tests. */
+    String runLimitedTool(Store store, ToolCall call, CardAdditionPolicy.Batch batch) {
+        boolean card = "add_word".equals(call.name) || "add_phrase".equals(call.name);
+        if (card && batch.reached()) {
+            return "{\"ok\":false,\"status\":\"limit_reached\",\"error\":\"Лимит карточек достигнут\"}";
+        }
+        String result = executeTool(store, call);
+        if (card) batch.record(result);
+        return result;
+    }
+
+    String executeTool(Store store, ToolCall call) {
         try {
             JSONObject args = new JSONObject(call.arguments);
             if ("add_word".equals(call.name) || "add_phrase".equals(call.name)) {
@@ -1163,7 +1167,7 @@ public final class ChatGptAssistant {
     private record Session(String clientId, String accessToken, String refreshToken, String idToken,
                            String scope, String email, long expiresAt) {}
     private record CallbackData(String code, String state, String clientId, String error) {}
-    private record ToolCall(String callId, String name, String arguments) {}
+    record ToolCall(String callId, String name, String arguments) {}
     private record ResponseTurn(String text, List<ToolCall> calls, List<JSONObject> outputItems) {}
     private record EventResult(boolean completed, String failure) {}
 }
