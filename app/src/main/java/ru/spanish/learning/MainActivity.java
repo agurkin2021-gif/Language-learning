@@ -712,7 +712,17 @@ public final class MainActivity extends Activity {
         CardFace previous = makeCardFace(cards.get((reviewIndex + size - 1) % size), false);
         CardFace front = makeCardFace(card, cardRevealed);
         CardFace next = makeCardFace(cards.get((reviewIndex + 1) % size), false);
-        TextView word = front.word();
+
+        final CardFace[] visibleFaces = {previous, front, next};
+        // Create the counter now so the swipe listener can update only its
+        // text, without reconstructing the entire screen after every gesture.
+        TextView counter = new TextView(this);
+        counter.setText((reviewIndex + 1) + " / " + cards.size());
+        counter.setTextSize(14);
+        counter.setGravity(Gravity.CENTER);
+        counter.setTextColor(ui.accent);
+        counter.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        counter.setPadding(0, dp(2), 0, dp(10));
 
         TextView confirmKnown = new TextView(this);
         confirmKnown.setText("УДАЛИТЬ");
@@ -728,7 +738,7 @@ public final class MainActivity extends Activity {
         confirmKnown.setOnClickListener(v -> {
             cancelCardSpeech();
             player.pause();
-            store.review(card.id(), 2, 0);
+            store.review(cards.get(reviewIndex).id(), 2, 0);
             if (reviewIndex >= cards.size() - 1) reviewIndex = 0;
             cardRevealed = false;
             render();
@@ -755,10 +765,12 @@ public final class MainActivity extends Activity {
                         }
                         cancelCardSpeech();
                         player.pause();
+                        Store.Card visible = cards.get(reviewIndex);
+                        TextView visibleWord = visibleFaces[1].word();
                         cardRevealed = !cardRevealed;
-                        word.setText(cardRevealed ? card.meaning() : card.spanish());
-                        word.setTag(!cardRevealed);
-                        if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
+                        visibleWord.setText(cardRevealed ? visible.meaning() : visible.spanish());
+                        visibleWord.setTag(!cardRevealed);
+                        if (!cardRevealed) scheduleCardSpeech(visible.spanish(), visibleWord);
                     }
                     @Override public void onDragStarted() {
                         cancelCardSpeech();
@@ -766,13 +778,41 @@ public final class MainActivity extends Activity {
                         confirmKnown.setVisibility(View.GONE);
                     }
                     @Override public void onOffset(float dx) {
-                        known.setTranslationX(dx);
-                        confirmKnown.setTranslationX(dx);
+                        // Keep the known action anchored to the card viewport:
+                        // it must not jump back from the edge at the end.
                     }
                     @Override public void onPageChanged(int delta) {
-                        reviewIndex = (reviewIndex + delta + cards.size()) % cards.size();
+                        final int oldIndex = reviewIndex;
+                        final int n = cards.size();
+                        CardFace recycled;
+                        CardFace outgoing;
+                        if (delta > 0) {
+                            recycled = visibleFaces[0];
+                            outgoing = visibleFaces[1];
+                            visibleFaces[0] = outgoing;
+                            visibleFaces[1] = visibleFaces[2];
+                            visibleFaces[2] = recycled;
+                        } else {
+                            recycled = visibleFaces[2];
+                            outgoing = visibleFaces[1];
+                            visibleFaces[2] = outgoing;
+                            visibleFaces[1] = visibleFaces[0];
+                            visibleFaces[0] = recycled;
+                        }
+                        reviewIndex = (reviewIndex + delta + n) % n;
                         cardRevealed = false;
-                        render();
+                        // The outgoing page is now fully outside the viewport.
+                        // Restore Spanish there before a possible reverse swipe.
+                        outgoing.word().setText(cards.get(oldIndex).spanish());
+                        outgoing.word().setTag(true);
+                        // Only this far-away page needs a new image. The visible
+                        // page is a preloaded, persistent WebView: no white blink.
+                        int farIndex = delta > 0 ? (reviewIndex + 1) % n
+                                : (reviewIndex + n - 1) % n;
+                        bindCardFace(recycled, cards.get(farIndex));
+                        counter.setText((reviewIndex + 1) + " / " + n);
+                        prefs.edit().putInt("reviewIndex", reviewIndex).apply();
+                        scheduleCardSpeech(cards.get(reviewIndex).spanish(), visibleFaces[1].word());
                     }
                 });
         strip.setTag("card-swipe-viewport");
@@ -793,16 +833,13 @@ public final class MainActivity extends Activity {
         version.setTextColor(secondaryText());
         version.setGravity(Gravity.CENTER);
         version.setPadding(0, dp(2), 0, dp(2));
-        TextView counter = text((reviewIndex + 1) + " / " + cards.size(), 14);
-        counter.setGravity(Gravity.CENTER);
-        counter.setTextColor(ui.accent);
-        counter.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        counter.setPadding(0, dp(2), 0, dp(10));
-        if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
+        content.addView(counter, new LinearLayout.LayoutParams(-1, -2));
+        if (!cardRevealed) scheduleCardSpeech(card.spanish(), visibleFaces[1].word());
         showCardTools();
     }
 
-    private record CardFace(LinearLayout view, TextView word) {}
+    private record CardFace(LinearLayout view, TextView fallback,
+                            android.webkit.WebView picture, TextView word) {}
 
     private CardFace makeCardFace(Store.Card card, boolean revealed) {
         LinearLayout face = new LinearLayout(this);
@@ -836,7 +873,19 @@ public final class MainActivity extends Activity {
         word.setGravity(Gravity.CENTER);
         word.setPadding(0, dp(11), 0, dp(11));
         face.addView(word, new LinearLayout.LayoutParams(-1, -2));
-        return new CardFace(face, word);
+        picture.setTag(card.spanish());
+        return new CardFace(face, fallback, picture, word);
+    }
+
+    /** Rebind only an off-screen recycled page. Never reload the centered image. */
+    private void bindCardFace(CardFace face, Store.Card card) {
+        if (!card.spanish().equals(face.picture().getTag())) {
+            face.picture().setTag(card.spanish());
+            face.fallback().setText(CardVisualHint.forCard(card));
+            CardImageLoader.load(this, face.picture(), face.fallback(), card.spanish());
+        }
+        face.word().setText(card.spanish());
+        face.word().setTag(true);
     }
 
     /** Secondary actions are intentionally below the card, keeping study in the first viewport. */

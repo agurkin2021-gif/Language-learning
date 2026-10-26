@@ -23,9 +23,11 @@ final class CardSwipePager extends FrameLayout {
         void onPageChanged(int delta);
     }
 
-    private final View previous;
-    private final View current;
-    private final View next;
+    // Mutable slots are rotated at the end of an animation. The same three
+    // views and WebViews remain attached; no full Activity recreation is needed.
+    private View previous;
+    private View current;
+    private View next;
     private final Listener listener;
     private final View touchSurface;
     private final boolean canSwipe;
@@ -79,9 +81,6 @@ final class CardSwipePager extends FrameLayout {
         previous.setTranslationX(dx - stride);
         current.setTranslationX(dx);
         next.setTranslationX(dx + stride);
-        // A tiny depth cue makes the neighboring page clearly separate.
-        float fraction = Math.min(1f, Math.abs(dx) / Math.max(1f, stride));
-        current.setAlpha(1f - fraction * .12f);
         listener.onOffset(dx);
     }
 
@@ -144,8 +143,30 @@ final class CardSwipePager extends FrameLayout {
                 settling = false;
                 animation = null;
                 if (cancelled) return;
-                if (delta == 0) showOffset(0);
-                else listener.onPageChanged(delta);
+                if (delta == 0) {
+                    showOffset(0);
+                } else {
+                    // At the completed animation the incoming page is already
+                    // exactly at x=0. Recycle only the page far outside the viewport.
+                    if (delta > 0) {
+                        View recycled = previous;
+                        previous = current;
+                        current = next;
+                        next = recycled;
+                    } else {
+                        View recycled = next;
+                        next = current;
+                        current = previous;
+                        previous = recycled;
+                    }
+                    previous.setTag("card-swipe-previous");
+                    current.setTag("card-swipe-front");
+                    next.setTag("card-swipe-next");
+                    showOffset(0);
+                    // Rebinding the off-screen page occurs after the stable
+                    // visible page has arrived. Its WebView never reloads.
+                    listener.onPageChanged(delta);
+                }
             }
         });
         animation.start();

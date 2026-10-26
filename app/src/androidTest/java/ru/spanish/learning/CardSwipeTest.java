@@ -96,6 +96,32 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
         getInstrumentation().waitForIdleSync();
     }
 
+    public void testCardViewAndImagesStayMountedBetweenSwipes() {
+        getActivity();
+        getInstrumentation().waitForIdleSync();
+        View viewport = tagged(root(), "card-swipe-viewport");
+        View initialCard = tagged(root(), "card-swipe-front");
+        View nextCard = tagged(root(), "card-swipe-next");
+        assertNotNull(viewport);
+        assertNotNull(initialCard);
+        assertNotNull(nextCard);
+        int[] initialCounter = counter();
+
+        gesture(.8f, .2f);
+        assertSame("Pager remains attached instead of rebuilding the screen",
+                viewport, tagged(root(), "card-swipe-viewport"));
+        assertSame("The preloaded next card itself becomes the centered card",
+                nextCard, tagged(root(), "card-swipe-front"));
+        assertEquals(initialCounter[0] % initialCounter[1] + 1, counter()[0]);
+
+        gesture(.2f, .8f);
+        assertSame("Reversing returns the original Card view, not a new WebView",
+                initialCard, tagged(root(), "card-swipe-front"));
+        assertSame("The pager is reused after navigating both directions",
+                viewport, tagged(root(), "card-swipe-viewport"));
+        assertEquals(initialCounter[0], counter()[0]);
+    }
+
     public void testShortDragReturnsToSameCard() {
         getActivity();
         getInstrumentation().waitForIdleSync();
