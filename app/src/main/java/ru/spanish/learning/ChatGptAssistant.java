@@ -957,6 +957,18 @@ public final class ChatGptAssistant {
         }
     }
 
+    /** Image-repair workflow uses the full SVG path, never a substituted emoji. */
+    private void saveSvg(Store store, String word, String svg) throws Exception {
+        CardAdditionPolicy.validateSvg(svg);
+        File target = CardImageLoader.imageFile(context, word, store.isEnglish());
+        File parent = target.getParentFile();
+        if (!parent.exists() && !parent.mkdirs())
+            throw new IllegalStateException("Не удалось создать папку картинок");
+        try (FileOutputStream out = new FileOutputStream(target, false)) {
+            out.write(svg.trim().getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
     private JSONObject verifyIdToken(String jwt, String clientId, String nonce) throws Exception {
         String[] parts = jwt.split("\\.");
         if (parts.length != 3) throw new IllegalStateException("Неверный ID token");
