@@ -2,7 +2,8 @@ package ru.spanish.learning;
 
 import java.text.Normalizer;
 import java.util.Locale;
-import java.util.Set;
+import java.util.List;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,10 +12,10 @@ final class SpanishPhrasePolicy {
     private static final Pattern WORD = Pattern.compile("[\\p{L}]+");
     private static final Pattern INFINITIVE = Pattern.compile(
             "^(?:ir|[\\p{L}]+(?:ar|er|ir))(?:se|me|te|nos|lo|la|los|las|le|les){0,2}$");
-    private static final Set<String> LEADING_PARTICLES = Set.of(
+    private static final List<String> LEADING_PARTICLES = Arrays.asList(
             "no", "nunca", "al", "a", "sin", "para", "por", "de");
     // Ordinary nouns and adjectives that happen to end in -ar/-er/-ir.
-    private static final Set<String> NON_VERBAL_HEADS = Set.of(
+    private static final List<String> NON_VERBAL_HEADS = Arrays.asList(
             "lugar", "hogar", "mujer", "ayer", "taller", "placer", "azucar",
             "cualquier", "popular", "familiar", "similar", "particular", "regular",
             "singular", "escolar", "militar", "solar", "lunar", "collar", "dolar",
@@ -23,7 +24,7 @@ final class SpanishPhrasePolicy {
     private SpanishPhrasePolicy() {}
 
     static boolean startsWithInfinitive(String phrase) {
-        if (phrase == null || phrase.isBlank()) return false;
+        if (phrase == null || phrase.trim().isEmpty()) return false;
         String normalized = Normalizer.normalize(
                 phrase.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "");
