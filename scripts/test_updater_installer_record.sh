@@ -175,9 +175,25 @@ wait_for_version() {
         tap_install_confirmation
         allow_confirmation=no
       else
-        echo "Unexpected second Android install confirmation." >&2
-        dump_ui > "$reports/unexpected-second-confirmation.xml"
-        return 1
+        # The first confirmation can disappear while an older UI dump is still being
+        # returned. Check the installed version again before reporting a second prompt.
+        for _ in $(seq 1 5); do
+          sleep 1
+          if [[ $(installed_version) -eq $expected ]]; then
+            return 0
+          fi
+          if ! confirmation_visible; then
+            break
+          fi
+        done
+        if [[ $(installed_version) -eq $expected ]]; then
+          return 0
+        fi
+        if confirmation_visible; then
+          echo "Unexpected second Android install confirmation." >&2
+          dump_ui > "$reports/unexpected-second-confirmation.xml"
+          return 1
+        fi
       fi
     fi
     sleep 1
