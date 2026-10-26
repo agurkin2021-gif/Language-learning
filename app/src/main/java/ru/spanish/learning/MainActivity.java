@@ -129,6 +129,9 @@ public final class MainActivity extends Activity {
         player.pause();
         cancelCardSpeech();
         remember();
+        // Reset the old story ID before changing stores or TTS callbacks:
+        // story row IDs can overlap between the Spanish and English databases.
+        storyId = -1;
         if (cardDialog != null && cardDialog.isShowing()) cardDialog.dismiss();
         pendingSavedStory = null;
         studyLanguage = next;
