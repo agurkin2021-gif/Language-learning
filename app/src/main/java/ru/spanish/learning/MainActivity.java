@@ -16,6 +16,8 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputFilter;
 import android.view.View;
@@ -47,6 +49,9 @@ public final class MainActivity extends Activity {
     private int reviewIndex;
     private long reviewStep;
     private boolean cardRevealed;
+    private static final long CARD_PRONUNCIATION_DELAY_MS = 2000L;
+    private final Handler cardSpeechHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingCardSpeech;
     private String screen = "cards";
     private long storyId = -1;
     private boolean rendering;
@@ -97,6 +102,23 @@ public final class MainActivity extends Activity {
         if (action != null) b.setOnClickListener(v -> action.run());
         return b;
     }
+    private void cancelCardSpeech() {
+        if (pendingCardSpeech != null) {
+            cardSpeechHandler.removeCallbacks(pendingCardSpeech);
+            pendingCardSpeech = null;
+        }
+    }
+    private void scheduleCardSpeech(String spanish, TextView word) {
+        cancelCardSpeech();
+        Runnable speech = () -> {
+            pendingCardSpeech = null;
+            if (!"cards".equals(screen) || archive || isFinishing() || isDestroyed()
+                    || !word.isAttachedToWindow() || !Boolean.TRUE.equals(word.getTag())) return;
+            player.speakCard(spanish);
+        };
+        pendingCardSpeech = speech;
+        cardSpeechHandler.postDelayed(speech, CARD_PRONUNCIATION_DELAY_MS);
+    }
     private void remember() {
         prefs.edit().putString("screen", screen).putLong("story", storyId).putInt("kind", kind).putBoolean("archive", archive)
                 .putInt("category", category).putInt("reviewIndex", reviewIndex).putLong("reviewStep", reviewStep).putFloat("speed", player.speed).putInt("pause", player.pauseMs).putBoolean("sentenceMode", player.sentenceMode).apply();
@@ -105,6 +127,7 @@ public final class MainActivity extends Activity {
     }
     private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
     private void render() {
+        cancelCardSpeech();
         rendering = true; sentence = null; sentenceRu = null; playbackStatus = null; toggle = null; repeat = null;
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
@@ -191,6 +214,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showBuild() {
+        cancelCardSpeech();
         player.pause();
         String commit = BuildConfig.SOURCE_REVISION;
         if (commit.length() > 7) commit = commit.substring(0, 7);
@@ -204,6 +228,7 @@ public final class MainActivity extends Activity {
                 }).show();
     }
     private void startUpdateNow() {
+        cancelCardSpeech();
         player.pause();
         remember();
         Intent updateIntent = new Intent("ru.spanish.learning.updater.UPDATE")
@@ -230,6 +255,7 @@ public final class MainActivity extends Activity {
         }
     }
     private void showAssistant() {
+        cancelCardSpeech();
         player.pause();
         remember();
         if (assistantDialog != null && assistantDialog.isShowing()) return;
@@ -522,6 +548,7 @@ public final class MainActivity extends Activity {
 
         TextView word = new TextView(this);
         word.setText(cardRevealed ? card.meaning() : card.spanish());
+        word.setTag(!cardRevealed);
         word.setTextSize(30);
         word.setTextColor(primaryText());
         word.setGravity(Gravity.CENTER);
@@ -554,19 +581,30 @@ public final class MainActivity extends Activity {
         if (!cardRevealed) actions.setVisibility(View.GONE);
         cardBox.setOnClickListener(v -> {
             if (!cardRevealed) {
-                player.speakCard(card.spanish());
+                cancelCardSpeech();
+                player.pause();
                 cardRevealed = true;
                 actions.setVisibility(View.VISIBLE);
                 word.setText(card.meaning());
-            } else if (word.getText().toString().equals(card.meaning())) {
+                word.setTag(false);
+            } else if (!Boolean.TRUE.equals(word.getTag())) {
                 word.setText(card.spanish());
-                player.speakCard(card.spanish());
+                word.setTag(true);
+                scheduleCardSpeech(card.spanish(), word);
             } else {
+                cancelCardSpeech();
+                player.pause();
                 word.setText(card.meaning());
+                word.setTag(false);
             }
         });
 
+        TextView version = text("Версия " + BuildConfig.VERSION_NAME, 11);
+        version.setTextColor(secondaryText());
+        version.setGravity(Gravity.CENTER);
+        version.setPadding(0, dp(2), 0, dp(2));
         text((reviewIndex + 1) + " / " + cards.size(), 14);
+        if (!cardRevealed) scheduleCardSpeech(card.spanish(), word);
     }
 
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {
@@ -575,6 +613,7 @@ public final class MainActivity extends Activity {
     private LinearLayout form() { LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(20),dp(8),dp(20),dp(8)); return box; }
     private void addCard() { addCard(kind); }
     private void addCard(int requestedKind) {
+        cancelCardSpeech();
         if (cardDialog != null && cardDialog.isShowing()) return;
         LinearLayout box = form(); EditText es = field(box, "По-испански", 500, false); EditText ru = field(box, "Русский смысл", 1000, true);
         boolean restoring = prefs.getBoolean("cardDraftOpen", false);
@@ -706,8 +745,9 @@ public final class MainActivity extends Activity {
         if (prefs.getBoolean("cardDraftOpen", false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
         syncContent();
     }
-    @Override protected void onPause() { player.pause(); remember(); rememberCardDraft(); super.onPause(); }
+    @Override protected void onPause() { cancelCardSpeech(); player.pause(); remember(); rememberCardDraft(); super.onPause(); }
     @Override protected void onDestroy() {
+        cancelCardSpeech();
         if (contentSync != null) contentSync.close();
         if (assistant != null) assistant.close();
         if (speechRecognizer != null) speechRecognizer.destroy();

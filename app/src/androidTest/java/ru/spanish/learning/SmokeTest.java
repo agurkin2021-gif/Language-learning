@@ -25,6 +25,10 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull(find(root, "＋ Устойчивое выражение"));
             assertNotNull(find(root, "Обновление"));
             assertNotNull(find(root, "Версия / сборка"));
+            TextView version = (TextView) find(root, "Версия " + BuildConfig.VERSION_NAME);
+            assertNotNull("Version label beneath the study card", version);
+            float scaledDensity = getActivity().getResources().getDisplayMetrics().scaledDensity;
+            assertEquals("Version is small text", 11f, version.getTextSize() / scaledDensity, 0.1f);
             assertNotNull(find(root, "ChatGPT — голос / текст"));
             assertNull(find(root, "⚙"));
         });
