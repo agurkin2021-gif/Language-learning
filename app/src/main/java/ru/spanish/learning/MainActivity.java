@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
     private LinearLayout assistantProgressRow;
     private TextView assistantProgressLabel;
     private boolean assistantRequestInFlight;
+    private boolean storyWordRequestInFlight;
     private int assistantRequestId;
     private String assistantRequestStage = "";
     private ChatGptAssistant.SavedStory pendingSavedStory;
@@ -134,8 +135,8 @@ public final class MainActivity extends Activity {
                     Toast.LENGTH_LONG).show();
             return;
         }
-        if (assistantRequestInFlight) {
-            Toast.makeText(this, "Дождитесь завершения генерации ChatGPT",
+        if (assistantRequestInFlight || storyWordRequestInFlight) {
+            Toast.makeText(this, "Дождитесь завершения проверки ChatGPT",
                     Toast.LENGTH_LONG).show();
             return;
         }
@@ -1665,8 +1666,24 @@ public final class MainActivity extends Activity {
         int position = layout.getOffsetForHorizontal(line, insideX);
         StoryWordPicker.Match match = StoryWordPicker.at(source, position);
         if (match == null) return;
+        if (storyWordRequestInFlight) {
+            Toast.makeText(this, "Дождитесь проверки предыдущего слова", Toast.LENGTH_SHORT).show();
+            return;
+        }
         try {
-            Store.StoryWordSave result = StoryVocabulary.add(this, store, match.word(), source, russian);
+            Store targetStore = store;
+            Store.StoryWordSave known = StoryVocabulary.existing(targetStore, match.word());
+            if (known != null) {
+                Toast.makeText(this, known == Store.StoryWordSave.RESTORED
+                        ? "Снова в изучении: " + match.word()
+                        : "Уже в карточках: " + match.word(), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!assistant.isConnected()) {
+                Toast.makeText(this, "Для точного перевода подключите ChatGPT в разделе «Рассказы»",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
             label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
             SpannableString highlighted = new SpannableString(source);
             highlighted.setSpan(new BackgroundColorSpan(darkTheme ? 0xFF526A66 : 0xFFFFE39A),
@@ -1675,14 +1692,36 @@ public final class MainActivity extends Activity {
             cardSpeechHandler.postDelayed(() -> {
                 if (label.getText() == highlighted) label.setText(source);
             }, 600);
-            String message = switch (result) {
-                case ADDED -> "В изучение: " + match.word();
-                case RESTORED -> "Снова в изучении: " + match.word();
-                case ALREADY_STUDYING -> "Уже в карточках: " + match.word();
-            };
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+
+            storyWordRequestInFlight = true;
+            AtomicBoolean cancelled = new AtomicBoolean(false);
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                    .setTitle("Перевод: " + match.word())
+                    .setMessage("Проверяю значение и грамматику…")
+                    .setNegativeButton("Отмена", (d, w) -> cancelled.set(true))
+                    .setCancelable(false).create();
+            dialog.show();
+            assistant.translateStoryWord(targetStore, match.word(), source, russian,
+                    cancelled::get, new ChatGptAssistant.StoryWordUpdates() {
+                @Override public void progress(String stage) {
+                    runOnUiThread(() -> {
+                        if (!cancelled.get() && dialog.isShowing() && !isFinishing())
+                            dialog.setMessage(stage);
+                    });
+                }
+                @Override public void finished(boolean ok, String message) {
+                    runOnUiThread(() -> {
+                        storyWordRequestInFlight = false;
+                        if (dialog.isShowing()) dialog.dismiss();
+                        if (!cancelled.get() && !isFinishing())
+                            Toast.makeText(MainActivity.this, message,
+                                    Toast.LENGTH_LONG).show();
+                    });
+                }
+            });
         } catch (Exception e) {
-            Toast.makeText(this, "Не удалось добавить слово в карточки", Toast.LENGTH_SHORT).show();
+            storyWordRequestInFlight = false;
+            Toast.makeText(this, "Не удалось проверить перевод слова", Toast.LENGTH_LONG).show();
         }
     }
 

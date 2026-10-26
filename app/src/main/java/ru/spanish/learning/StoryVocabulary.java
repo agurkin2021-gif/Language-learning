@@ -14,47 +14,79 @@ import java.util.Locale;
 final class StoryVocabulary {
     private StoryVocabulary() {}
 
-    static Store.StoryWordSave add(Context context, Store store,
-                                   String printed, String spanishSentence, String russianSentence)
-            throws IOException {
+
+    /**
+     * An already learned word needs no new translation. New words are never
+     * saved here: unlike the former story long-press path, a sentence-level
+     * translation or a lemma is NOT a translation of the selected word-form.
+     */
+    static Store.StoryWordSave existing(Store store, String printed) {
         String word = printed == null ? "" : printed.trim();
-        if (word.isEmpty() || word.length() > 80) throw new IllegalArgumentException("Invalid word");
-        List<Store.Card> dictionary = store.vocabulary();
-        for (Store.Card card : dictionary) {
-            if (card.kind() == 0 && card.spanish().equalsIgnoreCase(word)) {
-                if (card.mastered()) {
-                    store.setMastered(card.id(), false);
-                    return Store.StoryWordSave.RESTORED;
-                }
-                return Store.StoryWordSave.ALREADY_STUDYING;
+        if (word.isEmpty() || word.length() > 55)
+            throw new IllegalArgumentException("Некорректная словоформа");
+        for (Store.Card card : store.vocabulary()) {
+            if (card.kind() != 0 || !card.spanish().equalsIgnoreCase(word)) continue;
+            if (card.mastered()) {
+                store.setMastered(card.id(), false);
+                return Store.StoryWordSave.RESTORED;
             }
+            return Store.StoryWordSave.ALREADY_STUDYING;
         }
+        return null;
+    }
 
+    /**
+     * The only write path for a newly selected story word. The caller supplies
+     * a concrete, literal-first Russian meaning AFTER three model reviews.
+     */
+    static Store.StoryWordSave saveVerified(Context context, Store store,
+                                           String printed, String russian, int category)
+            throws IOException {
+        requireVerified(printed, russian);
+        if (category < 0 || category > 3)
+            throw new IllegalArgumentException("Неверная категория слова");
+        Store.StoryWordSave already = existing(store, printed);
+        if (already != null) return already;
+        String word = printed.trim();
         String lemma = store.isEnglish() ? "" : irregularLemma(word);
-        int category = lemma.isEmpty() ? 0 : 1; // 0 = unclassified word, visible under "Все слова"
-        StringBuilder meaning = new StringBuilder();
-        if (!lemma.isEmpty()) {
-            meaning.append("Форма глагола ").append(lemma.replace("/", " / "));
-            for (String base : lemma.split("/")) {
-                for (Store.Card card : dictionary) {
-                    if (card.kind() == 0 && card.spanish().equalsIgnoreCase(base)) {
-                        meaning.append("\n").append(base).append(" — ").append(card.meaning());
-                        break;
-                    }
-                }
-            }
-        } else {
-            meaning.append(store.isEnglish()
-                    ? "Слово из английской сказки. Точный перевод уточняется по контексту."
-                    : "Словоформа из сказки. Точный перевод уточняется по контексту.");
-        }
-        String es = compact(spanishSentence, 240);
-        String ru = compact(russianSentence, 240);
-        if (!es.isEmpty()) meaning.append("\nКонтекст: ").append(es);
-        if (!ru.isEmpty()) meaning.append("\nПеревод предложения: ").append(ru);
-
         ensureIllustration(context, store, word, lemma);
-        return store.addStoryWord(word, meaning.toString(), category);
+        return store.addStoryWord(word, russian.trim(), category);
+    }
+
+    /** Fail closed at the database boundary even if another caller skips the AI. */
+    static void requireVerified(String foreign, String russian) {
+        CardAdditionPolicy.validate(foreign, russian, false);
+        String meaning = russian.trim().toLowerCase(Locale.ROOT);
+        if (meaning.startsWith("форма глагола ")
+                || meaning.startsWith("словоформа из ")
+                || meaning.startsWith("слово из ")
+                || meaning.startsWith("контекст:")
+                || meaning.startsWith("перевод предложения:")
+                || meaning.contains("точный перевод")
+                || meaning.contains("перевод уточняется"))
+            throw new IllegalArgumentException("Нужен перевод самой словоформы, не описание");
+    }
+
+    record Proposal(String russian, String grammar, int category) {}
+
+    /** Parse a strictly structured translation hypothesis, not proof of quality. */
+    static Proposal proposal(String foreign, String raw) throws Exception {
+        org.json.JSONObject answer = new org.json.JSONObject(raw == null ? "" : raw.trim());
+        if (!answer.optBoolean("ok", false))
+            throw new IllegalArgumentException("Невозможно уверенно перевести слово в этом контексте");
+        String literal = answer.optString("literal", "").trim();
+        String idiomatic = answer.optString("idiomatic", "").trim();
+        String russian = CardTranslationAudit.literalFirst(literal, idiomatic);
+        requireVerified(foreign, russian);
+        String grammar = answer.optString("category", "").trim();
+        int category = switch (grammar) {
+            case "verb" -> 1;
+            case "noun" -> 2;
+            case "adjective" -> 3;
+            case "other" -> 0;
+            default -> throw new IllegalArgumentException("Не определена часть речи слова");
+        };
+        return new Proposal(russian, grammar, category);
     }
 
     private static String compact(String text, int max) {

@@ -132,16 +132,38 @@ public class StoreTest extends AndroidTestCase {
         getContext().deleteDatabase(database);
     }
 
-    public void testLongPressStoryWordSavesExactFormAndContextWithoutChangingStory() throws Exception {
+    public void testLongPressStoryWordOnlySavesVerifiedMeaningAndPreservesStory() throws Exception {
         String db = "test-story-word.db";
         getContext().deleteDatabase(db);
         try (Store store = new Store(getContext(), db)) {
             int original = store.vocabulary().size();
-            String spanish = "¿Querés tomar un mate?";
-            String russian = "Хочешь выпить мате?";
             String originalStoryBody = store.stories().get(0).body();
+            // Shared app image files may outlive earlier tests using the same word.
+            new java.io.File(getContext().getFilesDir(),
+                    "card-images/" + CardImageLoader.key("Querés") + ".svg").delete();
+
+            // The previous long-press path created actual study cards containing
+            // descriptions such as "Словоформа из сказки" instead of a translation.
+            // These MUST fail closed at the database boundary.
+            for (String bad : new String[]{
+                    "Словоформа из сказки. Точный перевод уточняется по контексту.",
+                    "Форма глагола querer",
+                    "Слово из английской сказки. Точный перевод уточняется по контексту.",
+                    "Контекст: ¿Querés tomar un mate?"
+            }) {
+                try {
+                    store.addStoryWord("Querés", bad, 1);
+                    fail("Unverified card must not be saved: " + bad);
+                } catch (IllegalArgumentException expected) {
+                    assertFalse(expected.getMessage().isEmpty());
+                }
+            }
+            assertEquals(original, store.vocabulary().size());
+            assertFalse(new java.io.File(getContext().getFilesDir(),
+                    "card-images/" + CardImageLoader.key("Querés") + ".svg").isFile());
+
             assertEquals(Store.StoryWordSave.ADDED,
-                    StoryVocabulary.add(getContext(), store, "Querés", spanish, russian));
+                    StoryVocabulary.saveVerified(getContext(), store, "Querés", "ты хочешь", 1));
             assertEquals(original + 1, store.vocabulary().size());
             Store.Card saved = null;
             for (Store.Card c : store.vocabulary()) {
@@ -149,35 +171,55 @@ public class StoreTest extends AndroidTestCase {
             }
             assertNotNull(saved);
             assertEquals(1, saved.category());
-            assertTrue(saved.meaning().contains("querer"));
-            assertTrue(saved.meaning().contains(spanish));
-            assertTrue(saved.meaning().contains(russian));
+            assertEquals("ты хочешь", saved.meaning());
             assertTrue(new java.io.File(getContext().getFilesDir(),
                     "card-images/" + CardImageLoader.key("Querés") + ".svg").isFile());
             assertEquals(Store.StoryWordSave.ALREADY_STUDYING,
-                    StoryVocabulary.add(getContext(), store, "querés", spanish, russian));
+                    StoryVocabulary.existing(store, "querés"));
             assertEquals(original + 1, store.vocabulary().size());
 
             store.setMastered(saved.id(), true);
             assertEquals(Store.StoryWordSave.RESTORED,
-                    StoryVocabulary.add(getContext(), store, "QUERÉS", spanish, russian));
+                    StoryVocabulary.existing(store, "QUERÉS"));
             assertEquals(original + 1, store.vocabulary().size());
-            boolean returnedToStudy = false;
-            for (Store.Card candidate : store.vocabulary()) {
-                if (candidate.id() == saved.id()) returnedToStudy = !candidate.mastered();
-            }
-            assertTrue("Holding a mastered word returns it to learning", returnedToStudy);
+            assertEquals("ты хочешь",
+                    store.vocabulary().stream().filter(c -> c.id() == saved.id())
+                            .findFirst().orElseThrow().meaning());
 
             assertEquals(Store.StoryWordSave.ADDED,
-                    StoryVocabulary.add(getContext(), store, "caminábamos",
-                            "Antes caminábamos juntos.", "Раньше мы гуляли вместе."));
-            Store.Card unknown = store.vocabulary().get(store.vocabulary().size() - 1);
-            assertEquals("caminábamos", unknown.spanish());
-            assertEquals(0, unknown.category());
-            assertTrue(unknown.meaning().contains("Раньше мы гуляли вместе."));
+                    StoryVocabulary.saveVerified(getContext(), store, "caminábamos",
+                            "мы гуляли", 1));
+            Store.Card walk = store.vocabulary().get(store.vocabulary().size() - 1);
+            assertEquals("caminábamos", walk.spanish());
+            assertEquals("мы гуляли", walk.meaning());
+            assertEquals(1, walk.category());
             assertEquals(originalStoryBody, store.stories().get(0).body());
         }
         getContext().deleteDatabase(db);
+    }
+
+    public void testStoryTranslationProposalNeverAcceptsPlaceholders() throws Exception {
+        StoryVocabulary.Proposal good = StoryVocabulary.proposal("querés",
+                "{\"ok\":true,\"literal\":\"ты хочешь\",\"idiomatic\":\"\",\"category\":\"verb\"}");
+        assertEquals("ты хочешь", good.russian());
+        assertEquals(1, good.category());
+        assertEquals("verb", good.grammar());
+
+        for (String bad : new String[]{
+                "{\"ok\":false,\"literal\":\"\",\"category\":\"other\"}",
+                "{\"ok\":true,\"literal\":\"Форма глагола querer\",\"category\":\"verb\"}",
+                "{\"ok\":true,\"literal\":\"Перевод уточняется\",\"category\":\"verb\"}",
+                "{\"ok\":true,\"literal\":\"ты хочешь\",\"category\":\"unknown\"}",
+                "{\"ok\":true,\"literal\":\"\",\"category\":\"verb\"}",
+                "not-json"
+        }) {
+            try {
+                StoryVocabulary.proposal("querés", bad);
+                fail("Translation proposal must fail closed: " + bad);
+            } catch (Exception expected) {
+                assertNotNull(expected);
+            }
+        }
     }
 
     public void testStoryDeletePersistsAndDoesNotRestoreFromRemoteSync() {

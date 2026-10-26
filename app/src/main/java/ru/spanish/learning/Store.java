@@ -179,6 +179,7 @@ public final class Store extends SQLiteOpenHelper {
     public StoryWordSave addStoryWord(String spanish, String meaning, int category) {
         if (spanish == null || spanish.trim().isEmpty() || meaning == null || meaning.trim().isEmpty()
                 || category < 0 || category > 3) throw new IllegalArgumentException("Неверная карточка");
+        StoryVocabulary.requireVerified(spanish, meaning);
         String printed = spanish.trim();
         for (Card card : vocabulary()) {
             if (card.kind() != 0 || !card.spanish().equalsIgnoreCase(printed)) continue;
