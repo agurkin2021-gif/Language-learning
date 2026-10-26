@@ -568,6 +568,50 @@ public final class MainActivity extends Activity {
         ui.styleInput(assistantInput);
         box.addView(assistantInput, spaced(12));
 
+        // Optional editable presets: no network request occurs until "Отправить".
+        HorizontalScrollView presetScroll = new HorizontalScrollView(this);
+        presetScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout presetRow = new LinearLayout(this);
+        presetRow.setOrientation(LinearLayout.HORIZONTAL);
+        String lang = studyingEnglish() ? "английских" : "испанских";
+        String region = studyingEnglish() ? "" : " для повседневного общения в Буэнос-Айресе";
+        String[][] presets = {
+                {"10 слов A1", "Добавь 10 новых частотных " + lang
+                        + " слов уровня A1" + region + ". Проверь русский перевод и категорию каждого. "
+                        + "Не добавляй уже изученные или имеющиеся слова. Для каждого нужна точная картинка или эмодзи."},
+                {"10 глаголов", "Добавь 10 новых " + lang
+                        + " глаголов уровня A1" + region + " с точным русским переводом и иллюстрацией. "
+                        + "Не повторяй слова из моего словаря."},
+                {"10 существительных", "Добавь 10 новых " + lang
+                        + " существительных уровня A1" + region
+                        + " с точным русским переводом и подходящим эмодзи либо рисунком. Без дублей."},
+                {"Кафе", "Добавь 10 новых " + lang + " слов A1 по теме кафе" + region
+                        + ". С точным русским переводом и подходящей иллюстрацией. Без дублей."},
+                {"Улица", "Добавь 10 новых " + lang + " слов A1 по теме улицы и транспорта"
+                        + region + ". С точным русским переводом и подходящей иллюстрацией. Без дублей."},
+                {"Магазин", "Добавь 10 новых " + lang + " слов A1 по теме магазина"
+                        + region + ". С точным русским переводом и подходящей иллюстрацией. Без дублей."}
+        };
+        for (String[] preset : presets) {
+            Button choice = new Button(this);
+            choice.setText(preset[0]);
+            choice.setTextSize(12);
+            choice.setAllCaps(false);
+            ui.style(choice, UiStyle.Tone.OUTLINE);
+            choice.setOnClickListener(v -> {
+                if (assistantRequestInFlight) return;
+                assistantInput.setText(preset[1]);
+                assistantInput.setSelection(assistantInput.length());
+            });
+            LinearLayout.LayoutParams slot = new LinearLayout.LayoutParams(-2, dp(42));
+            slot.rightMargin = dp(5);
+            presetRow.addView(choice, slot);
+        }
+        presetScroll.addView(presetRow);
+        LinearLayout.LayoutParams presetParams = new LinearLayout.LayoutParams(-1, dp(44));
+        presetParams.bottomMargin = dp(7);
+        box.addView(presetScroll, presetParams);
+
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Button mic = new Button(this);
