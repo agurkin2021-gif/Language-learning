@@ -268,7 +268,7 @@ public final class MainActivity extends Activity {
         LinearLayout tabs = new LinearLayout(this);
         tabs.setGravity(Gravity.CENTER_VERTICAL);
         tabs.setPadding(dp(16), dp(12), dp(16), dp(8));
-        for (String label : new String[]{"Карточки", "Сказки"}) {
+        for (String label : new String[]{"Карточки", "Рассказы"}) {
             boolean selected = label.equals("Карточки") ? screen.equals("cards") : !screen.equals("cards");
             Button tab = rowButton(label, () -> navigate(label.equals("Карточки") ? "cards" : "stories"));
             ui.style(tab, selected ? UiStyle.Tone.SELECTED : UiStyle.Tone.TAB);
@@ -374,13 +374,13 @@ public final class MainActivity extends Activity {
             box.addView(selectVoice, spaced(12));
         }
 
-        Button speed = rowButton("Скорость речи: " + player.speed + "× (сказки и карточки)", null);
+        Button speed = rowButton("Скорость речи: " + player.speed + "× (рассказы и карточки)", null);
         speed.setOnClickListener(v ->
-                new AlertDialog.Builder(this).setTitle("Скорость речи — сказки и карточки")
+                new AlertDialog.Builder(this).setTitle("Скорость речи — рассказы и карточки")
                         .setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
                             player.pause();
                             player.speed = new float[]{.6f,.75f,.85f,1f,1.2f}[w];
-                            speed.setText("Скорость речи: " + player.speed + "× (сказки и карточки)");
+                            speed.setText("Скорость речи: " + player.speed + "× (рассказы и карточки)");
                             remember();
                             updatePlayer();
                         }).show());
@@ -436,7 +436,7 @@ public final class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("Сбросить базу?")
-                .setMessage("Будут удалены слова, выражения, сказки и прогресс "
+                .setMessage("Будут удалены слова, выражения, рассказы и прогресс "
                         + (studyingEnglish() ? "АНГЛИЙСКОГО" : "ИСПАНСКОГО")
                         + " языка и его история ChatGPT на этом телефоне. Другая база и её история останутся нетронутыми. Отменить удаление нельзя.")
                 .setNegativeButton("Отмена", null)
@@ -810,9 +810,9 @@ public final class MainActivity extends Activity {
     private void showStoryReadyDialog(ChatGptAssistant.SavedStory saved) {
         if (isFinishing() || isDestroyed()) return;
         new AlertDialog.Builder(this)
-                .setTitle("СКАЗКА ГОТОВА")
-                .setMessage("«" + saved.title() + "»\n\nСказка сохранена в библиотеке.")
-                .setPositiveButton("Открыть сказку", (dialog, which) -> {
+                .setTitle("РАССКАЗ ГОТОВ")
+                .setMessage("«" + saved.title() + "»\n\nРассказ сохранён в библиотеке.")
+                .setPositiveButton("Открыть рассказ", (dialog, which) -> {
                     Store.Story selected = null;
                     for (Store.Story story : store.stories()) {
                         if (story.id() == saved.id()) {
@@ -821,7 +821,7 @@ public final class MainActivity extends Activity {
                         }
                     }
                     if (selected == null) {
-                        Toast.makeText(this, "Не удалось найти сохранённую сказку",
+                        Toast.makeText(this, "Не удалось найти сохранённый рассказ",
                                 Toast.LENGTH_LONG).show();
                         return;
                     }
@@ -871,7 +871,7 @@ public final class MainActivity extends Activity {
                         if (storedStory) {
                             pendingSavedStory = savedStory;
                             Toast.makeText(MainActivity.this,
-                                    "Сказка «" + savedStory.title() + "» готова",
+                                    "Рассказ «" + savedStory.title() + "» готова",
                                     Toast.LENGTH_LONG).show();
                         }
                         return;
@@ -886,7 +886,7 @@ public final class MainActivity extends Activity {
                         assistantHistory.setText(assistant.historyText(store));
                     if (storedStory) {
                         if (fromVoice) stopAssistantVoice();
-                        assistantStatus.setText("Сказка сохранена: " + savedStory.title());
+                        assistantStatus.setText("Рассказ сохранён: " + savedStory.title());
                         showStoryReadyDialog(savedStory);
                         return;
                     }
@@ -1518,7 +1518,7 @@ public final class MainActivity extends Activity {
         draftSpanish = null; draftMeaning = null; draftCategorySpinner = null;
     }
     private void stories() {
-        text(studyingEnglish() ? "Библиотека английских сказок" : "Библиотека сказок", 28);
+        text(studyingEnglish() ? "Библиотека английских рассказов" : "Библиотека рассказов", 28);
         TextView subtitle = text("Слушайте целиком или по одному предложению.", 16);
         subtitle.setTextColor(secondaryText());
         subtitle.setPadding(0, dp(3), 0, dp(12));
@@ -1529,11 +1529,11 @@ public final class MainActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(14), 0, dp(12), 0);
+            row.setPadding(dp(14), 0, dp(2), 0);
             row.setBackground(ui.ripple(ui.surface, 10, ui.outline));
             row.setClickable(true);
             row.setFocusable(true);
-            row.setContentDescription("Открыть сказку: " + story.title());
+            row.setContentDescription("Открыть рассказ: " + story.title());
             row.setOnClickListener(v -> openStory(story));
 
             TextView name = new TextView(this);
@@ -1546,18 +1546,38 @@ public final class MainActivity extends Activity {
             name.setGravity(Gravity.CENTER_VERTICAL);
             row.addView(name, new LinearLayout.LayoutParams(0, -1, 1));
 
-            TextView chevron = new TextView(this);
-            chevron.setText("›");
-            chevron.setTextColor(secondaryText());
-            chevron.setTextSize(25);
-            chevron.setGravity(Gravity.CENTER);
-            row.addView(chevron, new LinearLayout.LayoutParams(dp(18), -1));
+            // A separate delete action: tapping × never opens the story player.
+            TextView delete = new TextView(this);
+            delete.setText("×");
+            delete.setTextColor(ui.danger);
+            delete.setTextSize(24);
+            delete.setGravity(Gravity.CENTER);
+            delete.setBackground(ui.ripple(ui.surface, 10, Color.TRANSPARENT));
+            delete.setContentDescription("Удалить рассказ: " + story.title());
+            delete.setFocusable(true);
+            delete.setOnClickListener(v -> confirmDeleteStory(story));
+            row.addView(delete, new LinearLayout.LayoutParams(dp(44), dp(48)));
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(50));
             params.bottomMargin = dp(5);
             content.addView(row, params);
         }
     }
+    private void confirmDeleteStory(Store.Story story) {
+        if (isFinishing() || isDestroyed()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Удалить рассказ?")
+                .setMessage("«" + story.title() + "» будет удалён без возможности восстановления.")
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    if (!store.deleteStory(story.id())) {
+                        Toast.makeText(this, "Рассказ уже удалён", Toast.LENGTH_SHORT).show();
+                    }
+                    render();
+                })
+                .show();
+    }
+
     private void openStory(Store.Story story) {
         player.pause(); remember(); storyId = story.id(); screen = "player"; player.load(story.body(), story.position()); render();
     }

@@ -392,6 +392,14 @@ public final class Store extends SQLiteOpenHelper {
         return true;
     }
 
+    /** Retain remote_items tombstones to prevent restoration by the next sync. */
+    public boolean deleteStory(long id) {
+        if (id <= 0) return false;
+        int deleted = getWritableDatabase().delete("stories", "id=?", new String[]{Long.toString(id)});
+        if (deleted > 0) changed();
+        return deleted > 0;
+    }
+
     public void position(long id, int position) {
         ContentValues v = new ContentValues();
         v.put("position", position);

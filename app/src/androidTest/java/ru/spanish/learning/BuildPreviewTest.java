@@ -66,7 +66,7 @@ public class BuildPreviewTest extends ActivityInstrumentationTestCase2<MainActiv
             if (back != null) back.performClick();
         });
         capture("01-cards.png");
-        tap("Сказки");
+        tap("Рассказы");
         capture("02-story-library.png");
         openSampleStory();
         capture("02-story-player.png");

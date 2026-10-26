@@ -92,10 +92,10 @@ public final class StudyLanguageSwitchTest
             assertNotNull(find(root, "ChatGPT — голос / текст"));
         });
 
-        tap("Сказки");
+        tap("Рассказы");
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();
-            assertNotNull(find(root, "Библиотека английских сказок"));
+            assertNotNull(find(root, "Библиотека английских рассказов"));
             assertNotNull(find(root, "EN ▾"));
             assertNotNull(find(root, "⚙"));
         });

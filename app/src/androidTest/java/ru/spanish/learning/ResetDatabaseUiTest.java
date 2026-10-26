@@ -24,6 +24,19 @@ public final class ResetDatabaseUiTest extends ActivityInstrumentationTestCase2<
         return null;
     }
 
+    private View findDescription(View root, String description) {
+        CharSequence label = root.getContentDescription();
+        if (label != null && description.contentEquals(label)) return root;
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = findDescription(group.getChildAt(i), description);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
     private void tapActivity(String label) {
         getInstrumentation().runOnMainSync(() -> {
             View view = find(getActivity().getWindow().getDecorView(), label);
@@ -65,6 +78,58 @@ public final class ResetDatabaseUiTest extends ActivityInstrumentationTestCase2<
         getInstrumentation().waitForIdleSync();
     }
 
+    public void testStoryDeleteNeedsSecondTapAndCanBeCancelled() {
+        getInstrumentation().getTargetContext()
+                .getSharedPreferences("ui", android.content.Context.MODE_PRIVATE)
+                .edit().putString("studyLanguage", "es").commit();
+        getActivity();
+        String title = "Тест удаления рассказа " + System.nanoTime();
+        long id;
+        try (Store db = new Store(getInstrumentation().getTargetContext())) {
+            id = db.addStory(title, "Hola.", "Привет.", "Личный тест");
+        }
+        tapActivity("Рассказы");
+        String action = "Удалить рассказ: " + title;
+        getInstrumentation().runOnMainSync(() -> {
+            View root = getActivity().getWindow().getDecorView();
+            View name = find(root, title);
+            View cross = findDescription(root, action);
+            assertNotNull(name);
+            assertNotNull(cross);
+            assertEquals("Cross and title belong to one compact row", name.getParent(), cross.getParent());
+            assertTrue(((View) name.getParent()).isClickable());
+            assertTrue(cross.isClickable());
+            cross.performClick();
+        });
+        getInstrumentation().waitForIdleSync();
+        assertNotNull(inActiveDialog("Удалить рассказ?"));
+        try (Store db = new Store(getInstrumentation().getTargetContext())) {
+            assertTrue("First click must not delete", db.stories().stream()
+                    .anyMatch(story -> story.id() == id));
+        }
+        tapDialog("Отмена");
+        try (Store db = new Store(getInstrumentation().getTargetContext())) {
+            assertTrue("Cancel must preserve the story", db.stories().stream()
+                    .anyMatch(story -> story.id() == id));
+        }
+        getInstrumentation().runOnMainSync(() -> {
+            View cross = findDescription(getActivity().getWindow().getDecorView(), action);
+            assertNotNull(cross);
+            cross.performClick();
+        });
+        getInstrumentation().waitForIdleSync();
+        tapDialog("Удалить");
+        try (Store db = new Store(getInstrumentation().getTargetContext())) {
+            assertFalse("Second click deletes exactly the selected story", db.stories().stream()
+                    .anyMatch(story -> story.id() == id));
+            assertTrue("The original story must remain", db.stories().stream()
+                    .anyMatch(story -> "Una tarde en la plaza — пример".equals(story.title())));
+        }
+        getInstrumentation().runOnMainSync(() ->
+                assertNull("Deleted story disappears immediately",
+                        find(getActivity().getWindow().getDecorView(), title)));
+    }
+
     public void testBothResetDialogStagesCanBeCanceledWithoutDeletingWords() {
         getActivity();
         int originalCount;
@@ -73,7 +138,7 @@ public final class ResetDatabaseUiTest extends ActivityInstrumentationTestCase2<
             assertTrue("Test begins with a working learning database", originalCount > 0);
         }
 
-        tapActivity("Сказки");
+        tapActivity("Рассказы");
         tapActivity("⚙");
         tapDialog("Сброс базы");
         assertNotNull(inActiveDialog("Сбросить базу?"));

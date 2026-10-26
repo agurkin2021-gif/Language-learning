@@ -180,6 +180,62 @@ public class StoreTest extends AndroidTestCase {
         getContext().deleteDatabase(db);
     }
 
+    public void testStoryDeletePersistsAndDoesNotRestoreFromRemoteSync() {
+        String name = "test-stories-delete.db";
+        getContext().deleteDatabase(name);
+        try {
+            try (Store store = new Store(getContext(), name)) {
+                assertEquals(1, store.stories().size());
+                long seedId = store.stories().get(0).id();
+                long localId = store.addStory("Prueba", "Hola.", "Привет.", "Личное");
+                assertTrue(store.importRemoteStory("remote-story-deleted", "El gato",
+                        "El gato duerme.", "Кот спит."));
+                long remoteId = store.stories().get(0).id();
+                assertTrue(store.deleteStory(seedId));
+                assertTrue(store.deleteStory(localId));
+                assertTrue(store.deleteStory(remoteId));
+                assertFalse(store.deleteStory(localId));
+                assertFalse(store.deleteStory(-1));
+                assertEquals(0, store.stories().size());
+                assertFalse("Deleted remote story is not reimported",
+                        store.importRemoteStory("remote-story-deleted", "El gato",
+                                "El gato duerme.", "Кот спит."));
+                assertFalse(store.sharedContentDisabled());
+                assertEquals(950, store.vocabulary().size());
+            }
+            try (Store store = new Store(getContext(), name)) {
+                assertEquals("Deleted starter story must not be reseeded", 0, store.stories().size());
+                assertFalse("Remote tombstone persists across database reopen",
+                        store.importRemoteStory("remote-story-deleted", "El gato",
+                                "El gato duerme.", "Кот спит."));
+                assertTrue("Other stories can still be imported",
+                        store.importRemoteStory("new-remote-story", "La luna",
+                                "La luna brilla.", "Луна светит."));
+                assertEquals(1, store.stories().size());
+            }
+        } finally {
+            getContext().deleteDatabase(name);
+        }
+    }
+
+    public void testEnglishStoryDeleteDoesNotAffectSpanishStories() {
+        String es = "test-story-delete-es.db", en = "test-story-delete-en.db";
+        getContext().deleteDatabase(es);
+        getContext().deleteDatabase(en);
+        try {
+            try (Store spanish = new Store(getContext(), es);
+                 Store english = Store.englishForTest(getContext(), en)) {
+                long id = english.addStory("The cat", "The cat sleeps.", "Кот спит.", "Личное");
+                assertTrue(english.deleteStory(id));
+                assertEquals(0, english.stories().size());
+                assertEquals(1, spanish.stories().size());
+            }
+        } finally {
+            getContext().deleteDatabase(es);
+            getContext().deleteDatabase(en);
+        }
+    }
+
     public void testRemoteContentImportsOnceWithoutApkUpdate() {
         String database = "test-remote-content.db";
         getContext().deleteDatabase(database);

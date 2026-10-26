@@ -61,7 +61,7 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull("Language button in corner of Cards",
                     find(root, "ES ▾"));
         });
-        tap("Сказки");
+        tap("Рассказы");
         getInstrumentation().runOnMainSync(() -> {
             View root = getActivity().getWindow().getDecorView();
             assertNull(find(root, "Обновление"));
@@ -89,13 +89,13 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
         getInstrumentation().waitForIdleSync();
         for(int i=0;i<8;i++) tap("Повторить предложение");
-        tap("Карточки"); tap("Сказки"); openSampleStory();
+        tap("Карточки"); tap("Рассказы"); openSampleStory();
         getInstrumentation().runOnMainSync(() -> assertNotNull(find(getActivity().getWindow().getDecorView(),"← Библиотека")));
         tap("← Библиотека");
     }
     public void testChatGptSendShowsVisibleProgressAndDisablesDuplicates() throws Exception {
         getActivity();
-        tap("Сказки");
+        tap("Рассказы");
         tap("ChatGPT — голос / текст");
         getInstrumentation().runOnMainSync(() -> {
             MainActivity screen = getActivity();
@@ -112,7 +112,7 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
                 assertNotNull(progress);
                 assertEquals(View.GONE, progress.getVisibility());
 
-                screen.updateAssistantBusy(true, "ChatGPT сочиняет сказку…");
+                screen.updateAssistantBusy(true, "ChatGPT сочиняет рассказ…");
                 assertEquals(View.VISIBLE, progress.getVisibility());
                 assertEquals("⏳ Генерирую…", send.getText().toString());
                 assertFalse("Duplicate send is blocked while busy", send.isEnabled());
