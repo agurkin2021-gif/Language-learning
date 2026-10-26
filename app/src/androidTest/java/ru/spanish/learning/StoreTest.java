@@ -425,10 +425,14 @@ public class StoreTest extends AndroidTestCase {
             try (Store spanish = new Store(getContext(), database);
                  Store english = Store.englishForTest(getContext(), englishDatabase)) {
                 int initial = spanish.vocabulary().size();
-                spanish.addCard("tengo razón", "я прав", 1, 0);
-                assertTrue(spanish.addCardIfMissing("tenés razón", "ты прав", 1, 0));
-                assertTrue(spanish.addCardIfMissing("tengo ganas de comer",
+                // The new starter pack already contains these two spoken forms.
+                assertFalse(spanish.addCardIfMissing("tengo razón", "я прав", 1, 0));
+                assertFalse(spanish.addCardIfMissing("tengo ganas de comer",
                         "мне хочется поесть", 1, 0));
+                spanish.addCard("él tiene razón", "он прав", 1, 0);
+                assertTrue(spanish.addCardIfMissing("tenés razón", "ты прав", 1, 0));
+                assertTrue(spanish.addCardIfMissing("tengo ganas de dormir",
+                        "мне хочется спать", 1, 0));
                 assertEquals(initial + 3, spanish.vocabulary().size());
 
                 try {
