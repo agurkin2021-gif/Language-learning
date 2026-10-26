@@ -94,7 +94,7 @@ public final class MainActivity extends Activity {
         b.setText(value);
         b.setAllCaps(false);
         b.setMinHeight(dp(48));
-        b.setOnClickListener(v -> action.run());
+        if (action != null) b.setOnClickListener(v -> action.run());
         return b;
     }
     private void remember() {
@@ -148,11 +148,13 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(mode, new LinearLayout.LayoutParams(-1, -2));
 
-        Button speed = rowButton("Скорость произношения: " + player.speed + "×", () ->
-                new AlertDialog.Builder(this).setTitle("Скорость произношения")
+        Button speed = rowButton("Скорость речи: " + player.speed + "× (сказки и карточки)", null);
+        speed.setOnClickListener(v ->
+                new AlertDialog.Builder(this).setTitle("Скорость речи — сказки и карточки")
                         .setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
                             player.pause();
                             player.speed = new float[]{.6f,.75f,.85f,1f,1.2f}[w];
+                            speed.setText("Скорость речи: " + player.speed + "× (сказки и карточки)");
                             remember();
                             updatePlayer();
                         }).show());
