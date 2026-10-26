@@ -16,7 +16,8 @@ import java.util.regex.Pattern;
 final class CardAdditionPolicy {
     static final int HARD_LIMIT = 10;
     private static final Pattern COUNT = Pattern.compile(
-            "(?iu)(?<![\\p{L}\\d])(\\d{1,4})\\s*(?:новых?\\s+)?(?:слов\\p{L}*|фраз\\p{L}*|выражен\\p{L}*|глагол\\p{L}*|существительн\\p{L}*|прилагательн\\p{L}*)");
+            "(?iu)(?<![\\p{L}\\d])(\\d{1,4})\\s+(?:[\\p{L}]+(?:-[\\p{L}]+)?\\s+){0,6}"
+                    + "(?:слов\\p{L}*|фраз\\p{L}*|выражен\\p{L}*|глагол\\p{L}*|существительн\\p{L}*|прилагательн\\p{L}*)");
     private CardAdditionPolicy() {}
 
     static final class Batch {
