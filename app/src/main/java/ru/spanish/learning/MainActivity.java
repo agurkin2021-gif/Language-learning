@@ -336,9 +336,9 @@ public final class MainActivity extends Activity {
         selectedVoice.setTextColor(secondaryText());
         selectedVoice.setLayoutParams(spaced(studyingEnglish() ? 12 : 8));
         if (!studyingEnglish()) {
-            Button voicePreview = rowButton("Проверить ll/y: ladrillo, lluvia", () -> {
+            Button voicePreview = rowButton("Проверить ll: talle, calle, lluvia", () -> {
                 if (player.ready()) {
-                    player.speakCard("El ladrillo amarillo. La lluvia llegó ayer.");
+                    player.speakCard("El talle de la calle. La lluvia llegó ayer.");
                 } else {
                     Toast.makeText(this, player.voiceDescription, Toast.LENGTH_LONG).show();
                 }
@@ -365,7 +365,7 @@ public final class MainActivity extends Activity {
                             if (player.selectSpanishVoice(choices.get(index).name)) {
                                 selectedVoice.setText(player.voiceDescription);
                                 dialog.dismiss();
-                                player.speakCard("El ladrillo amarillo. La lluvia llegó ayer.");
+                                player.speakCard("El talle de la calle. La lluvia llegó ayer.");
                             } else {
                                 Toast.makeText(this, "Не удалось выбрать голос", Toast.LENGTH_LONG).show();
                             }

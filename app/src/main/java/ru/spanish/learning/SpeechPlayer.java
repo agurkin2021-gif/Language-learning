@@ -210,7 +210,7 @@ public final class SpeechPlayer {
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return;
         String token = "card:" + System.nanoTime();
         tts.setSpeechRate(speed);
-        if (tts.speak(spanish.trim(), TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
+        if (tts.speak(RioplatensePronunciation.forSpeech(spanish.trim(), learningLanguage), TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
             finishCardSpeech();
     }
 
@@ -240,7 +240,8 @@ public final class SpeechPlayer {
         if (resumeOffset < 0 || resumeOffset >= full.length()) resumeOffset = 0;
         utteranceBaseOffset = resumeOffset;
         activeToken = token;
-        String spoken = full.substring(utteranceBaseOffset);
+        String spoken = RioplatensePronunciation.forSpeech(
+                full.substring(utteranceBaseOffset), learningLanguage);
         error = "";
         tts.setSpeechRate(speed);
         if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
