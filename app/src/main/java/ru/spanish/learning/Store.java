@@ -131,6 +131,15 @@ public final class Store extends SQLiteOpenHelper {
         return result;
     }
 
+    /** Recheck mastery before saving newly generated pictures. */
+    boolean isInStudy(long id) {
+        try (Cursor c = getReadableDatabase().query("cards", new String[]{"id"},
+                "id=? AND mastered=0", new String[]{Long.toString(id)},
+                null, null, null, "1")) {
+            return c.moveToFirst();
+        }
+    }
+
     public List<Card> mastered() {
         List<Card> result = new ArrayList<>(cards(true, 0));
         result.addAll(cards(true, 1));

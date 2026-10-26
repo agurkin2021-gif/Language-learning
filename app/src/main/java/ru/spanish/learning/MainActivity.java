@@ -34,6 +34,7 @@ import android.view.View;
 import android.widget.*;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class MainActivity extends Activity {
     private Store store;
@@ -60,6 +61,11 @@ public final class MainActivity extends Activity {
     private Runnable pendingVoiceRestart;
     private static final int MIC_PERMISSION = 7301;
     private boolean syncingContent;
+    private boolean imageRepairRunning;
+    private final AtomicBoolean imageRepairCancel = new AtomicBoolean();
+    private String imageRepairMessage = "";
+    private TextView imageRepairStatus;
+    private Button imageRepairButton;
     private SpeechPlayer player;
     private SharedPreferences prefs;
     private LinearLayout content;
@@ -123,6 +129,11 @@ public final class MainActivity extends Activity {
     private void selectStudyLanguage(String next) {
         if (!"en".equals(next) && !"es".equals(next)) return;
         if (next.equals(studyLanguage)) return;
+        if (imageRepairRunning) {
+            Toast.makeText(this, "Сначала завершите или остановите создание картинок",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
         if (assistantRequestInFlight) {
             Toast.makeText(this, "Дождитесь завершения генерации ChatGPT",
                     Toast.LENGTH_LONG).show();
@@ -239,11 +250,19 @@ public final class MainActivity extends Activity {
         new BackupManager(this).dataChanged();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
     }
-    private void navigate(String next) { player.pause(); remember(); storyId = -1; screen = next; render(); }
+    private void navigate(String next) {
+        if (imageRepairRunning) {
+            Toast.makeText(this, "Создаются картинки. Дождитесь завершения или нажмите «Остановить».",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        player.pause(); remember(); storyId = -1; screen = next; render();
+    }
     private void render() {
         cancelCardSpeech();
         rendering = true; sentence = null; sentenceRu = null; playbackStatus = null;
-        cardVoiceStatus = null; toggle = null; repeat = null;
+        cardVoiceStatus = null; imageRepairStatus = null; imageRepairButton = null;
+        toggle = null; repeat = null;
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
@@ -407,6 +426,10 @@ public final class MainActivity extends Activity {
     }
 
     private void confirmResetDatabase(AlertDialog settingsDialog) {
+        if (imageRepairRunning) {
+            Toast.makeText(this, "Остановите создание картинок перед сбросом базы", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (assistantRequestInFlight) {
             Toast.makeText(this, "Дождитесь завершения ChatGPT перед сбросом базы", Toast.LENGTH_LONG).show();
             return;
@@ -497,6 +520,11 @@ public final class MainActivity extends Activity {
         }
     }
     private void showAssistant() {
+        if (imageRepairRunning) {
+            Toast.makeText(this, "Пока создаются картинки, ChatGPT занят. Сначала остановите процесс.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
         cancelCardSpeech();
         player.pause();
         remember();
@@ -1231,6 +1259,99 @@ public final class MainActivity extends Activity {
         addActions.addView(addPhraseButton, phraseParams);
         content.addView(addActions, spaced(10));
 
+        List<Store.Card> imagesMissing = MissingCardIllustrations.pending(this, store);
+        imageRepairStatus = text(imageRepairRunning ? imageRepairMessage
+                : imagesMissing.isEmpty()
+                    ? "У всех изучаемых карточек есть рисунки"
+                    : "Неосвоенных карточек без рисунков: " + imagesMissing.size(), 14);
+        imageRepairStatus.setTextColor(secondaryText());
+        if (!imageRepairRunning && !imageRepairMessage.isEmpty()) {
+            TextView lastRun = text(imageRepairMessage, 13);
+            lastRun.setTextColor(secondaryText());
+        }
+        if (imageRepairRunning || !imagesMissing.isEmpty()) {
+            imageRepairButton = button(imageRepairRunning ? "Остановить создание картинок"
+                    : "Дорисовать недостающие (" + imagesMissing.size() + ")",
+                    this::startImageRepair);
+            ui.style(imageRepairButton, UiStyle.Tone.OUTLINE);
+        }
+
+    }
+
+
+    /** Creates pictures only for the unmastered cards with no existing SVG. */
+    private void startImageRepair() {
+        if (imageRepairRunning) {
+            imageRepairCancel.set(true);
+            imageRepairMessage = "Останавливаю создание картинок после текущего запроса…";
+            if (imageRepairStatus != null) imageRepairStatus.setText(imageRepairMessage);
+            if (imageRepairButton != null) imageRepairButton.setEnabled(false);
+            return;
+        }
+        if (assistantRequestInFlight) {
+            Toast.makeText(this, "Дождитесь завершения текущего запроса ChatGPT",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<Store.Card> missing = MissingCardIllustrations.pending(this, store);
+        if (missing.isEmpty()) {
+            imageRepairMessage = "";
+            render();
+            return;
+        }
+        if (!assistant.isConnected()) {
+            new AlertDialog.Builder(this).setTitle("Нужен ChatGPT")
+                    .setMessage("Создание рисунков выполняется через подключённый ChatGPT. Для этого нужно подключить аккаунт внутри приложения.")
+                    .setPositiveButton("Подключить", (d, w) -> showAssistant())
+                    .setNegativeButton("Закрыть", null).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Дорисовать " + missing.size() + " карточек?")
+                .setMessage("Будут созданы картинки только для слов и выражений, которые ещё изучаются и у которых нет изображения. Освоенные карточки и готовые рисунки останутся без изменений. Для работы потребуется интернет и ChatGPT; большое количество картинок может создаваться долго.")
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Создать", (d, w) -> runImageRepair())
+                .show();
+    }
+
+    private void runImageRepair() {
+        if (imageRepairRunning || isFinishing() || isDestroyed()) return;
+        Store target = store;
+        imageRepairCancel.set(false);
+        imageRepairRunning = true;
+        imageRepairMessage = "Проверяю, каким карточкам не хватает рисунков…";
+        if (imageRepairStatus != null) imageRepairStatus.setText(imageRepairMessage);
+        if (imageRepairButton != null) imageRepairButton.setText("Остановить создание картинок");
+
+        assistant.createMissingIllustrations(target, imageRepairCancel::get,
+                new ChatGptAssistant.ImageRepairUpdates() {
+                    @Override public void progress(int processed, int total, int created,
+                                                   int errors, String word) {
+                        runOnUiThread(() -> {
+                            if (isFinishing() || isDestroyed() || store != target) return;
+                            imageRepairMessage = "Картинки: обработано " + processed + " из " + total
+                                    + " • создано " + created
+                                    + (errors == 0 ? "" : " • ошибок " + errors)
+                                    + (word.isEmpty() ? "" : "\n" + word);
+                            if (imageRepairStatus != null)
+                                imageRepairStatus.setText(imageRepairMessage);
+                        });
+                    }
+                    @Override public void finished(int processed, int total, int created,
+                                                   int skipped, int errors, boolean cancelled,
+                                                   String error) {
+                        runOnUiThread(() -> {
+                            if (isFinishing() || isDestroyed() || store != target) return;
+                            imageRepairRunning = false;
+                            imageRepairMessage = (cancelled ? "Создание остановлено." : "Создание завершено.")
+                                    + " Нарисовано: " + created
+                                    + (skipped > 0 ? ", пропущено: " + skipped : "")
+                                    + (errors > 0 ? ", ошибок: " + errors : "")
+                                    + (error.isEmpty() ? "" : ". " + error);
+                            if ("cards".equals(screen)) render(); // Show newly saved SVGs.
+                        });
+                    }
+                });
     }
 
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {
@@ -1532,6 +1653,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onPause() { stopAssistantVoice(); cancelCardSpeech(); player.pause(); remember(); rememberCardDraft(); super.onPause(); }
     @Override protected void onDestroy() {
+        imageRepairCancel.set(true);
         cancelCardSpeech();
         if (contentSync != null) contentSync.close();
         if (assistant != null) assistant.close();

@@ -15,9 +15,41 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.text.Normalizer;
 import java.util.Locale;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 final class CardImageLoader {
     private CardImageLoader() {}
+
+    private static volatile Set<String> bundledSpanishImages;
+
+    /** Packaged images and generated phone images should not be regenerated. */
+    static boolean hasIllustration(Context context, String word, boolean english) {
+        File dynamic = imageFile(context, word, english);
+        if (dynamic.isFile() && dynamic.length() > 100L) return true;
+        if (english) return false;
+        try {
+            return bundledSpanishImages(context).contains(key(word) + ".svg");
+        } catch (IOException unavailable) {
+            return false;
+        }
+    }
+
+    private static Set<String> bundledSpanishImages(Context context) throws IOException {
+        Set<String> cached = bundledSpanishImages;
+        if (cached != null) return cached;
+        synchronized (CardImageLoader.class) {
+            if (bundledSpanishImages == null) {
+                String[] names = context.getAssets().list("card-images");
+                if (names == null) throw new IOException("Illustration index unavailable");
+                bundledSpanishImages = Collections.unmodifiableSet(
+                        new HashSet<>(Arrays.asList(names)));
+            }
+            return bundledSpanishImages;
+        }
+    }
 
     static String key(String spanish) {
         String normalized = Normalizer.normalize(spanish.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
