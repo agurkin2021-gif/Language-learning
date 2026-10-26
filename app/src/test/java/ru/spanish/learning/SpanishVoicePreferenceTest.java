@@ -21,6 +21,13 @@ public class SpanishVoicePreferenceTest {
         assertEquals(-1, SpanishVoicePreference.regionRank(null));
     }
 
+    @Test public void regionalLabelsRemainDistinct() {
+        assertEquals("Аргентина", SpanishVoicePreference.regionLabel(Locale.forLanguageTag("es-AR")));
+        assertEquals("Уругвай", SpanishVoicePreference.regionLabel(Locale.forLanguageTag("es-UY")));
+        assertEquals("Мексика", SpanishVoicePreference.regionLabel(Locale.forLanguageTag("es-MX")));
+        assertEquals("Латинская Америка", SpanishVoicePreference.regionLabel(Locale.forLanguageTag("es-CO")));
+    }
+
     @Test public void retainsLatinAmericanFallbackOptions() {
         assertTrue(SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-CO")) > 0);
         assertTrue(SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-419")) > 0);
