@@ -13,7 +13,7 @@ public final class RegularChatGptBridgeTest extends AndroidTestCase {
             assertTrue(prompt.contains("el gato = кот"));
             assertTrue(prompt.contains("vos, tenés"));
             assertTrue(prompt.contains("Расскажи о двух котятах"));
-            assertTrue(prompt.contains("\\\"language\\\":\\\"es\\\""));
+            assertTrue(prompt.contains("study_story_v1"));
         } finally { getContext().deleteDatabase(db); }
     }
 
@@ -55,7 +55,7 @@ public final class RegularChatGptBridgeTest extends AndroidTestCase {
         getContext().deleteDatabase(db);
         try (Store english = Store.englishForTest(getContext(), db)) {
             String prompt = RegularChatGptBridge.prompt(english, "Short story");
-            assertTrue(prompt.contains("\\\"language\\\":\\\"en\\\""));
+            assertTrue(prompt.contains("study_story_v1"));
             assertFalse(prompt.contains("vos, tenés"));
         } finally { getContext().deleteDatabase(db); }
     }
