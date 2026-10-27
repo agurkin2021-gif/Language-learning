@@ -8,6 +8,7 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
@@ -35,6 +36,7 @@ public final class SpeechPlayer {
     private int resumeOffset;
     private int utteranceBaseOffset;
     private String activeToken = "";
+    private long currentCardSpeechId;
     public boolean sentenceMode = true;
     public float speed = 0.85f;
     public int pauseMs = 1500;
@@ -123,6 +125,7 @@ public final class SpeechPlayer {
     private void fallBackFromDaniela(String why) {
         if (!danielaSelected) return;
         danielaSelected = false;
+        currentCardSpeechId++;
         danielaReady = false;
         danielaPreviewOnReady = false;
         if (danielaSpeech != null) danielaSpeech.stop();
@@ -322,20 +325,49 @@ public final class SpeechPlayer {
 
     public void speakCard(String spanish) {
         if (closed || !ready || spanish == null || spanish.trim().isEmpty()) return;
+        final long requestId = ++currentCardSpeechId;
         handler.removeCallbacks(autoPlay);
         if (tts != null) tts.stop();
         if (danielaSpeech != null) danielaSpeech.stop();
         audio.abandonAudioFocusRequest(focus);
-        if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return;
+        if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            error = "Не удалось получить аудиовыход Android";
+            voiceDescription = error;
+            listener.changed();
+            return;
+        }
         String text = RioplatensePronunciation.forSpeech(spanish.trim(), learningLanguage);
         if (danielaSelected && danielaSpeech != null && danielaSpeech.isReady()) {
-            danielaSpeech.speak(text, speed, this::finishCardSpeech, this::finishCardSpeech);
+            danielaSpeech.speak(text, speed, () -> finishCardSpeech(requestId),
+                    reason -> handleDanielaCardFailure(requestId, spanish, reason));
             return;
         }
         String token = "card:" + System.nanoTime();
         tts.setSpeechRate(speed);
-        if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
-            finishCardSpeech();
+        if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) {
+            error = "Системный голос не смог озвучить карточку";
+            voiceDescription = error;
+            listener.changed();
+            finishCardSpeech(requestId);
+        }
+    }
+
+    private void handleDanielaCardFailure(long requestId, String word, String reason) {
+        if (closed || requestId != currentCardSpeechId || !danielaSelected) return;
+        Log.e("DanielaSpeech", "Card synthesis failed: " + reason);
+        // Preserve the old Android voice and the entire learner database.
+        fallBackFromDaniela("Daniela: " + reason + ".");
+        if (ready) {
+            // A failed optional voice must not leave the learner with a silent card.
+            speakCard(word);
+        } else {
+            audio.abandonAudioFocusRequest(focus);
+        }
+    }
+
+    private void finishCardSpeech(long requestId) {
+        if (requestId == currentCardSpeechId)
+            audio.abandonAudioFocusRequest(focus);
     }
 
     private void finishCardSpeech() {
@@ -397,6 +429,7 @@ public final class SpeechPlayer {
         audio.abandonAudioFocusRequest(focus); listener.changed();
     }
     public void pause() {
+        currentCardSpeechId++;
         handler.removeCallbacks(autoPlay);
         PlaybackState.Phase previous = state.phase;
         state.pause();
