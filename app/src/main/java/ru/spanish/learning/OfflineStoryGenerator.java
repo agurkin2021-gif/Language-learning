@@ -37,7 +37,7 @@ public final class OfflineStoryGenerator {
                 LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
                         .setModelPath(OfflineModelManager.file(context).getAbsolutePath())
                         .setMaxTokens(1280)
-                        .setTopK(40)
+                        .setMaxTopK(40)
                         .build();
                 model = LlmInference.createFromOptions(context.getApplicationContext(), options);
                 RegularChatGptBridge.StoryDraft draft = null;
