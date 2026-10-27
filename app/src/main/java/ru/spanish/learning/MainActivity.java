@@ -363,10 +363,32 @@ public final class MainActivity extends Activity {
                 new AlertDialog.Builder(this)
                         .setTitle("Выбор испанского голоса")
                         .setSingleChoiceItems(labels, selected, (dialog, index) -> {
-                            if (player.selectSpanishVoice(choices.get(index).name)) {
+                            String voiceName = choices.get(index).name;
+                            if (SpeechPlayer.isDanielaChoice(voiceName) && !player.isDanielaInstalled()) {
+                                new AlertDialog.Builder(this)
+                                        .setTitle("Piper Daniela ещё не установлена")
+                                        .setMessage("Это отдельный офлайн-движок с аргентинским голосом Daniela. "
+                                                + "Откройте страницу разработчиков, скачайте и установите Android TTS Engine "
+                                                + "для модели es_AR-daniela-high. Затем вернитесь сюда и выберите Daniela. "
+                                                + "Текущий голос и ваши карточки останутся без изменений.")
+                                        .setPositiveButton("Открыть страницу установки", (confirm, which) -> {
+                                            try {
+                                                startActivity(new Intent(Intent.ACTION_VIEW,
+                                                        Uri.parse(DanielaVoiceOption.INSTALL_PAGE)));
+                                            } catch (ActivityNotFoundException ex) {
+                                                Toast.makeText(this, "Браузер недоступен", Toast.LENGTH_LONG).show();
+                                            }
+                                        })
+                                        .setNegativeButton("Отмена", null)
+                                        .show();
+                                return;
+                            }
+                            if (player.selectSpanishVoice(voiceName)) {
                                 selectedVoice.setText(player.voiceDescription);
                                 dialog.dismiss();
-                                player.speakCard("El talle de la calle. La lluvia llegó ayer.");
+                                // Daniela previews after its separate TTS engine is initialized.
+                                if (!SpeechPlayer.isDanielaChoice(voiceName))
+                                    player.speakCard(DanielaVoiceOption.PREVIEW);
                             } else {
                                 Toast.makeText(this, "Не удалось выбрать голос", Toast.LENGTH_LONG).show();
                             }
