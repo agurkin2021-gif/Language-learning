@@ -80,6 +80,7 @@ final class OfflineStoryTranslationAudit {
                     || lower.contains("перевод уточня")
                     || lower.contains("зависит от контекста")
                     || lower.contains("неизвестно")
+                    || lower.contains("нет перевода")
                     || sentence.contains("???"))
                 throw new IllegalArgumentException("Недопустимый перевод предложения " + (i + 1));
         }
