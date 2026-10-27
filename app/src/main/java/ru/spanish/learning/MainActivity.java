@@ -620,10 +620,11 @@ public final class MainActivity extends Activity {
         assistantHistory.setTextSize(16);
         assistantHistory.setTextColor(primaryText());
         assistantHistory.setPadding(0, dp(10), 0, dp(10));
-        assistantHistory.setText("Режим обычного ChatGPT — без Subscription Sharing. " +
-                "При отправке приложение скопирует задание со всем текущим словарём и откроет ChatGPT. " +
-                "Вставьте текст и нажмите отправить в ChatGPT. " +
-                "Для рассказа скопируйте готовый JSON-ответ и нажмите «Забрать рассказ».");
+        assistantHistory.setText("Привяжите один раз свой существующий диалог ChatGPT. " +
+                "После этого приложение будет открывать ИМЕННО его, сохраняя историю и инструкции проекта. " +
+                "Новый запрос копируется в буфер: вставьте и отправьте его в ChatGPT. " +
+                "Если у ChatGPT подключён личный GitHub, он сможет прочитать актуальный словарь. " +
+                "Ответ-рассказ скопируйте и нажмите «Забрать рассказ».");
         assistantHistory.setPadding(dp(14), dp(14), dp(14), dp(14));
         historyScroll.setBackground(ui.rounded(ui.soft, 15, ui.outline));
         historyScroll.addView(assistantHistory);
@@ -638,6 +639,15 @@ public final class MainActivity extends Activity {
         assistantInput.setTextSize(17);
         ui.styleInput(assistantInput);
         box.addView(assistantInput, spaced(12));
+
+        Button selectConversation = new Button(this);
+        selectConversation.setText(PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
+                ? "Привязать постоянный диалог ChatGPT"
+                : "Постоянный диалог выбран • изменить");
+        selectConversation.setAllCaps(false);
+        ui.style(selectConversation, UiStyle.Tone.OUTLINE);
+        box.addView(selectConversation, spaced(6));
+        selectConversation.setOnClickListener(v -> configureExistingChat(selectConversation));
 
         // Optional editable presets: no network request occurs until "Отправить".
         HorizontalScrollView presetScroll = new HorizontalScrollView(this);
@@ -747,8 +757,12 @@ public final class MainActivity extends Activity {
         box.addView(voiceHelp);
 
         Runnable refreshConnection = () -> {
-            assistantStatus.setText("Официальный ChatGPT: без отдельного Subscription Sharing. " +
-                    "Контекст словаря подготовится при отправке.");
+            assistantStatus.setText(PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
+                    ? "Привяжите постоянный чат для сохранения его истории."
+                    : "Откроется ваш постоянный чат • " +
+                    (PrivateVocabularySync.isConfigured(this)
+                            ? "личный словарь синхронизируется с GitHub"
+                            : "живой доступ ChatGPT к словам ещё не настроен"));
             connect.setVisibility(View.GONE);
             send.setEnabled(!assistantRequestInFlight);
         };
@@ -809,24 +823,90 @@ public final class MainActivity extends Activity {
         if (text.isEmpty()) text = voice
                 ? "Помогай мне учить язык. Я задам вопрос голосом в чате."
                 : "Напиши короткий рассказ с использованием освоенных слов из моего словаря.";
+        String url = PersistentChatContext.conversationUrl(this, studyLanguage);
+        if (url.isEmpty()) {
+            configureExistingChat(null);
+            return;
+        }
         String prepared;
         try {
-            prepared = RegularChatGptBridge.prompt(store, text);
+            String repo = PrivateVocabularySync.isConfigured(this)
+                    ? PrivateVocabularySync.repository(this) : "";
+            String id = PrivateVocabularySync.isConfigured(this)
+                    ? PrivateVocabularySync.profileId(this) : "";
+            prepared = PersistentChatContext.followUp(text, studyLanguage, repo, id);
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (clipboard == null) throw new IllegalStateException("Буфер обмена недоступен");
             clipboard.setPrimaryClip(ClipData.newPlainText("Задание и мой словарь", prepared));
             if (assistantStatus != null) {
-                assistantStatus.setText("Контекст и задача скопированы. В открывшемся ChatGPT " +
-                        "вставьте текст в поле ввода и нажмите отправку. После ответа " +
-                        "скопируйте JSON рассказа и нажмите «Забрать рассказ».");
+                assistantStatus.setText("Открыт ваш прежний чат: его история сохраняется. " +
+                        "Вставьте короткий запрос и отправьте. Актуальные слова доступны ChatGPT " +
+                        "только после подключения личного GitHub. " +
+                        "Готовый JSON скопируйте и нажмите «Забрать рассказ».");
             }
             new CustomTabsIntent.Builder().setShowTitle(true).build()
-                    .launchUrl(this, Uri.parse("https://chatgpt.com/"));
+                    .launchUrl(this, Uri.parse(url));
         } catch (Exception error) {
             String message = error.getMessage() == null ? "Не удалось открыть ChatGPT" : error.getMessage();
             if (assistantStatus != null) assistantStatus.setText(message);
             Toast.makeText(this, message, Toast.LENGTH_LONG).show();
         }
+    }
+
+    /**
+     * Store only a specific EXISTING conversation URL, separately for ES/EN,
+     * never a shared snapshot or a new empty chat. Neither credentials nor
+     * conversation contents are stored here.
+     */
+    private void configureExistingChat(Button source) {
+        String language = studyLanguage;
+        EditText address = new EditText(this);
+        address.setSingleLine(true);
+        address.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        address.setHint("https://chatgpt.com/c/...");
+        address.setText(PersistentChatContext.conversationUrl(this, language));
+        address.selectAll();
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dp(18), dp(12), dp(18), dp(8));
+        TextView description = new TextView(this);
+        description.setText("Откройте в обычном ChatGPT существующий чат с нужной историей. " +
+                "Скопируйте его адрес и вставьте сюда один раз. " +
+                "Для английского и испанского можно указать разные диалоги. " +
+                "На телефоне жены будет отдельная привязка. " +
+                "Без доступа ChatGPT к личному словарю его новые изменения сами сюда не попадут.");
+        description.setTextColor(primaryText());
+        description.setTextSize(14);
+        layout.addView(description, spaced(6));
+        layout.addView(address, spaced(10));
+
+        new AlertDialog.Builder(this)
+                .setTitle("Мой постоянный диалог ChatGPT")
+                .setView(layout)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    try {
+                        PersistentChatContext.link(this, language, address.getText().toString());
+                        if (source != null) source.setText("Постоянный диалог выбран • изменить");
+                        if (assistantStatus != null)
+                            assistantStatus.setText("Диалог привязан. При отправке откроется этот же разговор.");
+                        Toast.makeText(this, "Сохранён существующий диалог", Toast.LENGTH_LONG).show();
+                    } catch (IllegalArgumentException e) {
+                        new AlertDialog.Builder(this).setTitle("Неверная ссылка")
+                                .setMessage(e.getMessage())
+                                .setPositiveButton("Повторить", (d, w) -> configureExistingChat(source))
+                                .show();
+                    }
+                })
+                .setNeutralButton("Отвязать", (dialog, which) -> {
+                    PersistentChatContext.unlink(this, language);
+                    if (source != null) source.setText("Привязать постоянный диалог ChatGPT");
+                    if (assistantStatus != null)
+                        assistantStatus.setText("Диалог отвязан. Для отправки нужна новая привязка.");
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     /** Imports only a user-approved story from the clipboard, not arbitrary cards. */
