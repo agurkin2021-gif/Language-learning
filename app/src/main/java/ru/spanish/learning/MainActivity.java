@@ -554,6 +554,7 @@ public final class MainActivity extends Activity {
         try {
             store.resetLearningData();
             assistant.clearHistory(store);
+            OfficialStudyHandoff.clear(this, studyLanguage);
         } catch (RuntimeException e) {
             new AlertDialog.Builder(this)
                     .setTitle("База не сброшена")
@@ -856,6 +857,9 @@ public final class MainActivity extends Activity {
             if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
         });
         assistantDialog.show();
+        String auditStage = OfficialStudyHandoff.stage(this, studyLanguage);
+        if (!auditStage.isEmpty() && assistantStatus != null)
+            assistantStatus.setText(auditStage);
         if (GptStudyBrokerClient.configured(this) && assistantHistory != null) {
             String restored = GptStudyBrokerClient.historyText(this, studyLanguage);
             if (!restored.isEmpty()) assistantHistory.setText(restored);
@@ -1307,6 +1311,11 @@ public final class MainActivity extends Activity {
     /** Manual fallback: explicit clipboard reading only while our app is foreground. */
     private void importRegularChatGptStory() {
         try {
+            if ("Все три аудита пройдены. Осталось сохранить".equals(
+                    OfficialStudyHandoff.stage(this, studyLanguage))) {
+                showVerifiedOfficialMaterial();
+                return;
+            }
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             ClipData clip = clipboard == null ? null : clipboard.getPrimaryClip();
             if (clip == null || clip.getItemCount() < 1)
@@ -1325,50 +1334,29 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("OK", null).show();
     }
 
-    /** Accepts a deliberately shared or copied story; never writes until confirmed. */
+    /** No imported story/word may bypass three separate ChatGPT audit replies. */
     private void importRegularChatGptStoryText(String raw) {
         try {
-            RegularChatGptBridge.StoryDraft draft = RegularChatGptBridge.parseStory(raw);
-            if (!studyLanguage.equals(draft.language()))
-                throw new IllegalArgumentException("Этот рассказ для " +
-                        ("en".equals(draft.language()) ? "английского" : "испанского") +
-                        ". Переключите язык приложения.");
-            final Store current = store;
-            new AlertDialog.Builder(this)
-                    .setTitle("Сохранить рассказ?")
-                    .setMessage("«" + draft.title() + "»\n\n" +
-                            draft.body().substring(0, Math.min(260, draft.body().length())) +
-                            (draft.body().length() > 260 ? "…" : "") +
-                            "\n\nСохраним с русским переводом в текущий язык.")
-                    .setPositiveButton("Сохранить", (dialog, which) -> {
-                        if (store != current) {
-                            Toast.makeText(this, "Язык изменён, повторите импорт", Toast.LENGTH_LONG).show();
-                            return;
-                        }
-                        try {
-                            if (!current.addStoryIfMissing(draft.title(), draft.body(),
-                                    draft.translation(), "ChatGPT • обычный чат")) {
-                                Toast.makeText(this, "Рассказ с таким названием уже есть", Toast.LENGTH_LONG).show();
-                                return;
-                            }
-                            long id = -1;
-                            for (Store.Story story : current.stories()) {
-                                if (draft.title().equals(story.title())) { id = story.id(); break; }
-                            }
-                            if (assistantStatus != null) assistantStatus.setText("Сохранено: " + draft.title());
-                            if (id > 0) showStoryReadyDialog(new ChatGptAssistant.SavedStory(id, draft.title()));
-                            else Toast.makeText(this, "Рассказ сохранён", Toast.LENGTH_LONG).show();
-                        } catch (Exception e) {
-                            new AlertDialog.Builder(this).setTitle("Не удалось сохранить")
-                                    .setMessage(e.getMessage()).setPositiveButton("OK", null).show();
-                        }
-                    })
-                    .setNegativeButton("Отмена", null)
-                    .show();
-        } catch (Exception e) {
-            String message = e.getMessage() == null ? "Не удалось разобрать ответ ChatGPT" : e.getMessage();
-            new AlertDialog.Builder(this).setTitle("Рассказ не импортирован")
-                    .setMessage(message + "\n\nСкопируйте весь JSON с полями format, language, title, body, translation.")
+            OfficialStudyHandoff.Outcome outcome =
+                    OfficialStudyHandoff.accept(this, studyLanguage, raw);
+            awaitingRegularChatGptReply = false;
+            regularChatGptPreparedText = "";
+            if ("verified".equals(outcome.status())) {
+                showVerifiedOfficialMaterial();
+            } else if ("audit".equals(outcome.status())) {
+                if (assistantStatus != null)
+                    assistantStatus.setText(OfficialStudyHandoff.stage(this, studyLanguage));
+                nextOfficialAudit(outcome.prompt(), outcome.message());
+            } else {
+                throw new IllegalStateException("Проверка ещё не завершена");
+            }
+        } catch (Exception error) {
+            String message = error.getMessage() == null ? "Недопустимый ответ ChatGPT"
+                    : error.getMessage();
+            new AlertDialog.Builder(this).setTitle("Ничего не сохранено")
+                    .setMessage(message +
+                            "\n\nСкопируйте полный JSON-ответ текущего этапа из обычного ChatGPT. " +
+                            "При отклонении аудита начните заново.")
                     .setPositiveButton("OK", null).show();
         }
     }
@@ -1400,14 +1388,9 @@ public final class MainActivity extends Activity {
         String text = shared == null ? "" : shared.toString().trim();
         if (text.isEmpty() || text.equals(regularChatGptPreparedText)
                 || (!text.startsWith("{") && !text.startsWith("```"))) return;
-        try {
-            RegularChatGptBridge.parseStory(text);
-            awaitingRegularChatGptReply = false; // avoid repeated dialogs
-            regularChatGptPreparedText = "";
+        if (OfficialStudyHandoff.isOurReply(this, studyLanguage, text)) {
+            awaitingRegularChatGptReply = false;
             importRegularChatGptStoryText(text);
-        } catch (Exception ignored) {
-            // An unrelated clipboard item must not cause an automatic error dialog.
-            // Explicit import button remains available if the user needs help.
         }
     }
 
