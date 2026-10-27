@@ -96,9 +96,9 @@ class StudyBrokerTests(unittest.TestCase):
         process.start()
         root = f"http://127.0.0.1:{server.server_port}"
         try:
-            with patch.dict(os.environ, {"STUDY_BROKER_TOKEN": token,
-                                        "OPENAI_API_KEY": "fake-do-not-call"}), \\
-                 patch.object(chatgpt_broker, "generate", offline_generate):
+            with (patch.dict(os.environ, {"STUDY_BROKER_TOKEN": token,
+                                        "OPENAI_API_KEY": "fake-do-not-call"}),
+                  patch.object(chatgpt_broker, "generate", offline_generate)):
                 unauthenticated = urllib.request.Request(root + "/v1/jobs",
                     data=b"{}", headers={"Content-Type": "application/json"},
                     method="POST")
