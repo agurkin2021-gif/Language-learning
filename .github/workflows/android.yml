@@ -145,15 +145,7 @@ jobs:
           arch: x86_64
           target: default
           disable-animations: true
-          script: |
-            adb logcat -c || true
-            set +e
-            ./gradlew --no-daemon connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
-            result=$?
-            adb logcat -d -v threadtime | tail -n 3500 > android-test-logcat.txt || true
-            mkdir -p build-preview
-            adb pull /sdcard/Android/data/ru.spanish.learning/files/build-preview/. build-preview/ || true
-            exit "$result"
+          script: bash scripts/device_test_with_logcat.sh
       - uses: actions/upload-artifact@v4
         id: preview
         if: always()
