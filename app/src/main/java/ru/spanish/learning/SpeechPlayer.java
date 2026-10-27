@@ -91,17 +91,13 @@ public final class SpeechPlayer {
             String[] modelFiles = engine.getAssets().list(DanielaVoiceOption.MODEL_DIRECTORY);
             if (modelFiles != null) {
                 for (String filename : modelFiles) {
-                    if (DanilaModelFile(filename)) return true;
+                    if (DanielaVoiceOption.MODEL_FILENAME.equals(filename)) return true;
                 }
             }
         } catch (Exception ignored) {
             // No engine, or this Sherpa engine was built with a different model.
         }
         return false;
-    }
-
-    private static boolean DanilaModelFile(String filename) {
-        return DanielaVoiceOption.MODEL_FILENAME.equals(filename);
     }
 
     static boolean isDanielaChoice(String voiceName) {
@@ -309,7 +305,6 @@ public final class SpeechPlayer {
     boolean selectSpanishVoice(String voiceName) {
         if (!ttsInitialized || !"es".equals(learningLanguage)
                 || voiceName == null || voiceName.isEmpty()) return false;
-        if (DanilaModelFile(voiceName)) return false;
         if (DanielaVoiceOption.matches(voiceName)) {
             if (!isDanielaInstalled()) return false;
             pause();
