@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import json
 import os
+import time
+import threading
+import urllib.error
+import urllib.request
+import chatgpt_broker
+from http.server import ThreadingHTTPServer
 import unittest
 from unittest.mock import patch
 from chatgpt_broker import (
@@ -68,6 +74,66 @@ class StudyBrokerTests(unittest.TestCase):
                            "task": "tenés", "cards": []}, call=fake)
         self.assertEqual(answer["word"], "tenés")
         self.assertEqual(len(answer["audits"]), 3)
+
+    def test_complete_http_round_trip_no_paid_api(self):
+        """Full POST -> poll -> 3 audits -> story, entirely on loopback."""
+        token = "fake-integration-token-000000000"
+        story = {"format": "study_story_v1", "language": "es",
+                 "title": "Mis amigos", "body": "Dos amigos juegan. Luego descansan.",
+                 "translation": "Два друга играют. Потом отдыхают."}
+        call_count = []
+        def fake_model(instructions, payload):
+            call_count.append(instructions)
+            if len(call_count) == 1:
+                return json.dumps(story, ensure_ascii=False)
+            return json.dumps({"pass": True, "issues": [],
+                "verified_translation": story["translation"]}, ensure_ascii=False)
+        original = chatgpt_broker.generate
+        def offline_generate(request, progress):
+            return original(request, call=fake_model, progress=progress)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), chatgpt_broker.Handler)
+        process = threading.Thread(target=server.serve_forever, daemon=True)
+        process.start()
+        root = f"http://127.0.0.1:{server.server_port}"
+        try:
+            with patch.dict(os.environ, {"STUDY_BROKER_TOKEN": token,
+                                        "OPENAI_API_KEY": "fake-do-not-call"}), \\
+                 patch.object(chatgpt_broker, "generate", offline_generate):
+                unauthenticated = urllib.request.Request(root + "/v1/jobs",
+                    data=b"{}", headers={"Content-Type": "application/json"},
+                    method="POST")
+                with self.assertRaises(urllib.error.HTTPError) as denied:
+                    urllib.request.urlopen(unauthenticated, timeout=3)
+                self.assertEqual(denied.exception.code, 401)
+
+                request = {"language": "es", "kind": "story",
+                           "task": "Рассказ об играющих друзьях",
+                           "cards": [{"term": "juegan", "meaning": "они играют",
+                                      "mastered": True, "phrase": False}]}
+                post = urllib.request.Request(root + "/v1/jobs",
+                    data=json.dumps(request, ensure_ascii=False).encode(),
+                    headers={"Authorization": "Bearer " + token,
+                             "Content-Type": "application/json"}, method="POST")
+                with urllib.request.urlopen(post, timeout=3) as response:
+                    self.assertEqual(response.status, 202)
+                    job_id = json.load(response)["job_id"]
+                final = None
+                for _ in range(40):
+                    poll = urllib.request.Request(root + "/v1/jobs/" + job_id,
+                        headers={"Authorization": "Bearer " + token})
+                    with urllib.request.urlopen(poll, timeout=3) as response:
+                        final = json.load(response)
+                    if final["status"] != "running":
+                        break
+                    time.sleep(0.05)
+                self.assertEqual(final["status"], "done")
+                self.assertEqual(final["result"]["language"], "es")
+                self.assertEqual(len(final["result"]["audits"]), 3)
+                self.assertEqual(len(call_count), 4)
+        finally:
+            server.shutdown()
+            server.server_close()
+            process.join(timeout=3)
 
     def test_no_key_means_no_paid_request(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
