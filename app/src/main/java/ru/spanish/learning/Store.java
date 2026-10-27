@@ -29,7 +29,11 @@ public final class Store extends SQLiteOpenHelper {
     }
     boolean isEnglish() { return english; }
 
-    private void changed() { new BackupManager(context).dataChanged(); }
+    private void changed() {
+        new BackupManager(context).dataChanged();
+        // Sync only a private, explicitly configured snapshot; never modify SQLite from the cloud.
+        PrivateVocabularySync.schedule(context);
+    }
 
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE cards(id INTEGER PRIMARY KEY, spanish TEXT NOT NULL, meaning TEXT NOT NULL, kind INTEGER NOT NULL CHECK(kind IN(0,1)), category INTEGER NOT NULL DEFAULT 0 CHECK(category IN(0,1,2,3)), mastered INTEGER NOT NULL DEFAULT 0 CHECK(mastered IN(0,1)), last_result INTEGER NOT NULL DEFAULT 0 CHECK(last_result IN(0,1,2)), review_count INTEGER NOT NULL DEFAULT 0, next_due INTEGER NOT NULL DEFAULT 0)");
