@@ -211,6 +211,13 @@ public final class PrivateVocabularySync {
         return root;
     }
 
+    /** Public non-secret installation ID for identifying its private vocabulary snapshot. */
+    public static String profileId(Context context) {
+        if (!isConfigured(context)) return "";
+        try { return readConfig(context).deviceId(); }
+        catch (Exception ignored) { return ""; }
+    }
+
     /** Account selector without exposing tokens or other credentials. */
     public static String profileRepository(Context context) {
         if (!isConfigured(context)) return "";
