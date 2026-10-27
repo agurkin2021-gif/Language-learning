@@ -811,25 +811,28 @@ public final class MainActivity extends Activity {
             });
         });
 
-        mic.setOnClickListener(v -> {
-            if (GptStudyBrokerClient.configured(this)) {
-                if (assistantVoiceActive) {
-                    stopAssistantVoice();
-                } else {
-                    assistantVoiceActive = true;
-                    assistantVoiceReviewPending = false;
-                    startAssistantVoice();
-                }
-            } else {
-                openRegularChatGpt(true);
-            }
-        });
+        // The consumer ChatGPT flow never invokes an OpenAI API or
+        // Subscription Sharing, even if an older version stored broker settings.
+        mic.setOnClickListener(v -> openRegularChatGpt(true));
         send.setOnClickListener(v -> submitExistingChatAction());
         // No new visible settings or controls: long-press the existing send
         // button once to provision the HTTPS broker. Single tap stays the
         // only user action for text requests.
         send.setOnLongClickListener(v -> {
-            configureGptBroker(null);
+            if (OfficialStudyHandoff.pending(this, studyLanguage)) {
+                new AlertDialog.Builder(this).setTitle("Проверка перевода")
+                        .setMessage(OfficialStudyHandoff.stage(this, studyLanguage) +
+                                "\n\nНачать заново и удалить несохранённый результат?")
+                        .setPositiveButton("Начать заново", (d, w) -> {
+                            OfficialStudyHandoff.clear(this, studyLanguage);
+                            if (assistantStatus != null)
+                                assistantStatus.setText("Проверка отменена. Введите новое задание.");
+                        })
+                        .setNegativeButton("Продолжить", null).show();
+            } else {
+                Toast.makeText(this, "Обычный ChatGPT: без платного API",
+                        Toast.LENGTH_SHORT).show();
+            }
             return true;
         });
 
@@ -865,33 +868,144 @@ public final class MainActivity extends Activity {
         }
     }
 
+    /** The same send button supports user-mediated transfers via official ChatGPT. */
     private void submitExistingChatAction() {
         if (assistantInput == null || assistantRequestInFlight) return;
+        if (OfficialStudyHandoff.pending(this, studyLanguage)) {
+            String pending = OfficialStudyHandoff.preparedPrompt(this, studyLanguage);
+            if (!pending.isEmpty()) launchOfficialHandoff(pending,
+                    OfficialStudyHandoff.stage(this, studyLanguage));
+            else showVerifiedOfficialMaterial();
+            return;
+        }
         String text = assistantInput.getText().toString().trim();
         if (text.isEmpty()) {
             assistantInput.setError("Напишите задание");
             return;
         }
-        // Explicit exact-form commands only; never extract/replace a guessed
-        // word from a Russian-transliterated sentence.
         java.util.regex.Matcher word = java.util.regex.Pattern.compile(
-                "^(?:добавь|переведи)\\s+слово\\s*[:：-]?\\s*(.+)$",
+                "^(?:добавь|переведи)\\\\s+слово\\\\s*[:：-]?\\\\s*(.+)$",
                 java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
                 .matcher(text);
         java.util.regex.Matcher phrase = java.util.regex.Pattern.compile(
-                "^(?:добавь|переведи)\\s+(?:выражение|фразу)\\s*[:：-]?\\s*(.+)$",
+                "^(?:добавь|переведи)\\\\s+(?:выражение|фразу)\\\\s*[:：-]?\\\\s*(.+)$",
                 java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
                 .matcher(text);
-        if (word.matches()) {
-            submitGptBrokerTask("word", false, word.group(1).trim());
-        } else if (phrase.matches()) {
-            submitGptBrokerTask("word", true, phrase.group(1).trim());
-        } else {
-            boolean story = java.util.regex.Pattern.compile(
-                    "(рассказ|сказк|истори|новелл|\\bstory\\b|cuento)",
+        try {
+            if (word.matches()) {
+                launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "word",
+                        word.group(1).trim(), store.vocabulary()), "Жду перевод слова");
+            } else if (phrase.matches()) {
+                launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "phrase",
+                        phrase.group(1).trim(), store.vocabulary()), "Жду перевод выражения");
+            } else if (java.util.regex.Pattern.compile(
+                    "(рассказ|сказк|истори|новелл|\\\\bstory\\\\b|cuento)",
                     java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
-                    .matcher(text).find();
-            submitGptBrokerTask(story ? "story" : "chat", false, text);
+                    .matcher(text).find()) {
+                launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "story",
+                        text, store.vocabulary()), "Жду рассказ");
+            } else {
+                // Plain conversation is handled by consumer ChatGPT itself.
+                openRegularChatGpt(false);
+            }
+        } catch (Exception error) {
+            new AlertDialog.Builder(this).setTitle("Не удалось подготовить ChatGPT")
+                    .setMessage(error.getMessage()).setPositiveButton("OK", null).show();
+        }
+    }
+
+    private void launchOfficialHandoff(String prompt, String description) {
+        String url = PersistentChatContext.conversationUrl(this, studyLanguage);
+        if (url.isEmpty()) {
+            configureExistingChat(null);
+            return;
+        }
+        try {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (clipboard == null) throw new IllegalStateException("Буфер обмена недоступен");
+            clipboard.setPrimaryClip(ClipData.newPlainText("Задание ChatGPT", prompt));
+            awaitingRegularChatGptReply = true;
+            regularChatGptPreparedText = prompt;
+            regularChatGptOpenedAt = SystemClock.uptimeMillis();
+            if (assistantStatus != null)
+                assistantStatus.setText(description + ". Вставьте задание в ChatGPT, " +
+                        "скопируйте JSON-ответ и вернитесь в приложение.");
+            new CustomTabsIntent.Builder().setShowTitle(true).build()
+                    .launchUrl(this, Uri.parse(url));
+        } catch (Exception error) {
+            if (assistantStatus != null) assistantStatus.setText(error.getMessage());
+            Toast.makeText(this, "Не удалось открыть ChatGPT", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void nextOfficialAudit(String prompt, String description) {
+        new AlertDialog.Builder(this)
+                .setTitle("Трёхступенчатая проверка")
+                .setMessage(description + "\n\nСледующее задание будет скопировано в буфер. " +
+                        "Откройте тот же диалог ChatGPT, вставьте и отправьте его, " +
+                        "потом скопируйте JSON-ответ и вернитесь.")
+                .setPositiveButton("Открыть ChatGPT", (dialog, which) ->
+                        launchOfficialHandoff(prompt, description))
+                .setNegativeButton("Позже", null)
+                .show();
+    }
+
+    private void showVerifiedOfficialMaterial() {
+        try {
+            OfficialStudyHandoff.Outcome ready =
+                    OfficialStudyHandoff.alreadyVerified(this, studyLanguage);
+            Store destination = store;
+            new AlertDialog.Builder(this).setTitle("Проверка 3/3 пройдена")
+                    .setMessage(("story".equals(ready.kind()) ? "Рассказ «" + ready.title() + "»" :
+                            ready.term() + " — " + ready.translation()) +
+                            "\n\nМатериал прошёл три отдельных аудита ChatGPT. " +
+                            "Сохранить в учебную базу?")
+                    .setPositiveButton("Сохранить", (dialog, which) -> {
+                        if (store != destination) {
+                            Toast.makeText(this, "Язык изменён; повторите", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        try {
+                            if ("story".equals(ready.kind())) {
+                                if (!destination.addStoryIfMissing(ready.title(), ready.body(),
+                                        ready.translation(), "Обычный ChatGPT • аудит 3/3")) {
+                                    Toast.makeText(this, "Рассказ уже существует", Toast.LENGTH_LONG).show();
+                                } else {
+                                    long id = -1;
+                                    for (Store.Story story : destination.stories())
+                                        if (ready.title().equals(story.title())) {
+                                            id = story.id();
+                                            break;
+                                        }
+                                    if (id > 0)
+                                        showStoryReadyDialog(new ChatGptAssistant.SavedStory(id, ready.title()));
+                                    else Toast.makeText(this, "Рассказ сохранён", Toast.LENGTH_LONG).show();
+                                }
+                            } else {
+                                StoryVocabulary.requireVerified(ready.term(), ready.translation());
+                                int cardKind = "phrase".equals(ready.kind()) ? 1 : 0;
+                                if (destination.containsCard(ready.term(), cardKind)) {
+                                    Toast.makeText(this, "Уже есть в словаре", Toast.LENGTH_LONG).show();
+                                } else if (cardKind == 1) {
+                                    destination.addCardIfMissing(ready.term(), ready.translation(), 1, 0);
+                                    Toast.makeText(this, "Выражение добавлено", Toast.LENGTH_LONG).show();
+                                } else {
+                                    destination.addStoryWord(ready.term(), ready.translation(), 0);
+                                    Toast.makeText(this, "Слово добавлено", Toast.LENGTH_LONG).show();
+                                }
+                            }
+                            OfficialStudyHandoff.clear(this, studyLanguage);
+                            awaitingRegularChatGptReply = false;
+                            if (assistantStatus != null)
+                                assistantStatus.setText("Материал проверен 3/3 и обработан.");
+                        } catch (Exception error) {
+                            new AlertDialog.Builder(this).setTitle("Не сохранено")
+                                    .setMessage(error.getMessage()).setPositiveButton("OK", null).show();
+                        }
+                    })
+                    .setNegativeButton("Позже", null).show();
+        } catch (Exception e) {
+            showStoryImportError(e.getMessage());
         }
     }
 
