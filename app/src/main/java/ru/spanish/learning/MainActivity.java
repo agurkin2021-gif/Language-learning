@@ -845,7 +845,7 @@ public final class MainActivity extends Activity {
             submitGptBrokerTask("word", true, phrase.group(1).trim());
         } else {
             boolean story = java.util.regex.Pattern.compile(
-                    "(рассказ|сказк|истори|новелл|\\\\bstory\\\\b|cuento)",
+                    "(рассказ|сказк|истори|новелл|\\bstory\\b|cuento)",
                     java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
                     .matcher(text).find();
             submitGptBrokerTask(story ? "story" : "chat", false, text);
