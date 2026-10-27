@@ -1,0 +1,7 @@
+{$STUDY_DOMAIN} {
+    encode gzip
+    request_body {
+        max_size 125KB
+    }
+    reverse_proxy broker:8765
+}
