@@ -224,7 +224,16 @@ public final class GptStudyBrokerClient {
             if (stream == null) throw new IOException("Пустой ответ посредника HTTP " + status);
             String text;
             try (InputStream input = stream) {
-                text = new String(input.readNBytes(150000), StandardCharsets.UTF_8);
+                java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+                byte[] chunk = new byte[8192];
+                int count;
+                while ((count = input.read(chunk)) != -1) {
+                    if (count == 0) continue;
+                    if (output.size() + count > 150000)
+                        throw new IOException("Ответ посредника слишком длинный");
+                    output.write(chunk, 0, count);
+                }
+                text = new String(output.toByteArray(), StandardCharsets.UTF_8);
             }
             JSONObject response = new JSONObject(text);
             if (status >= 400)
