@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 import re
 import subprocess
@@ -235,25 +236,50 @@ def main():
     (args.output_dir / "SHA256SUMS.txt").write_text(digest + "  " + APK_NAME + "\n", encoding="ascii")
     (args.output_dir / "build-info.json").write_text(json.dumps({**expected, "apk_sha256": digest}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     set_output("artifact_ready", "true")
-    tree_entries = []
-    for name in FILES:
-        blob = github.request("/git/blobs", method="POST",
-                              data={"content": base64.b64encode((args.output_dir / name).read_bytes()).decode("ascii"), "encoding": "base64"})
-        tree_entries.append({"path": name, "mode": "100644", "type": "blob", "sha": blob["sha"]})
-    # No base_tree: the publication branch contains exactly these three files, no workflows or keys.
-    tree = github.request("/git/trees", method="POST", data={"tree": tree_entries})
-    previous = channel["head"] if channel else None
-    commit = github.request("/git/commits", method="POST", data={"tree": tree["sha"],
-        "parents": [previous] if previous else [], "message": "Phone build " + number_text + ": " + revision})
-    ensure_source_current(github, branch, revision)
-    current = read_channel(github)
-    check_channel(current, expected)
-    if (current["head"] if current else None) != previous:
-        raise Superseded("Ветка для APK обновилась во время подготовки. Опубликованные файлы не перезаписаны.")
-    if previous:
-        github.request("/git/refs/heads/" + CHANNEL, method="PATCH", data={"sha": commit["sha"], "force": False})
-    else:
-        github.request("/git/refs", method="POST", data={"ref": "refs/heads/" + CHANNEL, "sha": commit["sha"]})
+    # Binary Git pushes support a 55 MiB APK. The REST create-blob endpoint
+    # rejected the same Base64 JSON payload with HTTP 422. Preserve the existing
+    # public phone-builds branch and its three-file metadata format.
+    with tempfile.TemporaryDirectory(prefix="phone-git-", dir=os.environ.get("RUNNER_TEMP")) as directory:
+        working = Path(directory)
+        remote = "https://github.com/" + repository + ".git"
+        environment = os.environ.copy()
+        environment["GIT_TERMINAL_PROMPT"] = "0"
+        environment["GIT_CONFIG_COUNT"] = "1"
+        environment["GIT_CONFIG_KEY_0"] = "http.https://github.com/.extraheader"
+        credentials = base64.b64encode(("x-access-token:" + token).encode("utf-8")).decode("ascii")
+        environment["GIT_CONFIG_VALUE_0"] = "AUTHORIZATION: basic " + credentials
+
+        def git(*command):
+            result = subprocess.run(
+                ["git", "-C", str(working), *command],
+                env=environment,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            if result.returncode != 0:
+                # Git remote diagnostics can include credential material; report only
+                # the operation name and avoid exposing the runner's GITHUB_TOKEN.
+                raise PublishError("Git-публикация APK завершилась ошибкой на этапе " + command[0])
+
+        git("init", "--quiet")
+        git("remote", "add", "origin", remote)
+        git("fetch", "--quiet", "--depth=1", "origin", "refs/heads/" + CHANNEL)
+        git("checkout", "--quiet", "-B", CHANNEL, "FETCH_HEAD")
+        for name in FILES:
+            shutil.copyfile(args.output_dir / name, working / name)
+        git("add", "--", *FILES)
+        git("-c", "user.name=SpanishLearning CI",
+            "-c", "user.email=ci@users.noreply.github.com",
+            "commit", "--quiet", "-m", "Phone build " + number_text + ": " + revision)
+
+        # Never overwrite another publisher or publish an obsolete source revision.
+        ensure_source_current(github, branch, revision)
+        current = read_channel(github)
+        check_channel(current, expected)
+        if (current["head"] if current else None) != previous:
+            raise Superseded("Ветка для APK уже обновлена, чужие файлы не изменены.")
+        git("push", "--quiet", "origin", "HEAD:refs/heads/" + CHANNEL)
     report("published", "Опубликована версия " + expected["version_name"] + " в публичной ветке phone-builds. Постоянная подпись и SHA-256 проверены.\n\n"
            + "[APK для телефона](https://github.com/" + repository + "/raw/refs/heads/phone-builds/" + APK_NAME + ")", True)
 
