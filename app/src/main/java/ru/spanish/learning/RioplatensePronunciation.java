@@ -1,35 +1,46 @@
 package ru.spanish.learning;
 
 /**
- * Give Spanish TTS a Rioplatense sheísmo pronunciation hint for written "ll".
- * Locale es-AR alone does not guarantee that an installed Android voice says
- * "sh" rather than "y". This changes speech input ONLY, never the displayed
- * text or stored vocabulary/stories.
- *
- * Each "ll" becomes two characters "sh": keep the same UTF-16 length so
- * Android TTS onRangeStart offsets still refer to the original story text.
- * The exact sound ultimately depends on the installed speech engine.
+ * Rioplatense soft sheismo: consonantal ll/y -> soft Russian щ hint.
+ * Only TTS input changes. The zero-width character after ll keeps UTF-16
+ * positions aligned with the original text for story highlighting/resume.
+ * Mixed-script TTS is engine-dependent and must be checked on the device.
  */
 final class RioplatensePronunciation {
     private RioplatensePronunciation() {}
 
     static String forSpeech(String original, String language) {
         if (original == null || !"es".equals(language)) return original;
-        StringBuilder out = null;
-        int last = 0;
-        for (int i = 0; i + 1 < original.length(); i++) {
-            char first = original.charAt(i);
-            char second = original.charAt(i + 1);
-            if ((first == 'l' || first == 'L') && (second == 'l' || second == 'L')) {
-                if (out == null) out = new StringBuilder(original.length());
-                out.append(original, last, i);
-                out.append(first == 'L' ? 'S' : 's');
-                out.append(first == 'L' && second == 'L' ? 'H' : 'h');
-                last = i + 2;
+        StringBuilder out = new StringBuilder(original.length());
+        for (int i = 0; i < original.length(); i++) {
+            char c = original.charAt(i);
+            if ((c == 'l' || c == 'L') && i + 1 < original.length()
+                    && (original.charAt(i + 1) == 'l' || original.charAt(i + 1) == 'L')) {
+                out.append('щ').append('\u200B');
                 i++;
+            } else if ((c == 'y' || c == 'Y') && consonantalY(original, i)) {
+                out.append('щ');
+            } else {
+                out.append(c);
             }
         }
-        if (out == null) return original;
-        return out.append(original, last, original.length()).toString();
+        return out.toString();
+    }
+
+    private static boolean consonantalY(String text, int index) {
+        char c = text.charAt(index);
+        if (c != 'y' && c != 'Y') return false;
+        int start = index;
+        while (start > 0 && Character.isLetter(text.charAt(start - 1))) start--;
+        int end = index + 1;
+        while (end < text.length() && Character.isLetter(text.charAt(end))) end++;
+        // Spanish standalone conjunction "y", final vocalic y in hoy/soy,
+        // and vowel y in rey are not consonantal.
+        if (end - start == 1 || index == end - 1) return false;
+        return index == start || isVowel(text.charAt(index - 1));
+    }
+
+    private static boolean isVowel(char c) {
+        return "aeiouáéíóúüAEIOUÁÉÍÓÚÜ".indexOf(c) >= 0;
     }
 }
