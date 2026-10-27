@@ -115,7 +115,7 @@ public final class OfficialStudyHandoff {
         prompt.append("Учебное задание для обычного ChatGPT (без API). Отвечай строго JSON, ");
         prompt.append("без markdown, не меняй session_id. Перевод должен быть дословно ");
         prompt.append("точным, без догадок; никогда не подменяй непонятные слова созвучными. ");
-        prompt.append("Для испанского используй rioplatense (vos, tenés), для английского EN. ");
+        prompt.append("Для испанского используй аргентинский rioplatense с voseo (vos, tenés), для английского EN. ");
         prompt.append("Русский перевод должен передавать точные формы и контекст. ");
         prompt.append("После твоего первого ответа последуют ТРИ ОТДЕЛЬНЫЕ проверки, ");
         prompt.append("их прохождение нельзя подтверждать в этом ответе.\n");
