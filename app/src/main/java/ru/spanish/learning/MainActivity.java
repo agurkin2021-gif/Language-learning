@@ -47,7 +47,6 @@ public final class MainActivity extends Activity {
     private PersonalStorySync personalStorySync;
     private ChatGptAssistant assistant;
     private GptStudyBrokerClient gptBroker;
-    private Button gptStoryButton, gptWordButton, gptPhraseButton;
     private AlertDialog assistantDialog;
     private EditText assistantInput;
     private boolean awaitingRegularChatGptReply;
@@ -627,12 +626,11 @@ public final class MainActivity extends Activity {
         assistantHistory.setTextSize(16);
         assistantHistory.setTextColor(primaryText());
         assistantHistory.setPadding(0, dp(10), 0, dp(10));
-        assistantHistory.setText("Автоматический ChatGPT: задание и актуальный словарь уходят на ваш " +
-                "защищённый сервер-посредник, GPT создаёт текст, затем три независимых аудита " +
-                "проверяют русский перевод. Приложение само сохраняет только одобренное. " +
-                "Официальный API оплачивается отдельно от ChatGPT Plus. " +
-                "Если API не настроен, никаких платных запросов нет. " +
-                "Ниже остаётся обычный ChatGPT с сохранённым диалогом.");
+        assistantHistory.setText("Привяжите один раз свой существующий диалог ChatGPT. " +
+                "После этого приложение будет открывать ИМЕННО его, сохраняя историю и инструкции проекта. " +
+                "Новый запрос копируется в буфер: вставьте и отправьте его в ChatGPT. " +
+                "Если у ChatGPT подключён личный GitHub, он сможет прочитать актуальный словарь. " +
+                "Ответ-рассказ скопируйте и нажмите «Забрать рассказ».");
         assistantHistory.setPadding(dp(14), dp(14), dp(14), dp(14));
         historyScroll.setBackground(ui.rounded(ui.soft, 15, ui.outline));
         historyScroll.addView(assistantHistory);
@@ -647,40 +645,6 @@ public final class MainActivity extends Activity {
         assistantInput.setTextSize(17);
         ui.styleInput(assistantInput);
         box.addView(assistantInput, spaced(12));
-
-        Button setupBroker = new Button(this);
-        setupBroker.setText(GptStudyBrokerClient.configured(this)
-                ? "Посредник ChatGPT настроен • изменить"
-                : "Настроить автоматический ChatGPT (API)");
-        setupBroker.setAllCaps(false);
-        ui.style(setupBroker, UiStyle.Tone.OUTLINE);
-        box.addView(setupBroker, spaced(6));
-        setupBroker.setOnClickListener(v -> configureGptBroker(setupBroker));
-
-        gptStoryButton = new Button(this);
-        gptStoryButton.setText("Создать рассказ • ChatGPT • аудит 3/3");
-        gptStoryButton.setAllCaps(false);
-        ui.style(gptStoryButton, UiStyle.Tone.PRIMARY);
-        box.addView(gptStoryButton, spaced(6));
-        gptStoryButton.setOnClickListener(v -> submitGptBrokerTask("story", false));
-
-        LinearLayout wordActions = new LinearLayout(this);
-        wordActions.setOrientation(LinearLayout.HORIZONTAL);
-        gptWordButton = new Button(this);
-        gptWordButton.setAllCaps(false);
-        gptWordButton.setText("Добавить слово • аудит 3/3");
-        ui.style(gptWordButton, UiStyle.Tone.OUTLINE);
-        gptPhraseButton = new Button(this);
-        gptPhraseButton.setAllCaps(false);
-        gptPhraseButton.setText("Выражение • аудит 3/3");
-        ui.style(gptPhraseButton, UiStyle.Tone.OUTLINE);
-        wordActions.addView(gptWordButton, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout.LayoutParams phraseParams = new LinearLayout.LayoutParams(0, -2, 1);
-        phraseParams.setMarginStart(dp(6));
-        wordActions.addView(gptPhraseButton, phraseParams);
-        box.addView(wordActions, spaced(6));
-        gptWordButton.setOnClickListener(v -> submitGptBrokerTask("word", false));
-        gptPhraseButton.setOnClickListener(v -> submitGptBrokerTask("word", true));
 
         Button selectConversation = new Button(this);
         selectConversation.setText(PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
@@ -821,7 +785,14 @@ public final class MainActivity extends Activity {
         });
 
         mic.setOnClickListener(v -> openRegularChatGpt(true));
-        send.setOnClickListener(v -> openRegularChatGpt(false));
+        send.setOnClickListener(v -> submitExistingChatAction());
+        // No new visible settings or controls: long-press the existing send
+        // button once to provision the HTTPS broker. Single tap stays the
+        // only user action for text requests.
+        send.setOnLongClickListener(v -> {
+            configureGptBroker(null);
+            return true;
+        });
 
         assistantDialog = new AlertDialog.Builder(this)
                 .setTitle(studyingEnglish()
@@ -838,9 +809,6 @@ public final class MainActivity extends Activity {
             assistantVoiceButton = null;
             assistantSendButton = null;
             assistantGapButton = null;
-            gptStoryButton = null;
-            gptWordButton = null;
-            gptPhraseButton = null;
             assistantProgressRow = null;
             assistantProgressLabel = null;
             if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
@@ -851,6 +819,32 @@ public final class MainActivity extends Activity {
             ChatGptAssistant.SavedStory ready = pendingSavedStory;
             pendingSavedStory = null;
             showStoryReadyDialog(ready);
+        }
+    }
+
+    private void submitExistingChatAction() {
+        if (assistantInput == null || assistantRequestInFlight) return;
+        String text = assistantInput.getText().toString().trim();
+        if (text.isEmpty()) {
+            assistantInput.setError("Напишите задание");
+            return;
+        }
+        // Explicit exact-form commands only; never extract/replace a guessed
+        // word from a Russian-transliterated sentence.
+        java.util.regex.Matcher word = java.util.regex.Pattern.compile(
+                "^(?:добавь|переведи)\\s+слово\\s*[:：-]?\\s*(.+)$",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
+                .matcher(text);
+        java.util.regex.Matcher phrase = java.util.regex.Pattern.compile(
+                "^(?:добавь|переведи)\\s+(?:выражение|фразу)\\s*[:：-]?\\s*(.+)$",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
+                .matcher(text);
+        if (word.matches()) {
+            submitGptBrokerTask("word", false, word.group(1).trim());
+        } else if (phrase.matches()) {
+            submitGptBrokerTask("word", true, phrase.group(1).trim());
+        } else {
+            submitGptBrokerTask("story", false, text);
         }
     }
 
@@ -887,7 +881,7 @@ public final class MainActivity extends Activity {
                     try {
                         GptStudyBrokerClient.configure(this,
                                 address.getText().toString(), token.getText().toString());
-                        if (source != null) source.setText("Посредник ChatGPT настроен • изменить");
+                        if (source != null) source.setText("Обычный ChatGPT");
                         if (assistantStatus != null)
                             assistantStatus.setText("Посредник подключён. Платные запросы начнутся " +
                                     "только при нажатии кнопки генерации.");
@@ -899,7 +893,7 @@ public final class MainActivity extends Activity {
                 .setNeutralButton("Отключить", (d, which) -> {
                     GptStudyBrokerClient.disconnect(this);
                     if (source != null)
-                        source.setText("Настроить автоматический ChatGPT (API)");
+                        source.setText("Обычный ChatGPT");
                     if (assistantStatus != null)
                         assistantStatus.setText("Посредник отключён. Платных запросов нет.");
                 })
@@ -907,7 +901,7 @@ public final class MainActivity extends Activity {
                 .show();
     }
 
-    private void submitGptBrokerTask(String kind, boolean phrase) {
+    private void submitGptBrokerTask(String kind, boolean phrase, String task) {
         if (assistantRequestInFlight || assistantInput == null) return;
         if (!GptStudyBrokerClient.configured(this)) {
             new AlertDialog.Builder(this).setTitle("Нет подключения к посреднику")
@@ -918,7 +912,7 @@ public final class MainActivity extends Activity {
                     .setNegativeButton("Отмена", null).show();
             return;
         }
-        String task = assistantInput.getText().toString().trim();
+        task = task == null ? "" : task.trim();
         if (task.isEmpty()) {
             assistantInput.setError(kind.equals("word")
                     ? "Введите точную форму слова или выражения" : "Введите тему рассказа");
@@ -1279,9 +1273,6 @@ public final class MainActivity extends Activity {
         if (assistantGapButton != null) assistantGapButton.setEnabled(!busy);
         if (assistantVoiceButton != null)
             assistantVoiceButton.setEnabled(!busy || assistantVoiceActive);
-        if (gptStoryButton != null) gptStoryButton.setEnabled(!busy);
-        if (gptWordButton != null) gptWordButton.setEnabled(!busy);
-        if (gptPhraseButton != null) gptPhraseButton.setEnabled(!busy);
         if (busy && assistantStatus != null) assistantStatus.setText(assistantRequestStage);
     }
 
