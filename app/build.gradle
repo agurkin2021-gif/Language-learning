@@ -28,7 +28,5 @@ android {
 }
 dependencies {
     implementation 'androidx.browser:browser:1.8.0'
-    // Google AI Edge CPU text inference: the model itself downloads once on the phone.
-    implementation 'com.google.mediapipe:tasks-genai:0.10.27'
     testImplementation 'junit:junit:4.13.2'
 }

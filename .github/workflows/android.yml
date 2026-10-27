@@ -23,16 +23,18 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Test GPT intermediary without external API calls
+        run: python3 -m unittest discover -s bridge -p 'test_*.py' -v
       - name: Build and verify numbered APK
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
-      - name: Verify no bundled model or legacy voice engine
+      - name: Verify model and native engine are removed from APK
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -48,15 +50,10 @@ jobs:
                   ))
               ]
           assert not forbidden, f"Obsolete voice assets present: {forbidden[:10]}"
-          # Native CPU inference runtime is now included (~54 MiB), but the
-          # 550 MiB language-model weights MUST remain downloadable only.
-          assert not any(name.endswith((".task", ".litertlm", ".gguf")) for name in archive.namelist()), (
-              "Downloaded LLM weights must not be bundled in APK"
+          assert apk.stat().st_size < 32 * 1024 * 1024, (
+              f"Lite APK exceeds 32 MiB: {apk.stat().st_size}"
           )
-          assert apk.stat().st_size < 80 * 1024 * 1024, (
-              f"Offline APK exceeds 80 MiB: {apk.stat().st_size}"
-          )
-          print(f"Offline APK: {apk.stat().st_size / 1024 / 1024:.2f} MiB; model weights external")
+          print(f"Compact APK: {apk.stat().st_size / 1024 / 1024:.2f} MiB; no bundled voice model")
           PY
       - name: Verify installable APK signature and record digest
         run: |
@@ -126,7 +123,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -185,7 +182,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -240,7 +237,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -326,7 +323,7 @@ jobs:
         if: steps.signing.outputs.available == 'true'
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
       - uses: android-actions/setup-android@v3
         if: steps.signing.outputs.available == 'true'
         with:
@@ -434,7 +431,7 @@ jobs:
         if: steps.signing.outputs.available == 'true'
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
       - uses: android-actions/setup-android@v3
         if: steps.signing.outputs.available == 'true'
         with:

@@ -38,7 +38,6 @@ import android.widget.*;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MainActivity extends Activity {
     private Store store;
@@ -47,13 +46,7 @@ public final class MainActivity extends Activity {
     private RemoteContentSync contentSync;
     private PersonalStorySync personalStorySync;
     private ChatGptAssistant assistant;
-    private OfflineStoryGenerator offlineGenerator;
-    private Button offlineGenerateButton;
-    private TextView offlineModelStatus;
-    private final Handler offlineModelHandler = new Handler(Looper.getMainLooper());
-    private Runnable offlineModelPoll;
-    private boolean offlineStartAfterDownload;
-    private final AtomicInteger offlineGenerationId = new AtomicInteger();
+    private GptStudyBrokerClient gptBroker;
     private AlertDialog assistantDialog;
     private EditText assistantInput;
     private boolean awaitingRegularChatGptReply;
@@ -125,7 +118,7 @@ public final class MainActivity extends Activity {
         contentSync = new RemoteContentSync();
         personalStorySync = new PersonalStorySync();
         assistant = new ChatGptAssistant(this);
-        offlineGenerator = new OfflineStoryGenerator();
+        gptBroker = new GptStudyBrokerClient();
         player = new SpeechPlayer(this, this::updatePlayer);
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f); player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
@@ -633,10 +626,7 @@ public final class MainActivity extends Activity {
         assistantHistory.setTextSize(16);
         assistantHistory.setTextColor(primaryText());
         assistantHistory.setPadding(0, dp(10), 0, dp(10));
-        assistantHistory.setText("Сверху можно создать рассказ автоматически локальной нейросетью без API и дополнительных лимитов. " +
-                "Модель скачивается один раз (~550 МБ), дальше работает офлайн. " +
-                "Обычный ChatGPT ниже остаётся отдельной возможностью. " +
-                "Привяжите один раз свой существующий диалог ChatGPT. " +
+        assistantHistory.setText("Привяжите один раз свой существующий диалог ChatGPT. " +
                 "После этого приложение будет открывать ИМЕННО его, сохраняя историю и инструкции проекта. " +
                 "Новый запрос копируется в буфер: вставьте и отправьте его в ChatGPT. " +
                 "Если у ChatGPT подключён личный GitHub, он сможет прочитать актуальный словарь. " +
@@ -655,20 +645,6 @@ public final class MainActivity extends Activity {
         assistantInput.setTextSize(17);
         ui.styleInput(assistantInput);
         box.addView(assistantInput, spaced(12));
-
-        // Primary action: complete text -> local model -> SQLite story flow.
-        // No ChatGPT token, browser, API request or clipboard involved.
-        offlineGenerateButton = new Button(this);
-        offlineGenerateButton.setText("Создать рассказ автоматически • офлайн");
-        offlineGenerateButton.setAllCaps(false);
-        ui.style(offlineGenerateButton, UiStyle.Tone.PRIMARY);
-        box.addView(offlineGenerateButton, spaced(6));
-        offlineModelStatus = new TextView(this);
-        offlineModelStatus.setTextSize(13);
-        offlineModelStatus.setTextColor(secondaryText());
-        box.addView(offlineModelStatus, spaced(4));
-        offlineGenerateButton.setOnClickListener(v -> startOfflineStory());
-        refreshOfflineModelState();
 
         Button selectConversation = new Button(this);
         selectConversation.setText(PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
@@ -787,12 +763,14 @@ public final class MainActivity extends Activity {
         box.addView(voiceHelp);
 
         Runnable refreshConnection = () -> {
-            assistantStatus.setText(PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
-                    ? "Привяжите постоянный чат для сохранения его истории."
-                    : "Откроется ваш постоянный чат • " +
-                    (PrivateVocabularySync.isConfigured(this)
-                            ? "личный словарь синхронизируется с GitHub"
-                            : "живой доступ ChatGPT к словам ещё не настроен"));
+            assistantStatus.setText(GptStudyBrokerClient.configured(this)
+                    ? "ChatGPT отвечает внутри приложения • перевод проходит аудит 3/3"
+                    : PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
+                        ? "Привяжите постоянный чат для сохранения его истории."
+                        : "Откроется ваш постоянный чат • " +
+                        (PrivateVocabularySync.isConfigured(this)
+                                ? "личный словарь синхронизируется с GitHub"
+                                : "живой доступ ChatGPT к словам ещё не настроен"));
             connect.setVisibility(View.GONE);
             send.setEnabled(!assistantRequestInFlight);
         };
@@ -809,7 +787,14 @@ public final class MainActivity extends Activity {
         });
 
         mic.setOnClickListener(v -> openRegularChatGpt(true));
-        send.setOnClickListener(v -> openRegularChatGpt(false));
+        send.setOnClickListener(v -> submitExistingChatAction());
+        // No new visible settings or controls: long-press the existing send
+        // button once to provision the HTTPS broker. Single tap stays the
+        // only user action for text requests.
+        send.setOnLongClickListener(v -> {
+            configureGptBroker(null);
+            return true;
+        });
 
         assistantDialog = new AlertDialog.Builder(this)
                 .setTitle(studyingEnglish()
@@ -826,10 +811,6 @@ public final class MainActivity extends Activity {
             assistantVoiceButton = null;
             assistantSendButton = null;
             assistantGapButton = null;
-            offlineGenerateButton = null;
-            offlineModelStatus = null;
-            if (offlineModelPoll != null) offlineModelHandler.removeCallbacks(offlineModelPoll);
-            offlineModelPoll = null;
             assistantProgressRow = null;
             assistantProgressLabel = null;
             if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
@@ -843,109 +824,210 @@ public final class MainActivity extends Activity {
         }
     }
 
-    /**
-     * Official ChatGPT in a trusted browser tab: no app subscription sharing,
-     * OAuth token or paid API key. Browsers do not expose ChatGPT's composer,
-     * so the user explicitly pastes the prepared context and sends the message.
-     */
-    private void refreshOfflineModelState() {
-        if (offlineModelStatus == null || offlineGenerateButton == null) return;
-        OfflineModelManager.State state;
-        try {
-            state = OfflineModelManager.status(this);
-        } catch (Exception e) {
-            offlineModelStatus.setText(e.getMessage());
+    private void submitExistingChatAction() {
+        if (assistantInput == null || assistantRequestInFlight) return;
+        String text = assistantInput.getText().toString().trim();
+        if (text.isEmpty()) {
+            assistantInput.setError("Напишите задание");
             return;
         }
-        offlineModelStatus.setText(state.message());
-        offlineGenerateButton.setText(state.ready()
-                ? "Создать рассказ автоматически • офлайн"
-                : state.downloading() ? "Загрузка нейросети • " + state.percent() + "%"
-                        : "Установить локальную нейросеть (~550 МБ)");
-        offlineGenerateButton.setEnabled(!assistantRequestInFlight && !state.downloading());
-        if (offlineModelPoll != null) offlineModelHandler.removeCallbacks(offlineModelPoll);
-        offlineModelPoll = null;
-        if (state.ready() && offlineStartAfterDownload && !assistantRequestInFlight) {
-            offlineStartAfterDownload = false;
-            runOfflineGeneration();
-        } else if (state.downloading()) {
-            offlineModelPoll = this::refreshOfflineModelState;
-            offlineModelHandler.postDelayed(offlineModelPoll, 1400);
+        // Explicit exact-form commands only; never extract/replace a guessed
+        // word from a Russian-transliterated sentence.
+        java.util.regex.Matcher word = java.util.regex.Pattern.compile(
+                "^(?:добавь|переведи)\\s+слово\\s*[:：-]?\\s*(.+)$",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
+                .matcher(text);
+        java.util.regex.Matcher phrase = java.util.regex.Pattern.compile(
+                "^(?:добавь|переведи)\\s+(?:выражение|фразу)\\s*[:：-]?\\s*(.+)$",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
+                .matcher(text);
+        if (word.matches()) {
+            submitGptBrokerTask("word", false, word.group(1).trim());
+        } else if (phrase.matches()) {
+            submitGptBrokerTask("word", true, phrase.group(1).trim());
+        } else {
+            boolean story = java.util.regex.Pattern.compile(
+                    "(рассказ|сказк|истори|новелл|\\bstory\\b|cuento)",
+                    java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
+                    .matcher(text).find();
+            submitGptBrokerTask(story ? "story" : "chat", false, text);
         }
     }
 
-    private void startOfflineStory() {
-        if (assistantRequestInFlight) return;
-        OfflineModelManager.State state;
-        try { state = OfflineModelManager.status(this); }
-        catch (Exception e) {
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
-            return;
-        }
-        if (state.ready()) {
-            runOfflineGeneration();
-            return;
-        }
-        if (state.downloading()) { refreshOfflineModelState(); return; }
+    /** Only a private relay secret is stored on Android; the OpenAI key stays on a server. */
+    private void configureGptBroker(Button source) {
+        LinearLayout inputs = new LinearLayout(this);
+        inputs.setOrientation(LinearLayout.VERTICAL);
+        inputs.setPadding(dp(18), dp(10), dp(18), dp(6));
+        TextView note = new TextView(this);
+        note.setText("Этот режим работает автоматически через официальный OpenAI API, " +
+                "который оплачивается отдельно от подписки ChatGPT. " +
+                "Нужен ваш HTTPS-сервер со скриптом bridge/chatgpt_broker.py. " +
+                "Без настройки платные запросы не выполняются.");
+        note.setTextSize(14);
+        note.setTextColor(primaryText());
+        inputs.addView(note, spaced(6));
+        EditText address = new EditText(this);
+        address.setSingleLine(true);
+        address.setHint("https://study.example.com");
+        address.setText(GptStudyBrokerClient.baseUrl(this));
+        address.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        inputs.addView(address, spaced(8));
+        EditText token = new EditText(this);
+        token.setSingleLine(true);
+        token.setHint("Токен посредника (не ключ OpenAI)");
+        token.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        inputs.addView(token, spaced(8));
         new AlertDialog.Builder(this)
-                .setTitle("Установить локальную нейросеть?")
-                .setMessage("Один раз загрузится Qwen2.5-0.5B (~550 МБ) из Hugging Face. " +
-                        "Нужно примерно 1 ГБ свободного места; желательно Wi-Fi. " +
-                        "Модель работает прямо на телефоне без ChatGPT, API-ключей и интернета. " +
-                        "Качество может быть ниже ChatGPT. После установки рассказ создастся автоматически.")
-                .setPositiveButton("Скачать", (d, w) -> {
+                .setTitle("Подключить посредника ChatGPT")
+                .setView(inputs)
+                .setPositiveButton("Сохранить", (d, which) -> {
                     try {
-                        offlineStartAfterDownload = true;
-                        OfflineModelManager.download(this);
-                        refreshOfflineModelState();
-                    } catch (Exception e) {
-                        offlineStartAfterDownload = false;
-                        Toast.makeText(this, "Не удалось начать загрузку: " + e.getMessage(),
-                                Toast.LENGTH_LONG).show();
+                        GptStudyBrokerClient.configure(this,
+                                address.getText().toString(), token.getText().toString());
+                        if (source != null) source.setText("Обычный ChatGPT");
+                        if (assistantStatus != null)
+                            assistantStatus.setText("Автоматический ChatGPT подключён. Платные запросы " +
+                                    "отправляются только по нажатию существующей кнопки.");
+                    } catch (Exception error) {
+                        new AlertDialog.Builder(this).setTitle("Не подключено")
+                                .setMessage(error.getMessage()).setPositiveButton("OK", null).show();
                     }
-                }).setNegativeButton("Отмена", null).show();
+                })
+                .setNeutralButton("Отключить", (d, which) -> {
+                    GptStudyBrokerClient.disconnect(this);
+                    if (source != null)
+                        source.setText("Обычный ChatGPT");
+                    if (assistantStatus != null)
+                        assistantStatus.setText("Посредник отключён. Платных запросов нет.");
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
-    private void runOfflineGeneration() {
-        if (assistantRequestInFlight || offlineGenerator == null || assistantInput == null) return;
-        String request = assistantInput.getText().toString().trim();
+    private void submitGptBrokerTask(String kind, boolean phrase, String task) {
+        if (assistantRequestInFlight || assistantInput == null) return;
+        if (!GptStudyBrokerClient.configured(this)) {
+            // Until the owner has explicitly provisioned the paid API relay,
+            // keep the existing ChatGPT handoff exactly as it was.
+            openRegularChatGpt(false);
+            return;
+        }
+        final String submittedTask = task == null ? "" : task.trim();
+        if (submittedTask.isEmpty()) {
+            assistantInput.setError(kind.equals("word")
+                    ? "Введите точную форму слова или выражения" : "Введите тему рассказа");
+            return;
+        }
+        if (kind.equals("word") && submittedTask.length() > 120) {
+            assistantInput.setError("Одна точная форма, не больше 120 символов");
+            return;
+        }
+        Store destination = store;
         String language = studyLanguage;
-        Store activeStore = store;
-        int requestId = offlineGenerationId.incrementAndGet();
-        updateAssistantBusy(true, "Создаю рассказ прямо на телефоне…");
-        offlineGenerator.generate(this, activeStore, language, request,
-                new OfflineStoryGenerator.Listener() {
+        updateAssistantBusy(true, "Отправляю задание через защищённый посредник…");
+        gptBroker.request(this, destination, language, kind, submittedTask,
+                new GptStudyBrokerClient.Listener() {
                     @Override public void progress(String stage) {
                         runOnUiThread(() -> {
-                            if (requestId != offlineGenerationId.get() || isFinishing() || isDestroyed()) return;
-                            updateAssistantBusy(true, stage);
+                            if (!isFinishing() && !isDestroyed())
+                                updateAssistantBusy(true, stage);
                         });
                     }
-
-                    @Override public void complete(long storyId, String title, String error) {
+                    @Override public void completed(org.json.JSONObject result, String error) {
                         runOnUiThread(() -> {
-                            if (requestId != offlineGenerationId.get() || isFinishing() || isDestroyed()) return;
+                            if (isFinishing() || isDestroyed()) return;
                             updateAssistantBusy(false, "");
-                            if (!error.isEmpty()) {
+                            if (error != null && !error.isEmpty()) {
                                 if (assistantStatus != null) assistantStatus.setText(error);
                                 new AlertDialog.Builder(MainActivity.this)
-                                        .setTitle("Локальный рассказ не создан")
-                                        .setMessage(error)
-                                        .setPositiveButton("OK", null).show();
+                                        .setTitle("ChatGPT не добавил материал")
+                                        .setMessage(error).setPositiveButton("OK", null).show();
                                 return;
                             }
-                            if (assistantStatus != null)
-                                assistantStatus.setText("Локальный рассказ сохранён: " + title);
-                            if (store == activeStore && language.equals(studyLanguage))
-                                showStoryReadyDialog(new ChatGptAssistant.SavedStory(storyId, title));
-                            else Toast.makeText(MainActivity.this,
-                                    "Рассказ сохранён в библиотеке языка " + language,
-                                    Toast.LENGTH_LONG).show();
+                            try {
+                                if (result == null) throw new IllegalStateException("Пустой ответ");
+                                if (!"chat".equals(kind))
+                                    GptStudyBrokerClient.checkAudits(result);
+                                if (!language.equals(result.getString("language")))
+                                    throw new IllegalArgumentException("Ответ на другом языке");
+                                if ("story".equals(kind)) {
+                                    RegularChatGptBridge.StoryDraft draft =
+                                            GptStudyBrokerClient.story(result);
+                                    boolean added = destination.addStoryIfMissing(draft.title(),
+                                            draft.body(), draft.translation(),
+                                            "ChatGPT API • три аудита перевода");
+                                    if (!added) {
+                                        Toast.makeText(MainActivity.this,
+                                                "Рассказ уже существует", Toast.LENGTH_LONG).show();
+                                        return;
+                                    }
+                                    long id = -1;
+                                    for (Store.Story story : destination.stories()) {
+                                        if (draft.title().equals(story.title())) {
+                                            id = story.id(); break;
+                                        }
+                                    }
+                                    if (assistantStatus != null)
+                                        assistantStatus.setText("РАССКАЗ ГОТОВ: " + draft.title());
+                                    if (store == destination && id > 0)
+                                        showStoryReadyDialog(new ChatGptAssistant.SavedStory(id, draft.title()));
+                                    else Toast.makeText(MainActivity.this,
+                                            "Рассказ сохранён в библиотеке " + language,
+                                            Toast.LENGTH_LONG).show();
+                                } else if ("chat".equals(kind)) {
+                                    String reply = result.getString("text").trim();
+                                    if (reply.isEmpty()) throw new IllegalArgumentException("Пустой ответ ChatGPT");
+                                    if (assistantHistory != null) {
+                                        String old = assistantHistory.getText().toString();
+                                        assistantHistory.setText(old + "\\n\\nВы: " + submittedTask +
+                                                "\\nChatGPT: " + reply);
+                                    }
+                                    if (assistantStatus != null)
+                                        assistantStatus.setText("ChatGPT ответил внутри приложения");
+                                } else {
+                                    String word = result.getString("word").trim();
+                                    String meaning = result.getString("translation").trim();
+                                    if (!word.equals(submittedTask))
+                                        throw new IllegalArgumentException("Изменена исходная словоформа");
+                                    StoryVocabulary.requireVerified(word, meaning);
+                                    if (destination.containsCard(word, phrase ? 1 : 0)) {
+                                        Toast.makeText(MainActivity.this, "Уже есть в словаре",
+                                                Toast.LENGTH_LONG).show();
+                                        return;
+                                    }
+                                    boolean added;
+                                    if (phrase) {
+                                        added = destination.addCardIfMissing(word, meaning, 1, 0);
+                                    } else {
+                                        destination.addStoryWord(word, meaning, 0);
+                                        added = true;
+                                    }
+                                    if (assistantStatus != null)
+                                        assistantStatus.setText((added ? "Проверено 3/3 и добавлено: "
+                                                : "Уже есть: ") + word + " — " + meaning);
+                                    Toast.makeText(MainActivity.this,
+                                            "Перевод прошёл аудит 3/3: " + word,
+                                            Toast.LENGTH_LONG).show();
+                                }
+                            } catch (Exception validationError) {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle("Материал не сохранён")
+                                        .setMessage(validationError.getMessage())
+                                        .setPositiveButton("OK", null).show();
+                            }
                         });
                     }
                 });
     }
 
+    /**
+     * Official ChatGPT in a trusted browser tab: no app subscription sharing,
+     * OAuth token or paid API key. Browsers do not expose ChatGPT's composer,
+     * so the user explicitly pastes the prepared context and sends the message.
+     */
     private void openRegularChatGpt(boolean voice) {
         if (assistantRequestInFlight) {
             Toast.makeText(this, "Сначала завершите текущую операцию", Toast.LENGTH_LONG).show();
@@ -1205,7 +1287,6 @@ public final class MainActivity extends Activity {
         if (assistantGapButton != null) assistantGapButton.setEnabled(!busy);
         if (assistantVoiceButton != null)
             assistantVoiceButton.setEnabled(!busy || assistantVoiceActive);
-        if (offlineGenerateButton != null) offlineGenerateButton.setEnabled(!busy);
         if (busy && assistantStatus != null) assistantStatus.setText(assistantRequestStage);
     }
 
@@ -2266,9 +2347,7 @@ public final class MainActivity extends Activity {
         if (contentSync != null) contentSync.close();
         if (personalStorySync != null) personalStorySync.close();
         if (assistant != null) assistant.close();
-        offlineGenerationId.incrementAndGet();
-        if (offlineModelPoll != null) offlineModelHandler.removeCallbacks(offlineModelPoll);
-        if (offlineGenerator != null) offlineGenerator.close();
+        if (gptBroker != null) gptBroker.close();
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (assistantVoiceOutput != null) assistantVoiceOutput.close();
         player.close();
