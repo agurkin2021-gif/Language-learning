@@ -763,12 +763,14 @@ public final class MainActivity extends Activity {
         box.addView(voiceHelp);
 
         Runnable refreshConnection = () -> {
-            assistantStatus.setText(PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
-                    ? "Привяжите постоянный чат для сохранения его истории."
-                    : "Откроется ваш постоянный чат • " +
-                    (PrivateVocabularySync.isConfigured(this)
-                            ? "личный словарь синхронизируется с GitHub"
-                            : "живой доступ ChatGPT к словам ещё не настроен"));
+            assistantStatus.setText(GptStudyBrokerClient.configured(this)
+                    ? "ChatGPT отвечает внутри приложения • перевод проходит аудит 3/3"
+                    : PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
+                        ? "Привяжите постоянный чат для сохранения его истории."
+                        : "Откроется ваш постоянный чат • " +
+                        (PrivateVocabularySync.isConfigured(this)
+                                ? "личный словарь синхронизируется с GitHub"
+                                : "живой доступ ChatGPT к словам ещё не настроен"));
             connect.setVisibility(View.GONE);
             send.setEnabled(!assistantRequestInFlight);
         };
@@ -887,8 +889,8 @@ public final class MainActivity extends Activity {
                                 address.getText().toString(), token.getText().toString());
                         if (source != null) source.setText("Обычный ChatGPT");
                         if (assistantStatus != null)
-                            assistantStatus.setText("Посредник подключён. Платные запросы начнутся " +
-                                    "только при нажатии кнопки генерации.");
+                            assistantStatus.setText("Автоматический ChatGPT подключён. Платные запросы " +
+                                    "отправляются только по нажатию существующей кнопки.");
                     } catch (Exception error) {
                         new AlertDialog.Builder(this).setTitle("Не подключено")
                                 .setMessage(error.getMessage()).setPositiveButton("OK", null).show();
