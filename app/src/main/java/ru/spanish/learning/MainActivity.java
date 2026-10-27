@@ -48,6 +48,9 @@ public final class MainActivity extends Activity {
     private ChatGptAssistant assistant;
     private AlertDialog assistantDialog;
     private EditText assistantInput;
+    private boolean awaitingRegularChatGptReply;
+    private String regularChatGptPreparedText = "";
+    private long regularChatGptOpenedAt;
     private TextView assistantHistory;
     private TextView assistantStatus;
     private SpeechRecognizer speechRecognizer;
@@ -128,6 +131,7 @@ public final class MainActivity extends Activity {
             screen = "stories";
         }
         render();
+        handleIncomingStoryShare(getIntent());
     }
     private boolean studyingEnglish() { return "en".equals(studyLanguage); }
     private String prefKey(String key) { return studyingEnglish() ? "en_" + key : key; }
@@ -815,10 +819,13 @@ public final class MainActivity extends Activity {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (clipboard == null) throw new IllegalStateException("Буфер обмена недоступен");
             clipboard.setPrimaryClip(ClipData.newPlainText("Задание и мой словарь", prepared));
+            awaitingRegularChatGptReply = true;
+            regularChatGptPreparedText = prepared;
+            regularChatGptOpenedAt = SystemClock.uptimeMillis();
             if (assistantStatus != null) {
                 assistantStatus.setText("Контекст и задача скопированы. В открывшемся ChatGPT " +
                         "вставьте текст в поле ввода и нажмите отправку. После ответа " +
-                        "скопируйте JSON рассказа и нажмите «Забрать рассказ».");
+                        "скопируйте JSON рассказа и вернитесь в приложение: оно само предложит его сохранить.");
             }
             new CustomTabsIntent.Builder().setShowTitle(true).build()
                     .launchUrl(this, Uri.parse("https://chatgpt.com/"));
@@ -829,7 +836,7 @@ public final class MainActivity extends Activity {
         }
     }
 
-    /** Imports only a user-approved story from the clipboard, not arbitrary cards. */
+    /** Manual fallback: explicit clipboard reading only while our app is foreground. */
     private void importRegularChatGptStory() {
         try {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
@@ -837,8 +844,23 @@ public final class MainActivity extends Activity {
             if (clip == null || clip.getItemCount() < 1)
                 throw new IllegalArgumentException("Сначала скопируйте JSON-ответ ChatGPT");
             CharSequence raw = clip.getItemAt(0).coerceToText(this);
-            RegularChatGptBridge.StoryDraft draft =
-                    RegularChatGptBridge.parseStory(raw == null ? "" : raw.toString());
+            importRegularChatGptStoryText(raw == null ? "" : raw.toString());
+        } catch (Exception e) {
+            showStoryImportError(e.getMessage());
+        }
+    }
+
+    private void showStoryImportError(String error) {
+        String message = error == null ? "Не удалось разобрать ответ ChatGPT" : error;
+        new AlertDialog.Builder(this).setTitle("Рассказ не импортирован")
+                .setMessage(message + "\\n\\nСкопируйте сам текст JSON-ответа, а не ссылку на переписку.")
+                .setPositiveButton("OK", null).show();
+    }
+
+    /** Accepts a deliberately shared or copied story; never writes until confirmed. */
+    private void importRegularChatGptStoryText(String raw) {
+        try {
+            RegularChatGptBridge.StoryDraft draft = RegularChatGptBridge.parseStory(raw);
             if (!studyLanguage.equals(draft.language()))
                 throw new IllegalArgumentException("Этот рассказ для " +
                         ("en".equals(draft.language()) ? "английского" : "испанского") +
@@ -880,6 +902,44 @@ public final class MainActivity extends Activity {
             new AlertDialog.Builder(this).setTitle("Рассказ не импортирован")
                     .setMessage(message + "\n\nСкопируйте весь JSON с полями format, language, title, body, translation.")
                     .setPositiveButton("OK", null).show();
+        }
+    }
+
+    private void handleIncomingStoryShare(Intent intent) {
+        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())
+                || !"text/plain".equals(intent.getType())) return;
+        intent.setAction(null); // Do not re-import on rotate/resume.
+        CharSequence shared = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+        String raw = shared == null ? "" : shared.toString().trim();
+        if (raw.isEmpty()) return;
+        if (!raw.startsWith("{") && !raw.startsWith("```")) {
+            showStoryImportError("Передан не JSON рассказа. Ссылка на беседу не содержит текста рассказа.");
+            return;
+        }
+        awaitingRegularChatGptReply = false;
+        importRegularChatGptStoryText(raw);
+    }
+
+    private void maybeReceiveCopiedStory() {
+        if (!awaitingRegularChatGptReply || SystemClock.uptimeMillis() - regularChatGptOpenedAt < 1200)
+            return;
+        // Read the clipboard only upon return from our own ChatGPT tab.
+        ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (cb == null || !cb.hasPrimaryClip()) return;
+        ClipData clip = cb.getPrimaryClip();
+        if (clip == null || clip.getItemCount() == 0) return;
+        CharSequence shared = clip.getItemAt(0).coerceToText(this);
+        String text = shared == null ? "" : shared.toString().trim();
+        if (text.isEmpty() || text.equals(regularChatGptPreparedText)
+                || (!text.startsWith("{") && !text.startsWith("```"))) return;
+        try {
+            RegularChatGptBridge.parseStory(text);
+            awaitingRegularChatGptReply = false; // avoid repeated dialogs
+            regularChatGptPreparedText = "";
+            importRegularChatGptStoryText(text);
+        } catch (Exception ignored) {
+            // An unrelated clipboard item must not cause an automatic error dialog.
+            // Explicit import button remains available if the user needs help.
         }
     }
 
@@ -1196,6 +1256,7 @@ public final class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        handleIncomingStoryShare(intent);
     }
 
     private void cards() {
@@ -1987,6 +2048,7 @@ public final class MainActivity extends Activity {
         if (prefs.getBoolean(prefKey("cardDraftOpen"), false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
         syncContent();
         PrivateVocabularySync.schedule(this);
+        maybeReceiveCopiedStory();
     }
     @Override protected void onPause() { stopAssistantVoice(); cancelCardSpeech(); player.pause(); remember(); rememberCardDraft(); super.onPause(); }
     @Override protected void onDestroy() {
