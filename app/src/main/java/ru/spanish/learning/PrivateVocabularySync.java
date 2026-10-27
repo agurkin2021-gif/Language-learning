@@ -211,6 +211,40 @@ public final class PrivateVocabularySync {
         return root;
     }
 
+    /** Account selector without exposing tokens or other credentials. */
+    public static String profileRepository(Context context) {
+        if (!isConfigured(context)) return "";
+        try { return readConfig(context).repo(); }
+        catch (Exception ignored) { return ""; }
+    }
+
+    /** Stories are read from the same PRIVATE repo that receives this phone's vocabulary. */
+    public static String downloadStoryFeed(Context context, String language, String expectedRepo)
+            throws Exception {
+        if (!"es".equals(language) && !"en".equals(language))
+            throw new IllegalArgumentException("language");
+        Config config = readConfig(context);
+        if (!config.repo().equals(expectedRepo))
+            throw new IllegalStateException("Profile changed");
+        JSONObject repository = request("GET", API + config.repo(), config.token(), null, false);
+        if (!repository.optBoolean("private", false))
+            throw new IllegalArgumentException("Репозиторий должен быть приватным");
+        String branch = repository.getString("default_branch");
+        if (branch.isEmpty()) throw new IllegalArgumentException("У репозитория нет основной ветки");
+        String path = "content/stories-" + language + ".json";
+        JSONObject file = request("GET", API + config.repo() + "/contents/" + path +
+                "?ref=" + URLEncoder.encode(branch, "UTF-8"), config.token(), null, true);
+        if (file == null) return new JSONObject().put("version", 1)
+                .put("items", new JSONArray()).toString();
+        if (!"file".equals(file.optString("type")) || !"base64".equals(file.optString("encoding")))
+            throw new IllegalArgumentException("Неверный формат файла рассказов");
+        String encoded = file.getString("content");
+        if (encoded.length() > 720000) throw new IllegalArgumentException("Файл рассказов слишком большой");
+        byte[] bytes = Base64.decode(encoded, Base64.DEFAULT);
+        if (bytes.length > 512 * 1024) throw new IllegalArgumentException("Файл рассказов слишком большой");
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
     private static String hexDigest(String text) throws Exception {
         byte[] bytes = MessageDigest.getInstance("SHA-256")
                 .digest(text.getBytes(StandardCharsets.UTF_8));
