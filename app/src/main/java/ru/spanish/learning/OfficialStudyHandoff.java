@@ -290,7 +290,8 @@ public final class OfficialStudyHandoff {
                 "Верни ТОЛЬКО JSON (без Markdown) с ТОЧНЫМИ ключами и session_id: " +
                 "{\"format\":\"study_audit_v1\",\"session_id\":\"" +
                 s.getString("session_id") + "\",\"stage\":" + stage +
-                ",\"pass\":true,\"issues\":[],\"verified_translation\":\"\"}. " +
+                ",\"pass\":true,\"issues\":[],\"verified_translation\":" +
+                JSONObject.quote(s.getString("translation")) + "}. " +
                 "В verified_translation дословно скопируй исходный русский перевод, " +
                 "БЕЗ единого изменения; при ошибке сообщи pass:false и issues. " +
                 "Материал:\n" + material.toString();
