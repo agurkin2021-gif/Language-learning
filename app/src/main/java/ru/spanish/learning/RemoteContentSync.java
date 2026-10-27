@@ -71,7 +71,10 @@ public final class RemoteContentSync {
     }
 
     private String download() throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) new URL(FEED_URL).openConnection();
+        // A newly published story should be fetched on the next app open, not from CDN cache.
+        HttpURLConnection connection = (HttpURLConnection) new URL(FEED_URL + "?t=" + System.currentTimeMillis()).openConnection();
+        connection.setUseCaches(false);
+        connection.setRequestProperty("Cache-Control", "no-cache");
         connection.setConnectTimeout(7000);
         connection.setReadTimeout(10000);
         connection.setRequestProperty("Accept", "application/json");
