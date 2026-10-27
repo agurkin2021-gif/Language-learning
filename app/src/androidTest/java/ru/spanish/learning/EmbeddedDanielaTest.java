@@ -21,7 +21,7 @@ public final class EmbeddedDanielaTest extends AndroidTestCase {
         OfflineTtsVitsModelConfig vits = new OfflineTtsVitsModelConfig();
         vits.setModel(DanielaVoiceOption.MODEL_PATH);
         vits.setTokens(DanielaVoiceOption.TOKENS_PATH);
-        vits.setDataDir(DanielaVoiceOption.DATA_DIRECTORY);
+        vits.setDataDir(DanielaAssets.ensurePhonemeDirectory(getContext()));
         OfflineTtsModelConfig model = new OfflineTtsModelConfig();
         model.setVits(vits);
         model.setNumThreads(2);
