@@ -40,8 +40,8 @@ public final class UpdatePolicyTest {
     }
 
     @Test public void supportsSignedBundledSpeechModelUpdates() {
-        assertTrue("Offline voice builds must be accepted", UpdatePolicy.MAX_APK_BYTES >= 95L * 1024 * 1024);
-        assertTrue("APK size remains bounded", UpdatePolicy.MAX_APK_BYTES <= 100L * 1024 * 1024);
+        assertTrue("140 MB signed voice build must fit", UpdatePolicy.MAX_APK_BYTES >= 140L * 1024 * 1024);
+        assertTrue("APK size remains bounded", UpdatePolicy.MAX_APK_BYTES <= 200L * 1024 * 1024);
     }
 
     @Test public void requiresACompleteSha256Digest() {
