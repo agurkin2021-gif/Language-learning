@@ -85,6 +85,8 @@ public final class GptStudyBrokerClient {
             try {
                 listener.progress("Передаю словарь и задание посреднику ChatGPT…");
                 JSONObject payload = makeRequest(store.vocabulary(), language, kind, userTask);
+                if ("chat".equals(kind))
+                    payload.put("history", history(context, language));
                 JSONObject answer = exchange(url, bearer, "POST", "/v1/jobs", payload);
                 String id = answer.getString("job_id");
                 if (!id.matches("[A-Za-z0-9_-]{20,60}"))
@@ -97,10 +99,12 @@ public final class GptStudyBrokerClient {
                     String state = job.optString("status");
                     if ("done".equals(state)) {
                         JSONObject result = job.getJSONObject("result");
-                        checkAudits(result);
+                        if (!"chat".equals(kind)) checkAudits(result);
                         if (!language.equals(result.optString("language"))
                                 || !kind.equals(result.optString("kind")))
                             throw new IOException("Ответ относится к другому языку или типу");
+                        if ("chat".equals(kind))
+                            recordExchange(context, language, userTask, result.optString("text", ""));
                         listener.completed(result, "");
                         return;
                     }
@@ -121,11 +125,39 @@ public final class GptStudyBrokerClient {
         });
     }
 
+    private static String historyKey(String language) {
+        if (!"es".equals(language) && !"en".equals(language))
+            throw new IllegalArgumentException("Неверный язык истории");
+        return "history_" + language;
+    }
+
+    static JSONArray history(Context context, String language) {
+        String json = context.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .getString(historyKey(language), "[]");
+        try { return new JSONArray(json); }
+        catch (Exception ignored) { return new JSONArray(); }
+    }
+
+    static void recordExchange(Context context, String language, String task, String reply)
+            throws Exception {
+        JSONArray old = history(context, language);
+        JSONArray recent = new JSONArray();
+        for (int i = Math.max(0, old.length() - 10); i < old.length(); i++) {
+            recent.put(old.getJSONObject(i));
+        }
+        recent.put(new JSONObject().put("role", "user")
+                .put("text", task.length() > 1800 ? task.substring(0, 1800) : task));
+        recent.put(new JSONObject().put("role", "assistant")
+                .put("text", reply.length() > 2400 ? reply.substring(0, 2400) : reply));
+        context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit()
+                .putString(historyKey(language), recent.toString()).apply();
+    }
+
     static JSONObject makeRequest(List<Store.Card> vocabulary, String language,
                                   String kind, String task) throws Exception {
         if (!"es".equals(language) && !"en".equals(language))
             throw new IllegalArgumentException("Неправильный язык");
-        if (!"story".equals(kind) && !"word".equals(kind))
+        if (!"story".equals(kind) && !"word".equals(kind) && !"chat".equals(kind))
             throw new IllegalArgumentException("Неправильная команда");
         ArrayList<Store.Card> sorted = new ArrayList<>(vocabulary);
         sorted.sort(Comparator.comparing((Store.Card c) -> !c.mastered())
