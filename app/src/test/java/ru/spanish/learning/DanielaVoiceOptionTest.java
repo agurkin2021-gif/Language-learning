@@ -17,6 +17,6 @@ public class DanielaVoiceOptionTest {
         assertEquals("El talle de la calle. La lluvia llegó ayer. Yo llevo la llave.",
                 DanielaVoiceOption.PREVIEW);
         assertTrue(DanielaVoiceOption.INSTALL_PAGE.startsWith(
-                "https://k2-fsa.github.io/sherpa/onnx/tts/all/Spanish/"));
+                "https://k2-fsa.github.io/sherpa/onnx/tts/apk-engine.html"));
     }
 }
