@@ -627,7 +627,7 @@ public final class MainActivity extends Activity {
         assistantHistory.setPadding(dp(14), dp(14), dp(14), dp(14));
         historyScroll.setBackground(ui.rounded(ui.soft, 15, ui.outline));
         historyScroll.addView(assistantHistory);
-        LinearLayout.LayoutParams historyParams = new LinearLayout.LayoutParams(-1, dp(240));
+        LinearLayout.LayoutParams historyParams = new LinearLayout.LayoutParams(-1, dp(145));
         historyParams.bottomMargin = dp(12);
         box.addView(historyScroll, historyParams);
 
@@ -740,7 +740,7 @@ public final class MainActivity extends Activity {
         box.addView(assistantProgressRow);
 
         TextView voiceHelp = new TextView(this);
-        voiceHelp.setText("Скажите задачу — ИИ проверит распознавание. Сомнительную фразу можно исправить перед отправкой.");
+        voiceHelp.setText("В обычном ChatGPT вставьте скопированный текст. После ответа нажмите «Копировать» и вернитесь сюда.");
         voiceHelp.setTextColor(secondaryText());
         voiceHelp.setTextSize(13);
         voiceHelp.setPadding(0, dp(8), 0, dp(6));
@@ -846,10 +846,10 @@ public final class MainActivity extends Activity {
             final Store current = store;
             new AlertDialog.Builder(this)
                     .setTitle("Сохранить рассказ?")
-                    .setMessage("«" + draft.title() + "»\\n\\n" +
+                    .setMessage("«" + draft.title() + "»\n\n" +
                             draft.body().substring(0, Math.min(260, draft.body().length())) +
                             (draft.body().length() > 260 ? "…" : "") +
-                            "\\n\\nСохраним с русским переводом в текущий язык.")
+                            "\n\nСохраним с русским переводом в текущий язык.")
                     .setPositiveButton("Сохранить", (dialog, which) -> {
                         if (store != current) {
                             Toast.makeText(this, "Язык изменён, повторите импорт", Toast.LENGTH_LONG).show();
@@ -878,7 +878,7 @@ public final class MainActivity extends Activity {
         } catch (Exception e) {
             String message = e.getMessage() == null ? "Не удалось разобрать ответ ChatGPT" : e.getMessage();
             new AlertDialog.Builder(this).setTitle("Рассказ не импортирован")
-                    .setMessage(message + "\\n\\nСкопируйте весь JSON с полями format, language, title, body, translation.")
+                    .setMessage(message + "\n\nСкопируйте весь JSON с полями format, language, title, body, translation.")
                     .setPositiveButton("OK", null).show();
         }
     }
@@ -901,7 +901,7 @@ public final class MainActivity extends Activity {
 
     private void updateAssistantVoiceButton() {
         if (assistantVoiceButton != null)
-            assistantVoiceButton.setText(assistantVoiceActive ? "■ Остановить" : "🎙 Разговор");
+            assistantVoiceButton.setText("🎙 Голос ChatGPT");
     }
 
     private void stopAssistantVoice() {
@@ -930,7 +930,7 @@ public final class MainActivity extends Activity {
         if (assistantProgressRow != null)
             assistantProgressRow.setVisibility(busy ? View.VISIBLE : View.GONE);
         if (assistantSendButton != null) {
-            assistantSendButton.setText(busy ? "⏳ Генерирую…" : "Отправить");
+            assistantSendButton.setText(busy ? "⏳ Генерирую…" : "Обычный ChatGPT");
             assistantSendButton.setEnabled(!busy);
         }
         if (assistantInput != null) assistantInput.setEnabled(!busy);
