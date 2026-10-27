@@ -32,7 +32,14 @@ AUDIT_NAMES = ("literal", "grammar", "semantic")
 def read_json(path: Path) -> dict:
     if path.stat().st_size > MAX_BYTES:
         raise ValueError("Файл слишком большой")
-    parsed = json.loads(path.read_text(encoding="utf-8-sig"))
+    raw = path.read_text(encoding="utf-8-sig").strip()
+    if raw.startswith("```"):
+        first_newline = raw.find("\\n")
+        last_fence = raw.rfind("```")
+        if first_newline < 0 or last_fence <= first_newline:
+            raise ValueError("Неполный JSON-ответ из ChatGPT")
+        raw = raw[first_newline + 1:last_fence].strip()
+    parsed = json.loads(raw)
     if not isinstance(parsed, dict):
         raise ValueError("Ожидается JSON-объект")
     return parsed
@@ -147,7 +154,7 @@ def next_audit(state: dict) -> str:
         "Если есть хотя бы одна ошибка или сомнение, верни pass=false. "
         "Ничего молча не исправляй. "
         "Ответь ТОЛЬКО JSON {"
-        f'"stage":{stage},"pass":true или false,"issues":[],"verified_translation":'
+        f'"stage":{stage},"pass":true,"issues":[],"verified_translation":'
         '"точно тот же русский текст, без единого изменения"}. '
         "Проверь следующий исходный материал и его перевод:\n" +
         json.dumps(state["story"], ensure_ascii=False)
