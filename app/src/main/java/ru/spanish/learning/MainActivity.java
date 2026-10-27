@@ -1891,9 +1891,15 @@ public final class MainActivity extends Activity {
         if (!personal && studyingEnglish()) return;
         syncingContent = true;
         Store syncedStore = store;
+        String syncedProfile = PrivateVocabularySync.profileRepository(this);
         RemoteContentSync.Callback callback = (added, rejected, error) -> runOnUiThread(() -> {
             syncingContent = false;
-            if (isFinishing() || isDestroyed() || store != syncedStore) return;
+            if (isFinishing() || isDestroyed()) return;
+            if (store != syncedStore
+                    || !syncedProfile.equals(PrivateVocabularySync.profileRepository(this))) {
+                syncContent();
+                return;
+            }
             if (added > 0) {
                 Toast.makeText(this, "Добавлено из ChatGPT: " + added, Toast.LENGTH_SHORT).show();
                 if ((cardDialog == null || !cardDialog.isShowing()) && !"player".equals(screen)) render();
