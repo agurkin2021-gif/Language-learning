@@ -150,12 +150,42 @@ def generate(req: dict, call=openai_text, progress=lambda stage: None) -> dict:
     if not isinstance(task, str) or not task.strip() or len(task) > 2000:
         raise ValueError("Напишите задание не длиннее 2000 символов")
     kind = req.get("kind", "story")
-    if kind not in ("story", "word"):
+    if kind not in ("story", "word", "chat"):
         raise ValueError("Неизвестный тип запроса")
     cards = input_cards(req.get("cards", []))
     prior = sorted(cards, key=lambda x: (not x["mastered"], not x["phrase"]))
     # Keep context bounded while preserving frequent mastered expressions.
     snapshot = json.dumps(prior[:180], ensure_ascii=False)
+
+    if kind == "chat":
+        progress("ChatGPT отвечает с учётом контекста приложения")
+        history = req.get("history", [])
+        if not isinstance(history, list):
+            raise ValueError("История диалога должна быть списком")
+        cleaned = []
+        for turn in history[-12:]:
+            if isinstance(turn, dict) and turn.get("role") in ("user", "assistant"):
+                text = turn.get("text", "")
+                if isinstance(text, str) and 0 < len(text) <= 3000:
+                    cleaned.append({"role": turn["role"], "text": text})
+        instructions = (
+            "You are an exacting Argentinian Spanish or English language tutor "
+            "for a Russian learner. For Spanish use Rioplatense voseo; treat "
+            "the student's transcriptions as literal input, never silently "
+            "substitute a similarly sounding word. Use the supplied current "
+            "personal dictionary as reference. Reply in Russian. Do not claim "
+            "to have added a word or story unless the Android app confirms it. "
+            "If giving translations, prefer the exact literal grammatical form "
+            "and add an idiomatic meaning only in parentheses. "
+            "Do not invent vocabulary or translations."
+        )
+        answer = call(instructions, json.dumps({
+            "language": language, "task": task, "history": cleaned,
+            "learner_vocabulary": prior[:180]}, ensure_ascii=False))
+        if not isinstance(answer, str) or not answer.strip() or len(answer) > 20000:
+            raise ValueError("Ответ ChatGPT пустой или слишком длинный")
+        return {"status": "ok", "kind": "chat",
+                "language": language, "text": answer.strip(), "audits": []}
 
     if kind == "story":
         progress("ChatGPT создаёт рассказ")
@@ -250,7 +280,7 @@ class Handler(BaseHTTPRequestHandler):
             # Validate inputs before accepting the asynchronous job.
             if request.get("language") not in ("en", "es"):
                 raise ValueError("Неподдерживаемый язык")
-            if request.get("kind", "story") not in ("story", "word"):
+            if request.get("kind", "story") not in ("story", "word", "chat"):
                 raise ValueError("Неподдерживаемый тип")
             input_cards(request.get("cards", []))
             cleanup()
