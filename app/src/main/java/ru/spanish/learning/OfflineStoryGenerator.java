@@ -59,7 +59,7 @@ public final class OfflineStoryGenerator {
                         String translation = OfflineStoryTranslationAudit.review(
                                 language, candidate.body(), candidate.translation(),
                                 (pass, rules, data) -> auditorModel.generateResponse(
-                                        rules + "\\nINPUT_JSON:\\n" + data),
+                                        rules + "\nINPUT_JSON:\n" + data),
                                 pass -> listener.progress("Аудит перевода " + pass
                                         + "/3: проверяю каждую словоформу и смысл…"));
                         draft = new RegularChatGptBridge.StoryDraft(
