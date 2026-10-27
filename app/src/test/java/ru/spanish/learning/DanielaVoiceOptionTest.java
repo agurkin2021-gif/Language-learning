@@ -4,19 +4,19 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class DanielaVoiceOptionTest {
-    @Test public void danielaIsAnIndependentOptionalEngine() {
+    @Test public void danielaIsBundledAndRemainsOptional() {
         assertTrue(DanielaVoiceOption.matches("piper:es_AR-daniela-high"));
         assertFalse(DanielaVoiceOption.matches("es-AR"));
         assertFalse(DanielaVoiceOption.matches(null));
-        assertEquals("com.k2fsa.sherpa.onnx.tts.engine", DanielaVoiceOption.ENGINE_PACKAGE);
-        assertEquals("vits-piper-es_AR-daniela-high", DanielaVoiceOption.MODEL_DIRECTORY);
-        assertEquals("es_AR-daniela-high.onnx", DanielaVoiceOption.MODEL_FILENAME);
+        assertEquals("embedded-daniela/daniela.onnx", DanielaVoiceOption.MODEL_PATH);
+        assertEquals("embedded-daniela/tokens.txt", DanielaVoiceOption.TOKENS_PATH);
+        assertEquals("embedded-daniela/espeak-ng-data", DanielaVoiceOption.DATA_DIRECTORY);
     }
 
-    @Test public void previewUsesUnmodifiedSpanishWithLlAndY() {
+    @Test public void previewDoesNotAlterLatinSpanishSpelling() {
         assertEquals("El talle de la calle. La lluvia llegó ayer. Yo llevo la llave.",
                 DanielaVoiceOption.PREVIEW);
-        assertTrue(DanielaVoiceOption.INSTALL_PAGE.startsWith(
-                "https://k2-fsa.github.io/sherpa/onnx/tts/apk-engine.html"));
+        assertEquals(DanielaVoiceOption.PREVIEW,
+                RioplatensePronunciation.forSpeech(DanielaVoiceOption.PREVIEW, "es"));
     }
 }
