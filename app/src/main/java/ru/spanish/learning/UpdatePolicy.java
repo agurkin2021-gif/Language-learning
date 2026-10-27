@@ -7,7 +7,7 @@ import java.util.Set;
 /** Validation shared by downloaded and already staged updates. No Android dependencies. */
 final class UpdatePolicy {
     static final int MAX_METADATA_BYTES = 16 * 1024;
-    static final long MAX_APK_BYTES = 32L * 1024 * 1024;
+    static final long MAX_APK_BYTES = 100L * 1024 * 1024;
 
     private UpdatePolicy() {}
 
