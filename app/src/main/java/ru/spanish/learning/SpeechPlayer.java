@@ -2,7 +2,7 @@ package ru.spanish.learning;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import java.util.Locale;
+import java.io.IOException;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -24,7 +24,7 @@ public final class SpeechPlayer {
     private final AudioManager audio;
     private final AudioFocusRequest focus;
     private TextToSpeech tts;
-    private TextToSpeech danielaTts;
+    private EmbeddedDanielaSpeech danielaSpeech;
     private final Context appContext;
     private final AudioAttributes speechAttributes;
     private boolean danielaSelected, danielaReady, danielaPreviewOnReady;
@@ -84,77 +84,50 @@ public final class SpeechPlayer {
         });
     }
 
-    /** The Daniela model is provided by its own Android TTS engine APK. */
+    /** Daniela is bundled with this APK; no other application is needed. */
     boolean isDanielaInstalled() {
-        try {
-            Context engine = appContext.createPackageContext(DanielaVoiceOption.ENGINE_PACKAGE, 0);
-            String[] modelFiles = engine.getAssets().list(DanielaVoiceOption.MODEL_DIRECTORY);
-            if (modelFiles != null) {
-                for (String filename : modelFiles) {
-                    if (DanielaVoiceOption.MODEL_FILENAME.equals(filename)) return true;
-                }
-            }
-        } catch (Exception ignored) {
-            // No engine, or this Sherpa engine was built with a different model.
+        try (java.io.InputStream modelFile = appContext.getAssets()
+                .open(DanielaVoiceOption.MODEL_PATH)) {
+            return modelFile.read() != -1;
+        } catch (IOException missing) {
+            return false;
         }
-        return false;
     }
 
     static boolean isDanielaChoice(String voiceName) {
         return DanielaVoiceOption.matches(voiceName);
     }
 
-    private TextToSpeech activeTts() {
-        return danielaSelected && danielaReady && danielaTts != null ? danielaTts : tts;
-    }
-
     private void startDaniela() {
-        if (danielaTts != null) return;
-        try {
-            danielaTts = new TextToSpeech(appContext, status -> handler.post(() -> {
-                if (closed || danielaTts == null) return;
-                if (status != TextToSpeech.SUCCESS) {
-                    fallBackFromDaniela("Не удалось запустить Piper Daniela.");
-                    return;
+        if (danielaSpeech == null) danielaSpeech = new EmbeddedDanielaSpeech(appContext);
+        danielaSpeech.prepare(new EmbeddedDanielaSpeech.InitListener() {
+            @Override public void onReady() {
+                if (closed || !danielaSelected || !"es".equals(learningLanguage)) return;
+                danielaReady = true;
+                ready = true;
+                voiceDescription = "Piper Daniela — Аргентина (встроенный, офлайн)";
+                error = "";
+                listener.changed();
+                if (danielaPreviewOnReady) {
+                    danielaPreviewOnReady = false;
+                    speakCard(DanielaVoiceOption.PREVIEW);
                 }
-                try {
-                    int supported = danielaTts.setLanguage(Locale.forLanguageTag("es-AR"));
-                    if (supported < TextToSpeech.LANG_AVAILABLE) {
-                        fallBackFromDaniela("Piper Daniela не поддерживает испанский в установленном движке.");
-                        return;
-                    }
-                    danielaTts.setAudioAttributes(speechAttributes);
-                    installSpeechListener(danielaTts);
-                    danielaReady = true;
-                    if (danielaSelected && "es".equals(learningLanguage)) {
-                        ready = true;
-                        voiceDescription = "Piper Daniela — Аргентина (офлайн)";
-                        error = "";
-                        listener.changed();
-                        if (danielaPreviewOnReady) {
-                            danielaPreviewOnReady = false;
-                            speakCard(DanielaVoiceOption.PREVIEW);
-                        }
-                    }
-                } catch (RuntimeException ex) {
-                    fallBackFromDaniela("Не удалось подготовить Piper Daniela.");
-                }
-            }), DanielaVoiceOption.ENGINE_PACKAGE);
-        } catch (RuntimeException ex) {
-            fallBackFromDaniela("Не удалось подключить движок Piper Daniela.");
-        }
+            }
+
+            @Override public void onError(String why) {
+                if (danielaSelected && "es".equals(learningLanguage)) fallBackFromDaniela(why);
+            }
+        });
     }
 
     private void fallBackFromDaniela(String why) {
+        if (!danielaSelected) return;
         danielaSelected = false;
         danielaReady = false;
         danielaPreviewOnReady = false;
-        if (danielaTts != null) {
-            danielaTts.shutdown();
-            danielaTts = null;
-        }
-        voicePrefs.edit().putString("selected_es_voice",
-                voicePrefs.getString("previous_es_voice", "")).apply();
+        if (danielaSpeech != null) danielaSpeech.stop();
+        String previous = voicePrefs.getString("previous_es_voice", "");
+        voicePrefs.edit().putString("selected_es_voice", previous).apply();
         chooseVoice();
         error = why + " Включён прежний голос.";
         voiceDescription = error;
@@ -245,9 +218,9 @@ public final class SpeechPlayer {
         if ("es".equals(learningLanguage) && DanielaVoiceOption.matches(saved)) {
             if (isDanielaInstalled()) {
                 danielaSelected = true;
-                if (danielaReady) {
+                if (danielaSpeech != null && danielaSpeech.isReady()) {
                     ready = true;
-                    voiceDescription = "Piper Daniela — Аргентина (офлайн)";
+                    voiceDescription = "Piper Daniela — Аргентина (встроенный, офлайн)";
                 } else {
                     voiceDescription = "Подключение Piper Daniela…";
                     startDaniela();
@@ -281,9 +254,9 @@ public final class SpeechPlayer {
     List<VoiceChoice> spanishVoiceChoices() {
         List<VoiceChoice> choices = new ArrayList<>();
         if (!"es".equals(learningLanguage) || !ttsInitialized) return choices;
-        choices.add(new VoiceChoice(DanielaVoiceOption.ID,
-                "Piper Daniela — Аргентина (es-AR) • "
-                        + (isDanielaInstalled() ? "установлена • офлайн" : "нужна установка движка")));
+        if (isDanielaInstalled())
+            choices.add(new VoiceChoice(DanielaVoiceOption.ID,
+                    "Piper Daniela — Аргентина (встроенный, офлайн)"));
         for (Voice voice : availableVoices()) {
             choices.add(new VoiceChoice(voice.getName(),
                     SpanishVoicePreference.regionLabel(voice.getLocale())
@@ -315,9 +288,9 @@ public final class SpeechPlayer {
             voicePrefs.edit().putString("selected_es_voice", DanielaVoiceOption.ID).apply();
             danielaSelected = true;
             danielaPreviewOnReady = true;
-            if (danielaReady) {
+            if (danielaSpeech != null && danielaSpeech.isReady()) {
                 ready = true;
-                voiceDescription = "Piper Daniela — Аргентина (офлайн)";
+                voiceDescription = "Piper Daniela — Аргентина (встроенный, офлайн)";
                 danielaPreviewOnReady = false;
                 listener.changed();
                 speakCard(DanielaVoiceOption.PREVIEW);
@@ -351,13 +324,17 @@ public final class SpeechPlayer {
         if (closed || !ready || spanish == null || spanish.trim().isEmpty()) return;
         handler.removeCallbacks(autoPlay);
         if (tts != null) tts.stop();
-        if (danielaTts != null) danielaTts.stop();
+        if (danielaSpeech != null) danielaSpeech.stop();
         audio.abandonAudioFocusRequest(focus);
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return;
+        String text = RioplatensePronunciation.forSpeech(spanish.trim(), learningLanguage);
+        if (danielaSelected && danielaSpeech != null && danielaSpeech.isReady()) {
+            danielaSpeech.speak(text, speed, this::finishCardSpeech, this::finishCardSpeech);
+            return;
+        }
         String token = "card:" + System.nanoTime();
-        TextToSpeech speaking = activeTts();
-        speaking.setSpeechRate(speed);
-        if (speaking.speak(RioplatensePronunciation.forSpeech(spanish.trim(), learningLanguage), TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
+        tts.setSpeechRate(speed);
+        if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
             finishCardSpeech();
     }
 
@@ -390,9 +367,13 @@ public final class SpeechPlayer {
         String spoken = RioplatensePronunciation.forSpeech(
                 full.substring(utteranceBaseOffset), learningLanguage);
         error = "";
-        TextToSpeech speaking = activeTts();
-        speaking.setSpeechRate(speed);
-        if (speaking.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
+        if (danielaSelected && danielaSpeech != null && danielaSpeech.isReady()) {
+            danielaSpeech.speak(spoken, speed, () -> done(token), () -> failed(token));
+        } else {
+            tts.setSpeechRate(speed);
+            if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
+                failed(token);
+        }
         listener.changed();
     }
     private void rememberRange(String token, int start) {
@@ -424,7 +405,7 @@ public final class SpeechPlayer {
             activeToken = "";
         }
         if (tts != null) tts.stop();
-        if (danielaTts != null) danielaTts.stop();
+        if (danielaSpeech != null) danielaSpeech.stop();
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
     }
@@ -439,7 +420,7 @@ public final class SpeechPlayer {
     public void close() {
         pause();
         closed = true;
-        if (danielaTts != null) danielaTts.shutdown();
+        if (danielaSpeech != null) danielaSpeech.close();
         if (tts != null) tts.shutdown();
     }
 }
