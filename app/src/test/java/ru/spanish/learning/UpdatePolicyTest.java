@@ -39,6 +39,11 @@ public final class UpdatePolicyTest {
         assertTrue(UpdatePolicy.newer(106, 105));
     }
 
+    @Test public void supportsSignedBundledSpeechModelUpdates() {
+        assertTrue("Offline voice builds must be accepted", UpdatePolicy.MAX_APK_BYTES >= 95L * 1024 * 1024);
+        assertTrue("APK size remains bounded", UpdatePolicy.MAX_APK_BYTES <= 100L * 1024 * 1024);
+    }
+
     @Test public void requiresACompleteSha256Digest() {
         assertTrue(UpdatePolicy.validDigest(A));
         assertTrue(UpdatePolicy.validDigest(A.toUpperCase(java.util.Locale.ROOT)));
