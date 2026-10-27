@@ -58,6 +58,29 @@ public final class PrivateVocabularySync {
 
     private record Config(String repo, String token, String deviceId) {}
 
+    /**
+     * The stable installation identity separates personal story inboxes even
+     * when two devices are accidentally configured to the same private repo.
+     * Never expose the token in logs, public feeds or error messages.
+     */
+    static record StorySource(String repo, String token, String deviceId) {}
+
+    static StorySource storySource(Context context) throws Exception {
+        if (!isConfigured(context)) return null;
+        Config config = readConfig(context);
+        return new StorySource(config.repo(), config.token(), config.deviceId());
+    }
+
+    /** Non-secret ID shown to the owner for publishing their own stories. */
+    public static String profileId(Context context) {
+        try {
+            StorySource source = storySource(context);
+            return source == null ? "" : source.deviceId();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     private PrivateVocabularySync() {}
 
     /** Credentials cannot be backed up: Android Keystore keys are device-specific. */
