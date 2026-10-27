@@ -146,6 +146,14 @@ public final class Store extends SQLiteOpenHelper {
         return result;
     }
 
+    /** Learned WORDS for this local language database; expressions are excluded. */
+    public int learnedWordCount() {
+        try (Cursor c = getReadableDatabase().rawQuery(
+                "SELECT COUNT(*) FROM cards WHERE mastered=1 AND kind=0", null)) {
+            return c.moveToFirst() ? c.getInt(0) : 0;
+        }
+    }
+
     /** Complete local dictionary, independent of mastery status and review scheduling. */
     public List<Card> vocabulary() {
         List<Card> result = new ArrayList<>();

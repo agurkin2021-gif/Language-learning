@@ -239,6 +239,55 @@ public final class CardSwipeTest extends ActivityInstrumentationTestCase2<MainAc
         });
     }
 
+    public void testSmallLearnedWordCountBesideCardsTitleUpdatesAfterCheck() {
+        android.content.Context context = getInstrumentation().getTargetContext();
+        context.getSharedPreferences("ui", 0).edit()
+                .putString("studyLanguage", "es")
+                .putString("screen", "cards")
+                .putInt("kind", 0)
+                .putInt("category", 0)
+                .putInt("reviewIndex", 0)
+                .commit();
+
+        long wordId = -1;
+        int before;
+        try (Store store = new Store(context)) {
+            before = store.learnedWordCount();
+            Store.Card first = store.cards(false, 0).get(0);
+            wordId = first.id();
+        }
+        try {
+            getActivity();
+            getInstrumentation().waitForIdleSync();
+            TextView title = (TextView) tagged(root(), "cards-heading");
+            TextView total = (TextView) tagged(root(), "learned-word-count");
+            assertNotNull(title);
+            assertNotNull(total);
+            assertSame("The count and the title share one horizontal row",
+                    title.getParent(), total.getParent());
+            assertTrue("The new counter uses smaller text than the title",
+                    total.getTextSize() < title.getTextSize());
+            assertEquals("Выучено слов: " + before, total.getText().toString());
+
+            getInstrumentation().runOnMainSync(() -> {
+                View check = tagged(root(), "card-mark-known");
+                assertNotNull(check);
+                check.performClick();
+            });
+            getInstrumentation().waitForIdleSync();
+            TextView refreshed = (TextView) tagged(root(), "learned-word-count");
+            assertNotNull("Counter stays visible after checking a word", refreshed);
+            assertEquals("The saved DB total is reflected immediately",
+                    "Выучено слов: " + (before + 1), refreshed.getText().toString());
+        } finally {
+            if (wordId >= 0) {
+                try (Store store = new Store(context)) {
+                    store.setMastered(wordId, false);
+                }
+            }
+        }
+    }
+
     public void testBothSwipeDirectionsTapAndKnownCheck() {
         getActivity();
         getInstrumentation().runOnMainSync(() -> {

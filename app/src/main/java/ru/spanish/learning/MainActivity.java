@@ -1067,7 +1067,25 @@ public final class MainActivity extends Activity {
 
     private void cards() {
         player.pause();
-        text("Карточки", 28);
+        LinearLayout headingRow = new LinearLayout(this);
+        headingRow.setOrientation(LinearLayout.HORIZONTAL);
+        headingRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        // Same title line, with a small live total from the active language DB.
+        TextView cardsHeading = textInto(headingRow, "Карточки", 28);
+        cardsHeading.setTag("cards-heading");
+        cardsHeading.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView learnedCount = textInto(headingRow,
+                "Выучено слов: " + store.learnedWordCount(), 11);
+        learnedCount.setTag("learned-word-count");
+        learnedCount.setTextColor(secondaryText());
+        learnedCount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        learnedCount.setSingleLine(true);
+        learnedCount.setPadding(dp(4), 0, 0, 0);
+        learnedCount.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+        content.addView(headingRow, new LinearLayout.LayoutParams(-1, -2));
+
         TextView label = text(studyingEnglish()
                 ? "Английский • личный словарь" : "Испанский • аргентинский вариант", 13);
         label.setTextColor(secondaryText());

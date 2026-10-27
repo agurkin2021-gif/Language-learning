@@ -3,6 +3,65 @@ package ru.spanish.learning;
 import android.test.AndroidTestCase;
 
 public class StoreTest extends AndroidTestCase {
+    public void testLearnedWordCountIsPersistentAndExcludesPhrasesAndOtherLanguages() {
+        String esDb = "test-learned-count-es.db";
+        String enDb = "test-learned-count-en.db";
+        getContext().deleteDatabase(esDb);
+        getContext().deleteDatabase(enDb);
+        long firstWord = -1;
+        long secondWord = -1;
+        try {
+            try (Store spanish = new Store(getContext(), esDb)) {
+                assertEquals(0, spanish.learnedWordCount());
+                firstWord = spanish.cards(false, 0, 1).get(0).id();
+                secondWord = spanish.cards(false, 0, 3).get(0).id();
+                long expression = spanish.cards(false, 1).get(0).id();
+                spanish.review(expression, 2, 0);
+                assertEquals("Learned phrases do not count as words",
+                        0, spanish.learnedWordCount());
+
+                spanish.review(firstWord, 2, 0);
+                spanish.review(secondWord, 2, 0);
+                assertEquals("All word categories count",
+                        2, spanish.learnedWordCount());
+
+                spanish.addCard("palabra contada", "считаемое слово", 0, 2);
+                long added = -1;
+                for (Store.Card card : spanish.cards(false, 0, 2)) {
+                    if ("palabra contada".equals(card.spanish())) added = card.id();
+                }
+                assertTrue(added > 0);
+                spanish.review(added, 2, 0);
+                assertEquals("New learned words add one to the total",
+                        3, spanish.learnedWordCount());
+            }
+            try (Store spanish = new Store(getContext(), esDb)) {
+                assertEquals("The total survives closing and reopening SQLite",
+                        3, spanish.learnedWordCount());
+                spanish.setMastered(firstWord, false);
+                assertEquals("Returning a word to study lowers the total",
+                        2, spanish.learnedWordCount());
+                assertTrue(spanish.deleteCard(secondWord));
+                assertEquals("Deleting a learned word lowers the total",
+                        1, spanish.learnedWordCount());
+            }
+            try (Store english = Store.englishForTest(getContext(), enDb)) {
+                assertEquals("English begins with its own empty database",
+                        0, english.learnedWordCount());
+                english.addCard("counted", "посчитанный", 0, 1);
+                english.review(english.cards(false, 0).get(0).id(), 2, 0);
+                assertEquals(1, english.learnedWordCount());
+            }
+            try (Store spanish = new Store(getContext(), esDb)) {
+                assertEquals("Learning English cannot change the Spanish count",
+                        1, spanish.learnedWordCount());
+            }
+        } finally {
+            getContext().deleteDatabase(esDb);
+            getContext().deleteDatabase(enDb);
+        }
+    }
+
     public void testPersistenceAndExplicitArchive() {
         getContext().deleteDatabase("test-learning.db");
         Store s = new Store(getContext(), "test-learning.db");
