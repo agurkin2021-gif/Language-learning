@@ -166,6 +166,7 @@ public final class MainActivity extends Activity {
         cardRevealed = false;
         render();
         syncContent();
+        PrivateVocabularySync.schedule(this);
     }
 
     private void chooseStudyLanguage() {
@@ -397,6 +398,7 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(pause, spaced(10));
 
+        box.addView(rowButton("Синхронизация словаря с GitHub", this::showVocabularySyncSettings), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
 
@@ -424,6 +426,63 @@ public final class MainActivity extends Activity {
             recreate();
         });
         dialog.show();
+    }
+
+    private void showVocabularySyncSettings() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(22), dp(12), dp(22), dp(6));
+        TextView explanation = new TextView(this);
+        explanation.setText("Нужен отдельный приватный репозиторий GitHub и fine-grained token " +
+                "с правом Contents: Read and write только для него. " +
+                "Слова и устойчивые выражения будут выгружаться автоматически при изменениях и запуске приложения. " +
+                "Новые рассказы загружаются отдельно при открытии приложения. " +
+                "Не вставляйте токен в чат.\n\n" +
+                "Состояние: " + PrivateVocabularySync.status(this));
+        explanation.setTextColor(primaryText());
+        explanation.setTextSize(14);
+        box.addView(explanation, spaced(12));
+
+        EditText repo = new EditText(this);
+        repo.setSingleLine(true);
+        repo.setHint("owner/private-repository");
+        repo.setText(PrivateVocabularySync.repository(this));
+        ui.styleInput(repo);
+        box.addView(repo, spaced(12));
+
+        EditText token = new EditText(this);
+        token.setSingleLine(true);
+        token.setHint("GitHub fine-grained token");
+        token.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        ui.styleInput(token);
+        box.addView(token, spaced(12));
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+        new AlertDialog.Builder(this)
+                .setTitle("Личный словарь — приватный GitHub")
+                .setView(scroll)
+                .setNegativeButton("Отмена", null)
+                .setNeutralButton("Отключить", (dialog, which) -> {
+                    PrivateVocabularySync.disable(this);
+                    Toast.makeText(this, "Синхронизация словаря отключена", Toast.LENGTH_LONG).show();
+                })
+                .setPositiveButton("Подключить", (dialog, which) -> {
+                    try {
+                        PrivateVocabularySync.configure(this,
+                                repo.getText().toString(), token.getText().toString());
+                        Toast.makeText(this, "Сохранено. Проверка и отправка выполняются в фоне.",
+                                Toast.LENGTH_LONG).show();
+                    } catch (Exception error) {
+                        new AlertDialog.Builder(this)
+                                .setTitle("Не удалось сохранить")
+                                .setMessage("Проверьте название приватного репозитория и токен. " +
+                                        "Существующие слова не изменены.")
+                                .setPositiveButton("Закрыть", null).show();
+                    }
+                })
+                .show();
     }
 
     private void confirmResetDatabase(AlertDialog settingsDialog) {
@@ -1839,6 +1898,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         if (prefs.getBoolean(prefKey("cardDraftOpen"), false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
         syncContent();
+        PrivateVocabularySync.schedule(this);
     }
     @Override protected void onPause() { stopAssistantVoice(); cancelCardSpeech(); player.pause(); remember(); rememberCardDraft(); super.onPause(); }
     @Override protected void onDestroy() {
