@@ -26,4 +26,9 @@ android {
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     lint { abortOnError true }
 }
-dependencies { testImplementation 'junit:junit:4.13.2' }
+dependencies {
+    // Verified build input downloaded from the upstream sherpa-onnx release by CI.
+    implementation files('libs/sherpa-onnx.aar')
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    testImplementation 'junit:junit:4.13.2'
+}
