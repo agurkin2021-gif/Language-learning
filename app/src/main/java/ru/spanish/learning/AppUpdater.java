@@ -50,7 +50,7 @@ public final class AppUpdater {
     private static final int SOON_JOB = 72102;
     private static final long RETRY_DELAY_MS = 15L * 60 * 1000;
     private static final long SESSION_TIMEOUT_MS = 30L * 60 * 1000;
-    private static final long TRANSFER_LIMIT_MS = 120_000;
+    private static final long TRANSFER_LIMIT_MS = 12L * 60 * 1000;
     private static final Object INSTALL_LOCK = new Object();
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     private static final AtomicBoolean CHECK_QUEUED = new AtomicBoolean();
