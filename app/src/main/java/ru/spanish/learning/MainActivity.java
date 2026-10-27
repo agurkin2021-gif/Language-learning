@@ -844,7 +844,11 @@ public final class MainActivity extends Activity {
         } else if (phrase.matches()) {
             submitGptBrokerTask("word", true, phrase.group(1).trim());
         } else {
-            submitGptBrokerTask("story", false, text);
+            boolean story = java.util.regex.Pattern.compile(
+                    "(рассказ|сказк|истори|новелл|\\\\bstory\\\\b|cuento)",
+                    java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
+                    .matcher(text).find();
+            submitGptBrokerTask(story ? "story" : "chat", false, text);
         }
     }
 
@@ -904,12 +908,9 @@ public final class MainActivity extends Activity {
     private void submitGptBrokerTask(String kind, boolean phrase, String task) {
         if (assistantRequestInFlight || assistantInput == null) return;
         if (!GptStudyBrokerClient.configured(this)) {
-            new AlertDialog.Builder(this).setTitle("Нет подключения к посреднику")
-                    .setMessage("Для полностью автоматического обмена с GPT нужен " +
-                            "собственный сервер-посредник и отдельно оплачиваемый OpenAI API. " +
-                            "Подписка ChatGPT Plus здесь не используется.")
-                    .setPositiveButton("Настроить", (d, w) -> configureGptBroker(null))
-                    .setNegativeButton("Отмена", null).show();
+            // Until the owner has explicitly provisioned the paid API relay,
+            // keep the existing ChatGPT handoff exactly as it was.
+            openRegularChatGpt(false);
             return;
         }
         task = task == null ? "" : task.trim();
@@ -946,7 +947,8 @@ public final class MainActivity extends Activity {
                             }
                             try {
                                 if (result == null) throw new IllegalStateException("Пустой ответ");
-                                GptStudyBrokerClient.checkAudits(result);
+                                if (!"chat".equals(kind))
+                                    GptStudyBrokerClient.checkAudits(result);
                                 if (!language.equals(result.getString("language")))
                                     throw new IllegalArgumentException("Ответ на другом языке");
                                 if ("story".equals(kind)) {
@@ -973,6 +975,16 @@ public final class MainActivity extends Activity {
                                     else Toast.makeText(MainActivity.this,
                                             "Рассказ сохранён в библиотеке " + language,
                                             Toast.LENGTH_LONG).show();
+                                } else if ("chat".equals(kind)) {
+                                    String reply = result.getString("text").trim();
+                                    if (reply.isEmpty()) throw new IllegalArgumentException("Пустой ответ ChatGPT");
+                                    if (assistantHistory != null) {
+                                        String old = assistantHistory.getText().toString();
+                                        assistantHistory.setText(old + "\\n\\nВы: " + task +
+                                                "\\nChatGPT: " + reply);
+                                    }
+                                    if (assistantStatus != null)
+                                        assistantStatus.setText("ChatGPT ответил внутри приложения");
                                 } else {
                                     String word = result.getString("word").trim();
                                     String meaning = result.getString("translation").trim();
