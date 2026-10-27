@@ -82,12 +82,6 @@ public final class OfflineStoryTranslationAuditTest extends AndroidTestCase {
             try {
                 OfflineStoryTranslationAudit.review("es", SOURCE, DRAFT,
                         (pass, rules, json) -> response, null);
-                if (response.contains("Нет перевода")) {
-                    // The fake phrase is not a linguistic guarantee: a mock audit
-                    // saying ok=true cannot prove semantics. Stages 2 and 3 must
-                    // still be called; production model can veto.
-                    continue;
-                }
                 fail("Invalid initial audit result should fail closed: " + invalid);
             } catch (IllegalArgumentException expected) {
                 assertFalse(expected.getMessage().isEmpty());
