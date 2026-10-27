@@ -118,7 +118,7 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
                 assertFalse("Duplicate send is blocked while busy", send.isEnabled());
                 screen.updateAssistantBusy(false, null);
                 assertEquals(View.GONE, progress.getVisibility());
-                assertEquals("Отправить", send.getText().toString());
+                assertEquals("Обычный ChatGPT", send.getText().toString());
             } catch (Exception e) {
                 throw new AssertionError(e);
             }
