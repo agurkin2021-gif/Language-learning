@@ -915,20 +915,20 @@ public final class MainActivity extends Activity {
             openRegularChatGpt(false);
             return;
         }
-        task = task == null ? "" : task.trim();
-        if (task.isEmpty()) {
+        final String submittedTask = task == null ? "" : task.trim();
+        if (submittedTask.isEmpty()) {
             assistantInput.setError(kind.equals("word")
                     ? "Введите точную форму слова или выражения" : "Введите тему рассказа");
             return;
         }
-        if (kind.equals("word") && task.length() > 120) {
+        if (kind.equals("word") && submittedTask.length() > 120) {
             assistantInput.setError("Одна точная форма, не больше 120 символов");
             return;
         }
         Store destination = store;
         String language = studyLanguage;
         updateAssistantBusy(true, "Отправляю задание через защищённый посредник…");
-        gptBroker.request(this, destination, language, kind, task,
+        gptBroker.request(this, destination, language, kind, submittedTask,
                 new GptStudyBrokerClient.Listener() {
                     @Override public void progress(String stage) {
                         runOnUiThread(() -> {
@@ -982,7 +982,7 @@ public final class MainActivity extends Activity {
                                     if (reply.isEmpty()) throw new IllegalArgumentException("Пустой ответ ChatGPT");
                                     if (assistantHistory != null) {
                                         String old = assistantHistory.getText().toString();
-                                        assistantHistory.setText(old + "\\n\\nВы: " + task +
+                                        assistantHistory.setText(old + "\\n\\nВы: " + submittedTask +
                                                 "\\nChatGPT: " + reply);
                                     }
                                     if (assistantStatus != null)
@@ -990,7 +990,7 @@ public final class MainActivity extends Activity {
                                 } else {
                                     String word = result.getString("word").trim();
                                     String meaning = result.getString("translation").trim();
-                                    if (!word.equals(task))
+                                    if (!word.equals(submittedTask))
                                         throw new IllegalArgumentException("Изменена исходная словоформа");
                                     StoryVocabulary.requireVerified(word, meaning);
                                     if (destination.containsCard(word, phrase ? 1 : 0)) {
