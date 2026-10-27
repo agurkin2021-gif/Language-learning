@@ -363,19 +363,10 @@ public final class MainActivity extends Activity {
                 new AlertDialog.Builder(this)
                         .setTitle("Выбор испанского голоса")
                         .setSingleChoiceItems(labels, selected, (dialog, index) -> {
-                            String voiceName = choices.get(index).name;
-                            if (SpeechPlayer.isDanielaChoice(voiceName) && !player.isDanielaInstalled()) {
-                                Toast.makeText(this,
-                                        "Модель Daniela отсутствует в этой сборке.",
-                                        Toast.LENGTH_LONG).show();
-                                return;
-                            }
-                            if (player.selectSpanishVoice(voiceName)) {
+                            if (player.selectSpanishVoice(choices.get(index).name)) {
                                 selectedVoice.setText(player.voiceDescription);
                                 dialog.dismiss();
-                                // Daniela previews after its bundled native synthesizer starts.
-                                if (!SpeechPlayer.isDanielaChoice(voiceName))
-                                    player.speakCard(DanielaVoiceOption.PREVIEW);
+                                player.speakCard("El talle de la calle. La lluvia llegó ayer.");
                             } else {
                                 Toast.makeText(this, "Не удалось выбрать голос", Toast.LENGTH_LONG).show();
                             }

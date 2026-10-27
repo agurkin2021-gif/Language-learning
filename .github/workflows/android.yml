@@ -13,36 +13,13 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  embedded-daniela:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Download verified Piper Daniela model and native Android runtime
-        run: python3 scripts/prepare_embedded_daniela.py
-      - uses: actions/upload-artifact@v4
-        with:
-          name: embedded-daniela-${{ github.run_number }}
-          path: |
-            app/libs/sherpa-onnx.aar
-            app/src/main/assets/embedded-daniela/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
   build:
-    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: embedded-daniela-${{ github.run_number }}
-          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -55,6 +32,27 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and verify numbered APK
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+      - name: Verify model and native engine are removed from APK
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          apk = Path("app/build/outputs/apk/release/app-release-unsigned.apk")
+          with ZipFile(apk) as archive:
+              forbidden = [
+                  name for name in archive.namelist()
+                  if any(term in name.lower() for term in (
+                      "embedded-daniela", "sherpa-onnx", "espeak-ng-data",
+                      "libonnxruntime", "daniela.onnx",
+                  ))
+              ]
+          assert not forbidden, f"Obsolete voice assets present: {forbidden[:10]}"
+          assert apk.stat().st_size < 32 * 1024 * 1024, (
+              f"Lite APK exceeds 32 MiB: {apk.stat().st_size}"
+          )
+          print(f"Compact APK: {apk.stat().st_size / 1024 / 1024:.2f} MiB; no bundled voice model")
+          PY
       - name: Verify installable APK signature and record digest
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
@@ -114,17 +112,12 @@ jobs:
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
   device-test:
-    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: embedded-daniela-${{ github.run_number }}
-          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -178,17 +171,12 @@ jobs:
             app/build/reports/androidTests/
             android-test-logcat.txt
   self-update-test:
-    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: embedded-daniela-${{ github.run_number }}
-          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -238,17 +226,12 @@ jobs:
             echo "Это проверка эмулятора Android 14; поведение конкретного телефона проверяется отдельно."
           } >> "$GITHUB_STEP_SUMMARY"
   updater-installer-test:
-    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: embedded-daniela-${{ github.run_number }}
-          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

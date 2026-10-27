@@ -2,13 +2,11 @@ package ru.spanish.learning;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import java.io.IOException;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
@@ -25,10 +23,6 @@ public final class SpeechPlayer {
     private final AudioManager audio;
     private final AudioFocusRequest focus;
     private TextToSpeech tts;
-    private EmbeddedDanielaSpeech danielaSpeech;
-    private final Context appContext;
-    private final AudioAttributes speechAttributes;
-    private boolean danielaSelected, danielaReady, danielaPreviewOnReady;
     private final SharedPreferences voicePrefs;
     private List<String> sentences = new ArrayList<>();
     private boolean ready, closed, ttsInitialized;
@@ -36,8 +30,6 @@ public final class SpeechPlayer {
     private int resumeOffset;
     private int utteranceBaseOffset;
     private String activeToken = "";
-    private long currentCardSpeechId;
-    private String queuedCardWhileVoiceLoads;
     public boolean sentenceMode = true;
     public float speed = 0.85f;
     public int pauseMs = 1500;
@@ -45,105 +37,38 @@ public final class SpeechPlayer {
     public String error = "";
     public SpeechPlayer(Context context, Listener listener) {
         this.listener = listener;
-        appContext = context.getApplicationContext();
         voicePrefs = context.getSharedPreferences("tts_voice_settings", Context.MODE_PRIVATE);
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        speechAttributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
+        AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
         focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
-                .setAudioAttributes(speechAttributes).setOnAudioFocusChangeListener(change -> { if (change < 0) pause(); }, handler).build();
-        tts = new TextToSpeech(appContext, status -> handler.post(() -> {
+                .setAudioAttributes(attributes).setOnAudioFocusChangeListener(change -> { if (change < 0) pause(); }, handler).build();
+        tts = new TextToSpeech(context.getApplicationContext(), status -> handler.post(() -> {
             if (closed) return;
-            if (status != TextToSpeech.SUCCESS) {
-                voiceDescription = "Синтезатор речи недоступен";
-                listener.changed();
-                return;
-            }
-            tts.setAudioAttributes(speechAttributes);
+            if (status != TextToSpeech.SUCCESS) { voiceDescription = "Синтезатор речи недоступен"; listener.changed(); return; }
+            tts.setAudioAttributes(attributes);
             ttsInitialized = true;
-            installSpeechListener(tts);
             chooseVoice();
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String id) {}
+                @Override public void onRangeStart(String id, int start, int end, int frame) {
+                    handler.post(() -> rememberRange(id, start));
+                }
+                @Override public void onDone(String id) {
+                    handler.post(() -> {
+                        if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        else done(id);
+                    });
+                }
+                @Override public void onError(String id) {
+                    handler.post(() -> {
+                        if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        else failed(id);
+                    });
+                }
+            });
             listener.changed();
         }));
     }
-
-    private void installSpeechListener(TextToSpeech engine) {
-        engine.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-            @Override public void onStart(String id) {}
-            @Override public void onRangeStart(String id, int start, int end, int frame) {
-                handler.post(() -> rememberRange(id, start));
-            }
-            @Override public void onDone(String id) {
-                handler.post(() -> {
-                    if (id != null && id.startsWith("card:")) finishCardSpeech();
-                    else done(id);
-                });
-            }
-            @Override public void onError(String id) {
-                handler.post(() -> {
-                    if (id != null && id.startsWith("card:")) finishCardSpeech();
-                    else failed(id);
-                });
-            }
-        });
-    }
-
-    /** Daniela is bundled with this APK; no other application is needed. */
-    boolean isDanielaInstalled() {
-        try (java.io.InputStream modelFile = appContext.getAssets()
-                .open(DanielaVoiceOption.MODEL_PATH)) {
-            return modelFile.read() != -1;
-        } catch (IOException missing) {
-            return false;
-        }
-    }
-
-    static boolean isDanielaChoice(String voiceName) {
-        return DanielaVoiceOption.matches(voiceName);
-    }
-
-    private void startDaniela() {
-        if (danielaSpeech == null) danielaSpeech = new EmbeddedDanielaSpeech(appContext);
-        danielaSpeech.prepare(new EmbeddedDanielaSpeech.InitListener() {
-            @Override public void onReady() {
-                if (closed || !danielaSelected || !"es".equals(learningLanguage)) return;
-                danielaReady = true;
-                ready = true;
-                voiceDescription = "Piper Daniela — Аргентина (встроенный, офлайн)";
-                error = "";
-                listener.changed();
-                String queued = queuedCardWhileVoiceLoads;
-                queuedCardWhileVoiceLoads = null;
-                if (queued != null) {
-                    danielaPreviewOnReady = false;
-                    speakCard(queued);
-                } else if (danielaPreviewOnReady) {
-                    danielaPreviewOnReady = false;
-                    speakCard(DanielaVoiceOption.PREVIEW);
-                }
-            }
-
-            @Override public void onError(String why) {
-                if (danielaSelected && "es".equals(learningLanguage)) fallBackFromDaniela(why);
-            }
-        });
-    }
-
-    private void fallBackFromDaniela(String why) {
-        if (!danielaSelected) return;
-        danielaSelected = false;
-        currentCardSpeechId++;
-        danielaReady = false;
-        danielaPreviewOnReady = false;
-        queuedCardWhileVoiceLoads = null;
-        if (danielaSpeech != null) danielaSpeech.stop();
-        String previous = voicePrefs.getString("previous_es_voice", "");
-        voicePrefs.edit().putString("selected_es_voice", previous).apply();
-        chooseVoice();
-        error = why + " Включён прежний голос.";
-        voiceDescription = error;
-        listener.changed();
-    }
-
     /**
      * Prefer Argentina (es-AR), then Uruguay (es-UY), then Latin American
      * Spanish. Never silently select es-ES or an undifferentiated es voice.
@@ -223,28 +148,9 @@ public final class SpeechPlayer {
     private void chooseVoice() {
         ready = false;
         if (closed || tts == null) return;
+        List<Voice> voices = availableVoices();
         String saved = "es".equals(learningLanguage)
                 ? voicePrefs.getString("selected_es_voice", "") : "";
-        if ("es".equals(learningLanguage) && DanielaVoiceOption.matches(saved)) {
-            if (isDanielaInstalled()) {
-                danielaSelected = true;
-                if (danielaSpeech != null && danielaSpeech.isReady()) {
-                    ready = true;
-                    voiceDescription = "Piper Daniela — Аргентина (встроенный, офлайн)";
-                } else {
-                    voiceDescription = "Подключение Piper Daniela…";
-                    startDaniela();
-                }
-                listener.changed();
-                return;
-            }
-            saved = voicePrefs.getString("previous_es_voice", "");
-            voicePrefs.edit().putString("selected_es_voice", saved).apply();
-            error = "Piper Daniela больше не установлена; включён прежний голос.";
-        }
-        danielaSelected = false;
-        danielaPreviewOnReady = false;
-        List<Voice> voices = availableVoices();
         if (!saved.isEmpty()) {
             for (Voice voice : voices) {
                 if (saved.equals(voice.getName()) && activateVoice(voice)) return;
@@ -264,9 +170,6 @@ public final class SpeechPlayer {
     List<VoiceChoice> spanishVoiceChoices() {
         List<VoiceChoice> choices = new ArrayList<>();
         if (!"es".equals(learningLanguage) || !ttsInitialized) return choices;
-        if (isDanielaInstalled())
-            choices.add(new VoiceChoice(DanielaVoiceOption.ID,
-                    "Piper Daniela — Аргентина (встроенный, офлайн)"));
         for (Voice voice : availableVoices()) {
             choices.add(new VoiceChoice(voice.getName(),
                     SpanishVoicePreference.regionLabel(voice.getLocale())
@@ -279,7 +182,6 @@ public final class SpeechPlayer {
     }
 
     String selectedSpanishVoiceName() {
-        if ("es".equals(learningLanguage) && danielaSelected) return DanielaVoiceOption.ID;
         Voice current = ready && tts != null ? tts.getVoice() : null;
         return "es".equals(learningLanguage) && current != null
                 ? current.getName() : "";
@@ -288,40 +190,10 @@ public final class SpeechPlayer {
     boolean selectSpanishVoice(String voiceName) {
         if (!ttsInitialized || !"es".equals(learningLanguage)
                 || voiceName == null || voiceName.isEmpty()) return false;
-        if (DanielaVoiceOption.matches(voiceName)) {
-            if (!isDanielaInstalled()) return false;
-            pause();
-            String previous = voicePrefs.getString("selected_es_voice", "");
-            if (!DanielaVoiceOption.matches(previous)) {
-                voicePrefs.edit().putString("previous_es_voice", previous).apply();
-            }
-            voicePrefs.edit().putString("selected_es_voice", DanielaVoiceOption.ID).apply();
-            danielaSelected = true;
-            danielaPreviewOnReady = true;
-            if (danielaSpeech != null && danielaSpeech.isReady()) {
-                ready = true;
-                voiceDescription = "Piper Daniela — Аргентина (встроенный, офлайн)";
-                danielaPreviewOnReady = false;
-                listener.changed();
-                speakCard(DanielaVoiceOption.PREVIEW);
-            } else {
-                ready = false;
-                voiceDescription = "Подключение Piper Daniela…";
-                listener.changed();
-                startDaniela();
-            }
-            return true;
-        }
         for (Voice voice : availableVoices()) {
             if (!voiceName.equals(voice.getName())) continue;
             pause();
-            boolean wasDanielaSelected = danielaSelected;
-            danielaSelected = false;
-            if (!activateVoice(voice)) {
-                danielaSelected = wasDanielaSelected;
-                return false;
-            }
-            danielaPreviewOnReady = false;
+            if (!activateVoice(voice)) return false;
             voicePrefs.edit().putString("selected_es_voice", voiceName).apply();
             return true;
         }
@@ -331,61 +203,15 @@ public final class SpeechPlayer {
     public boolean ready() { return ready; }
 
     public void speakCard(String spanish) {
-        if (closed || spanish == null || spanish.trim().isEmpty()) return;
-        if (!ready) {
-            // First-card autoplay may happen before Daniela is initialized.
-            // Queue the latest visible card instead of dropping it silently.
-            if ("es".equals(learningLanguage) && (danielaSelected
-                    || DanielaVoiceOption.matches(voicePrefs.getString("selected_es_voice", "")))) {
-                currentCardSpeechId++;
-                queuedCardWhileVoiceLoads = spanish;
-            }
-            return;
-        }
-        queuedCardWhileVoiceLoads = null;
-        final long requestId = ++currentCardSpeechId;
+        if (closed || !ready || spanish == null || spanish.trim().isEmpty()) return;
         handler.removeCallbacks(autoPlay);
         if (tts != null) tts.stop();
-        if (danielaSpeech != null) danielaSpeech.stop();
         audio.abandonAudioFocusRequest(focus);
-        if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            error = "Не удалось получить аудиовыход Android";
-            voiceDescription = error;
-            listener.changed();
-            return;
-        }
-        String text = RioplatensePronunciation.forSpeech(spanish.trim(), learningLanguage);
-        if (danielaSelected && danielaSpeech != null && danielaSpeech.isReady()) {
-            danielaSpeech.speak(text, speed, () -> finishCardSpeech(requestId),
-                    reason -> handleDanielaCardFailure(requestId, spanish, reason));
-            return;
-        }
+        if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return;
         String token = "card:" + System.nanoTime();
         tts.setSpeechRate(speed);
-        if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) {
-            error = "Системный голос не смог озвучить карточку";
-            voiceDescription = error;
-            listener.changed();
-            finishCardSpeech(requestId);
-        }
-    }
-
-    private void handleDanielaCardFailure(long requestId, String word, String reason) {
-        if (closed || requestId != currentCardSpeechId || !danielaSelected) return;
-        Log.e("DanielaSpeech", "Card synthesis failed: " + reason);
-        // Preserve the old Android voice and the entire learner database.
-        fallBackFromDaniela("Daniela: " + reason + ".");
-        if (ready) {
-            // A failed optional voice must not leave the learner with a silent card.
-            speakCard(word);
-        } else {
-            audio.abandonAudioFocusRequest(focus);
-        }
-    }
-
-    private void finishCardSpeech(long requestId) {
-        if (requestId == currentCardSpeechId)
-            audio.abandonAudioFocusRequest(focus);
+        if (tts.speak(RioplatensePronunciation.forSpeech(spanish.trim(), learningLanguage), TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
+            finishCardSpeech();
     }
 
     private void finishCardSpeech() {
@@ -417,18 +243,8 @@ public final class SpeechPlayer {
         String spoken = RioplatensePronunciation.forSpeech(
                 full.substring(utteranceBaseOffset), learningLanguage);
         error = "";
-        if (danielaSelected && danielaSpeech != null && danielaSpeech.isReady()) {
-            danielaSpeech.speak(spoken, speed, () -> done(token), reason -> {
-                if (closed || !token.equals(activeToken)) return;
-                Log.e("DanielaSpeech", "Story synthesis failed: " + reason);
-                fallBackFromDaniela("Daniela: " + reason + ".");
-                failed(token);
-            });
-        } else {
-            tts.setSpeechRate(speed);
-            if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
-                failed(token);
-        }
+        tts.setSpeechRate(speed);
+        if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
         listener.changed();
     }
     private void rememberRange(String token, int start) {
@@ -452,8 +268,6 @@ public final class SpeechPlayer {
         audio.abandonAudioFocusRequest(focus); listener.changed();
     }
     public void pause() {
-        currentCardSpeechId++;
-        queuedCardWhileVoiceLoads = null;
         handler.removeCallbacks(autoPlay);
         PlaybackState.Phase previous = state.phase;
         state.pause();
@@ -462,7 +276,6 @@ public final class SpeechPlayer {
             activeToken = "";
         }
         if (tts != null) tts.stop();
-        if (danielaSpeech != null) danielaSpeech.stop();
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
     }
@@ -474,10 +287,5 @@ public final class SpeechPlayer {
         if (previous && state.index > 0) state.index--;
         state.repeat(); play();
     }
-    public void close() {
-        pause();
-        closed = true;
-        if (danielaSpeech != null) danielaSpeech.close();
-        if (tts != null) tts.shutdown();
-    }
+    public void close() { pause(); closed = true; if (tts != null) tts.shutdown(); }
 }
