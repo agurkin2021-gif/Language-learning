@@ -138,6 +138,24 @@ public final class GptStudyBrokerClient {
         catch (Exception ignored) { return new JSONArray(); }
     }
 
+    /** Restores actual local dialogue in the existing assistant text field. */
+    static String historyText(Context context, String language) {
+        JSONArray turns = history(context, language);
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < turns.length(); i++) {
+            JSONObject turn = turns.optJSONObject(i);
+            if (turn == null) continue;
+            String role = turn.optString("role");
+            if (!"user".equals(role) && !"assistant".equals(role)) continue;
+            String content = turn.optString("text", "").trim();
+            if (content.isEmpty()) continue;
+            if (out.length() > 0) out.append("\n\n");
+            out.append("user".equals(role) ? "Вы: " : "ChatGPT: ");
+            out.append(content);
+        }
+        return out.toString();
+    }
+
     static void recordExchange(Context context, String language, String task, String reply)
             throws Exception {
         JSONArray old = history(context, language);

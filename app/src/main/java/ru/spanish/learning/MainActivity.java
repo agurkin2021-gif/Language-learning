@@ -786,7 +786,19 @@ public final class MainActivity extends Activity {
             });
         });
 
-        mic.setOnClickListener(v -> openRegularChatGpt(true));
+        mic.setOnClickListener(v -> {
+            if (GptStudyBrokerClient.configured(this)) {
+                if (assistantVoiceActive) {
+                    stopAssistantVoice();
+                } else {
+                    assistantVoiceActive = true;
+                    assistantVoiceReviewPending = false;
+                    startAssistantVoice();
+                }
+            } else {
+                openRegularChatGpt(true);
+            }
+        });
         send.setOnClickListener(v -> submitExistingChatAction());
         // No new visible settings or controls: long-press the existing send
         // button once to provision the HTTPS broker. Single tap stays the
@@ -816,6 +828,10 @@ public final class MainActivity extends Activity {
             if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
         });
         assistantDialog.show();
+        if (GptStudyBrokerClient.configured(this) && assistantHistory != null) {
+            String restored = GptStudyBrokerClient.historyText(this, studyLanguage);
+            if (!restored.isEmpty()) assistantHistory.setText(restored);
+        }
         if (assistantRequestInFlight) updateAssistantBusy(true, assistantRequestStage);
         else if (pendingSavedStory != null) {
             ChatGptAssistant.SavedStory ready = pendingSavedStory;
@@ -982,11 +998,34 @@ public final class MainActivity extends Activity {
                                     if (reply.isEmpty()) throw new IllegalArgumentException("Пустой ответ ChatGPT");
                                     if (assistantHistory != null) {
                                         String old = assistantHistory.getText().toString();
-                                        assistantHistory.setText(old + "\\n\\nВы: " + submittedTask +
-                                                "\\nChatGPT: " + reply);
+                                        assistantHistory.setText(old + "\n\nВы: " + submittedTask +
+                                                "\nChatGPT: " + reply);
                                     }
                                     if (assistantStatus != null)
                                         assistantStatus.setText("ChatGPT ответил внутри приложения");
+                                    if (assistantVoiceActive) {
+                                        assistantVoiceProcessing = true;
+                                        final int epoch = assistantVoiceEpoch;
+                                        if (assistantVoiceOutput == null)
+                                            assistantVoiceOutput = new AssistantVoiceOutput(MainActivity.this);
+                                        assistantVoiceOutput.speak(reply, spoken -> {
+                                            if (!assistantVoiceActive || epoch != assistantVoiceEpoch) return;
+                                            assistantVoiceProcessing = false;
+                                            if (!spoken) {
+                                                stopAssistantVoice();
+                                                if (assistantStatus != null)
+                                                    assistantStatus.setText("Установите русский голос синтеза речи Android.");
+                                                return;
+                                            }
+                                            if (assistantStatus != null) assistantStatus.setText("Продолжаем разговор…");
+                                            pendingVoiceRestart = () -> {
+                                                pendingVoiceRestart = null;
+                                                if (assistantVoiceActive && epoch == assistantVoiceEpoch)
+                                                    startAssistantVoice();
+                                            };
+                                            assistantVoiceHandler.postDelayed(pendingVoiceRestart, 600);
+                                        });
+                                    }
                                 } else {
                                     String word = result.getString("word").trim();
                                     String meaning = result.getString("translation").trim();
@@ -1471,6 +1510,21 @@ public final class MainActivity extends Activity {
                 final float score = confidence != null && confidence.length > 0 ? confidence[0] : -1f;
                 assistantInput.setText(heard.get(0));
                 assistantInput.setSelection(assistantInput.length());
+                // The old voice transcript refinement used Subscription Sharing.
+                // For an explicitly configured broker, use Android's ASR directly:
+                // never alter the spoken form silently (especially Spanish words).
+                if (GptStudyBrokerClient.configured(MainActivity.this)) {
+                    assistantVoiceProcessing = false;
+                    if (score < 0.60f || heard.size() > 1 &&
+                            !heard.get(0).equalsIgnoreCase(heard.get(1))) {
+                        stopAssistantVoice();
+                        assistantVoiceReviewPending = true;
+                        assistantStatus.setText("Проверьте распознанный текст и нажмите существующую кнопку отправки.");
+                    } else {
+                        submitExistingChatAction();
+                    }
+                    return;
+                }
                 assistantStatus.setText("ИИ проверяет, что именно вы сказали…");
                 assistant.refineVoiceTranscript(store, heard, (ok, revision) -> runOnUiThread(() -> {
                     if (!active()) return;

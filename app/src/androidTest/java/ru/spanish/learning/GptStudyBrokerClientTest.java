@@ -55,6 +55,26 @@ public final class GptStudyBrokerClientTest extends AndroidTestCase {
         assertEquals("Mis amigos", GptStudyBrokerClient.story(response(true)).title());
     }
 
+    public void testChatHistorySurvivesCloseAndLanguagesAreIsolated() throws Exception {
+        String beforeEs = GptStudyBrokerClient.historyText(getContext(), "es");
+        String beforeEn = GptStudyBrokerClient.historyText(getContext(), "en");
+        try {
+            GptStudyBrokerClient.recordExchange(getContext(), "es",
+                    "Как переводится tenés?", "Ты имеешь (у тебя есть).");
+            String restoredEs = GptStudyBrokerClient.historyText(getContext(), "es");
+            String restoredEn = GptStudyBrokerClient.historyText(getContext(), "en");
+            assertTrue(restoredEs.contains("Как переводится tenés?"));
+            assertTrue(restoredEs.contains("ChatGPT:"));
+            assertFalse(restoredEn.contains("Как переводится tenés?"));
+            assertEquals(restoredEs, GptStudyBrokerClient.historyText(getContext(), "es"));
+        } finally {
+            android.content.SharedPreferences prefs = getContext()
+                    .getSharedPreferences("gpt_study_broker", 0);
+            prefs.edit().putString("history_es", "[]")
+                    .apply();
+        }
+    }
+
     public void testNoCredentialsUntilExplicitSetup() {
         // Installing an APK must not enable paid API calls.
         GptStudyBrokerClient.disconnect(getContext());
