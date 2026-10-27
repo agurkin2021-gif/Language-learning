@@ -409,6 +409,31 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(pause, spaced(10));
 
+        Button chatPlan = rowButton("Тариф ChatGPT: " + ChatGptPlanPreference.label(this), null);
+        chatPlan.setOnClickListener(v -> {
+            final String[] options = {"Бесплатный (Free)", "Plus ($20/мес.)"};
+            new AlertDialog.Builder(this)
+                    .setTitle("Тариф моего аккаунта ChatGPT")
+                    .setSingleChoiceItems(options, ChatGptPlanPreference.selectedIndex(this),
+                            (dialog, which) -> {
+                                ChatGptPlanPreference.select(this,
+                                        which == 1 ? ChatGptPlanPreference.PLUS : ChatGptPlanPreference.FREE);
+                                chatPlan.setText("Тариф ChatGPT: " + ChatGptPlanPreference.label(this));
+                                dialog.dismiss();
+                            })
+                    .setNeutralButton("Что означает выбор", (infoDialog, which) ->
+                            new AlertDialog.Builder(this)
+                                    .setTitle("Тариф ChatGPT")
+                                    .setMessage("Выбор указывает тариф аккаунта, с которым вы входите " +
+                                            "в официальный ChatGPT. Он не покупает подписку, " +
+                                            "не снимает лимиты и не включает платный API. " +
+                                            "У каждого телефона собственная настройка.")
+                                    .setPositiveButton("Понятно", null).show())
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        });
+        box.addView(chatPlan, spaced(10));
+
         box.addView(rowButton("Личный словарь и рассказы — GitHub", this::showVocabularySyncSettings), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
