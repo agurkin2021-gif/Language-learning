@@ -79,8 +79,8 @@ public final class PersistentChatContext {
         }
         out.append("Моя задача: ").append(request.trim()).append("\n");
         out.append("Если нужен рассказ для моей библиотеки, ответь только JSON без markdown: ")
-                .append("{\\\"format\\\":\\\"study_story_v1\\\",\\\"language\\\":\\\"").append(language)
-                .append("\\\",\\\"title\\\":\\\"Название\\\",\\\"body\\\":\\\"Рассказ\\\",\\\"translation\\\":\\\"Русский перевод\\\"}. ")
+                .append("{\"format\":\"study_story_v1\",\"language\":\"").append(language)
+                .append("\",\"title\":\"Название\",\"body\":\"Рассказ\",\"translation\":\"Русский перевод\"}. ")
                 .append("Число предложений оригинала и перевода должно совпадать. ")
                 .append("Не утверждай, что сохранял что-либо в Android: для этого есть кнопка импорта.");
         return out.toString();
