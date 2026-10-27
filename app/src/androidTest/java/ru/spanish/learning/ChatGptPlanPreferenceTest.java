@@ -32,7 +32,14 @@ public final class ChatGptPlanPreferenceTest extends AndroidTestCase {
 
     public void testPreferenceDoesNotCallPaidApiOrSubscriptionSharing() {
         assertEquals("https://chatgpt.com/", ChatGptPlanPreference.officialChatUrl());
-        ChatGptPlanPreference.select(getContext(), ChatGptPlanPreference.FREE);
-        assertFalse(GptStudyBrokerClient.configured(getContext()));
+        boolean configuredBefore = GptStudyBrokerClient.configured(getContext());
+        String old = ChatGptPlanPreference.selected(getContext());
+        try {
+            ChatGptPlanPreference.select(getContext(), ChatGptPlanPreference.FREE);
+            ChatGptPlanPreference.select(getContext(), ChatGptPlanPreference.PLUS);
+            assertEquals(configuredBefore, GptStudyBrokerClient.configured(getContext()));
+        } finally {
+            ChatGptPlanPreference.select(getContext(), old);
+        }
     }
 }
