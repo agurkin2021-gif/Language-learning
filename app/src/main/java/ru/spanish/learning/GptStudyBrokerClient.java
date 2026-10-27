@@ -149,7 +149,7 @@ public final class GptStudyBrokerClient {
             if (!"user".equals(role) && !"assistant".equals(role)) continue;
             String content = turn.optString("text", "").trim();
             if (content.isEmpty()) continue;
-            if (out.length() > 0) out.append("\\n\\n");
+            if (out.length() > 0) out.append("\n\n");
             out.append("user".equals(role) ? "Вы: " : "ChatGPT: ");
             out.append(content);
         }
