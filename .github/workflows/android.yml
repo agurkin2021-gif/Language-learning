@@ -13,13 +13,36 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  embedded-daniela:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Download verified Piper Daniela model and native Android runtime
+        run: python3 scripts/prepare_embedded_daniela.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: embedded-daniela-${{ github.run_number }}
+          path: |
+            app/libs/sherpa-onnx.aar
+            app/src/main/assets/embedded-daniela/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
   build:
+    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: embedded-daniela-${{ github.run_number }}
+          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -91,12 +114,17 @@ jobs:
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
   device-test:
+    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: embedded-daniela-${{ github.run_number }}
+          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -151,12 +179,17 @@ jobs:
           overwrite: true
           path: app/build/reports/androidTests/
   self-update-test:
+    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: embedded-daniela-${{ github.run_number }}
+          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -206,12 +239,17 @@ jobs:
             echo "Это проверка эмулятора Android 14; поведение конкретного телефона проверяется отдельно."
           } >> "$GITHUB_STEP_SUMMARY"
   updater-installer-test:
+    needs: [embedded-daniela]
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: embedded-daniela-${{ github.run_number }}
+          path: app
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
