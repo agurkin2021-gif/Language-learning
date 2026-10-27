@@ -400,7 +400,12 @@ public final class SpeechPlayer {
                 full.substring(utteranceBaseOffset), learningLanguage);
         error = "";
         if (danielaSelected && danielaSpeech != null && danielaSpeech.isReady()) {
-            danielaSpeech.speak(spoken, speed, () -> done(token), () -> failed(token));
+            danielaSpeech.speak(spoken, speed, () -> done(token), reason -> {
+                if (closed || !token.equals(activeToken)) return;
+                Log.e("DanielaSpeech", "Story synthesis failed: " + reason);
+                fallBackFromDaniela("Daniela: " + reason + ".");
+                failed(token);
+            });
         } else {
             tts.setSpeechRate(speed);
             if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR)
