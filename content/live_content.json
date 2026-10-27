@@ -1,4 +1,12 @@
 {
   "version": 1,
-  "items": []
+  "items": [
+    {
+      "id": "story-dos-gatitos-20261027-v1",
+      "type": "story",
+      "title": "Los dos gatitos y la llave dorada",
+      "spanish": "Había una vez dos gatitos que se llamaban Luna y Tito.\nVivían con una abuela amable cerca de un jardín.\nUna mañana, Luna encontró una llave pequeña debajo de una flor.\nTito quiso saber qué puerta podía abrir.\nLos dos caminaron hasta un árbol muy viejo.\nDetrás del árbol había una puerta azul.\nLuna puso la llave en la cerradura y abrió la puerta.\nAdentro encontraron una caja llena de semillas de colores.\nLa abuela les dijo que cada semilla guardaba una sorpresa.\nLos gatitos plantaron las semillas y las regaron todos los días.\nUna semana después, crecieron flores enormes que brillaban de noche.\nDesde entonces, Luna y Tito cuidaron el jardín juntos.",
+      "russian": "Жили-были два котёнка по имени Луна и Тито.\nОни жили у доброй бабушки рядом с садом.\nОднажды утром Луна нашла маленький ключ под цветком.\nТито захотел узнать, какую дверь он мог открыть.\nОни вдвоём дошли до очень старого дерева.\nЗа деревом была синяя дверь.\nЛуна вставила ключ в замок и открыла дверь.\nВнутри они нашли коробку, полную разноцветных семян.\nБабушка сказала им, что каждое семя хранило сюрприз.\nКотята посадили семена и поливали их каждый день.\nЧерез неделю выросли огромные цветы, которые светились ночью.\nС тех пор Луна и Тито вместе ухаживали за садом."
+    }
+  ]
 }
