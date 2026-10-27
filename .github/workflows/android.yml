@@ -146,9 +146,14 @@ jobs:
           target: default
           disable-animations: true
           script: |
+            adb logcat -c || true
+            set +e
             ./gradlew --no-daemon connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+            result=$?
+            adb logcat -d -v threadtime | tail -n 3500 > android-test-logcat.txt || true
             mkdir -p build-preview
-            adb pull /sdcard/Android/data/ru.spanish.learning/files/build-preview/. build-preview/
+            adb pull /sdcard/Android/data/ru.spanish.learning/files/build-preview/. build-preview/ || true
+            exit "$result"
       - uses: actions/upload-artifact@v4
         id: preview
         if: always()
@@ -177,7 +182,9 @@ jobs:
         with:
           name: device-test-reports
           overwrite: true
-          path: app/build/reports/androidTests/
+          path: |
+            app/build/reports/androidTests/
+            android-test-logcat.txt
   self-update-test:
     needs: [embedded-daniela]
     runs-on: ubuntu-24.04
