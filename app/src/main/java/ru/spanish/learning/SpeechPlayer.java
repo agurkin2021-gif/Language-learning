@@ -37,6 +37,7 @@ public final class SpeechPlayer {
     private int utteranceBaseOffset;
     private String activeToken = "";
     private long currentCardSpeechId;
+    private String queuedCardWhileVoiceLoads;
     public boolean sentenceMode = true;
     public float speed = 0.85f;
     public int pauseMs = 1500;
@@ -110,7 +111,12 @@ public final class SpeechPlayer {
                 voiceDescription = "Piper Daniela — Аргентина (встроенный, офлайн)";
                 error = "";
                 listener.changed();
-                if (danielaPreviewOnReady) {
+                String queued = queuedCardWhileVoiceLoads;
+                queuedCardWhileVoiceLoads = null;
+                if (queued != null) {
+                    danielaPreviewOnReady = false;
+                    speakCard(queued);
+                } else if (danielaPreviewOnReady) {
                     danielaPreviewOnReady = false;
                     speakCard(DanielaVoiceOption.PREVIEW);
                 }
@@ -128,6 +134,7 @@ public final class SpeechPlayer {
         currentCardSpeechId++;
         danielaReady = false;
         danielaPreviewOnReady = false;
+        queuedCardWhileVoiceLoads = null;
         if (danielaSpeech != null) danielaSpeech.stop();
         String previous = voicePrefs.getString("previous_es_voice", "");
         voicePrefs.edit().putString("selected_es_voice", previous).apply();
@@ -324,7 +331,18 @@ public final class SpeechPlayer {
     public boolean ready() { return ready; }
 
     public void speakCard(String spanish) {
-        if (closed || !ready || spanish == null || spanish.trim().isEmpty()) return;
+        if (closed || spanish == null || spanish.trim().isEmpty()) return;
+        if (!ready) {
+            // First-card autoplay may happen before Daniela is initialized.
+            // Queue the latest visible card instead of dropping it silently.
+            if ("es".equals(learningLanguage) && (danielaSelected
+                    || DanielaVoiceOption.matches(voicePrefs.getString("selected_es_voice", "")))) {
+                currentCardSpeechId++;
+                queuedCardWhileVoiceLoads = spanish;
+            }
+            return;
+        }
+        queuedCardWhileVoiceLoads = null;
         final long requestId = ++currentCardSpeechId;
         handler.removeCallbacks(autoPlay);
         if (tts != null) tts.stop();
@@ -435,6 +453,7 @@ public final class SpeechPlayer {
     }
     public void pause() {
         currentCardSpeechId++;
+        queuedCardWhileVoiceLoads = null;
         handler.removeCallbacks(autoPlay);
         PlaybackState.Phase previous = state.phase;
         state.pause();
