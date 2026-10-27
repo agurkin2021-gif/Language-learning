@@ -111,6 +111,11 @@ public final class Store extends SQLiteOpenHelper {
             state.put("key", "shared_content_disabled");
             state.put("value", 1);
             db.insertWithOnConflict("app_state", null, state, SQLiteDatabase.CONFLICT_REPLACE);
+            // A deliberate reset must also block private personal feeds, in both languages.
+            ContentValues personal = new ContentValues();
+            personal.put("key", "personal_story_reset");
+            personal.put("value", 1);
+            db.insertWithOnConflict("app_state", null, personal, SQLiteDatabase.CONFLICT_REPLACE);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -376,7 +381,31 @@ public final class Store extends SQLiteOpenHelper {
         return true;
     }
 
+    /** English is shared-content-disabled by default, but private stories are allowed
+     * until the user deliberately resets that local database.
+     */
+    public boolean personalStoriesDisabled() {
+        return personalStoriesDisabled(getReadableDatabase());
+    }
+
+    private boolean personalStoriesDisabled(SQLiteDatabase db) {
+        if (!english && sharedContentDisabled(db)) return true;
+        try (Cursor c = db.rawQuery("SELECT value FROM app_state WHERE key=?",
+                new String[]{"personal_story_reset"})) {
+            return c.moveToFirst() && c.getInt(0) != 0;
+        }
+    }
+
+    public boolean importPrivateStory(String externalId, String title, String body, String translation) {
+        return importStoryInternal(externalId, title, body, translation, true);
+    }
+
     public boolean importRemoteStory(String externalId, String title, String body, String translation) {
+        return importStoryInternal(externalId, title, body, translation, false);
+    }
+
+    private boolean importStoryInternal(String externalId, String title, String body,
+                                        String translation, boolean privateFeed) {
         if (externalId == null || externalId.trim().isEmpty()) throw new IllegalArgumentException("externalId");
         if (title == null || title.trim().isEmpty() || body == null || Sentences.split(body).isEmpty())
             throw new IllegalArgumentException("Пустой рассказ");
@@ -386,7 +415,8 @@ public final class Store extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            if (sharedContentDisabled(db) || remoteImported(db, externalId)) {
+            if ((privateFeed ? personalStoriesDisabled(db) : sharedContentDisabled(db))
+                    || remoteImported(db, externalId)) {
                 db.setTransactionSuccessful();
                 return false;
             }

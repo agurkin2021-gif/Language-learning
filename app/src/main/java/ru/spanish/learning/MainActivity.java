@@ -41,6 +41,7 @@ public final class MainActivity extends Activity {
     private Store spanishStore, englishStore;
     private String studyLanguage = "es";
     private RemoteContentSync contentSync;
+    private PersonalStorySync personalStorySync;
     private ChatGptAssistant assistant;
     private AlertDialog assistantDialog;
     private EditText assistantInput;
@@ -108,6 +109,7 @@ public final class MainActivity extends Activity {
         if ("en".equals(studyLanguage)) englishStore = Store.english(this);
         store = "en".equals(studyLanguage) ? englishStore : spanishStore;
         contentSync = new RemoteContentSync();
+        personalStorySync = new PersonalStorySync();
         assistant = new ChatGptAssistant(this);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.setLearningLanguage(studyLanguage);
@@ -398,7 +400,7 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(pause, spaced(10));
 
-        box.addView(rowButton("Синхронизация словаря с GitHub", this::showVocabularySyncSettings), spaced(10));
+        box.addView(rowButton("Личный словарь и рассказы — GitHub", this::showVocabularySyncSettings), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
 
@@ -436,9 +438,12 @@ public final class MainActivity extends Activity {
         explanation.setText("Нужен отдельный приватный репозиторий GitHub и fine-grained token " +
                 "с правом Contents: Read and write только для него. " +
                 "Слова и устойчивые выражения будут выгружаться автоматически при изменениях и запуске приложения. " +
-                "Новые рассказы загружаются отдельно при открытии приложения. " +
+                "Личные рассказы загружаются из этого же приватного репозитория при открытии: " +
+                "content/stories-es.json и content/stories-en.json. " +
+                "У каждого человека должен быть СВОЙ приватный репозиторий. " +
                 "Не вставляйте токен в чат.\n\n" +
-                "Состояние: " + PrivateVocabularySync.status(this));
+                "Словарь: " + PrivateVocabularySync.status(this) + "\n" +
+                "Рассказы: " + PersonalStorySync.status(this));
         explanation.setTextColor(primaryText());
         explanation.setTextSize(14);
         box.addView(explanation, spaced(12));
@@ -472,7 +477,8 @@ public final class MainActivity extends Activity {
                     try {
                         PrivateVocabularySync.configure(this,
                                 repo.getText().toString(), token.getText().toString());
-                        Toast.makeText(this, "Сохранено. Проверка и отправка выполняются в фоне.",
+                        syncContent();
+                        Toast.makeText(this, "Сохранено. Синхронизация выполняется в фоне.",
                                 Toast.LENGTH_LONG).show();
                     } catch (Exception error) {
                         new AlertDialog.Builder(this)
@@ -1880,17 +1886,31 @@ public final class MainActivity extends Activity {
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
     }
     private void syncContent() {
-        if (contentSync == null || syncingContent || studyingEnglish()) return;
+        if (contentSync == null || personalStorySync == null || syncingContent) return;
+        boolean personal = PrivateVocabularySync.isConfigured(this);
+        if (!personal && studyingEnglish()) return;
         syncingContent = true;
         Store syncedStore = store;
-        contentSync.sync(syncedStore, (added, rejected, error) -> runOnUiThread(() -> {
+        String syncedProfile = PrivateVocabularySync.profileRepository(this);
+        RemoteContentSync.Callback callback = (added, rejected, error) -> runOnUiThread(() -> {
             syncingContent = false;
-            if (isFinishing() || isDestroyed() || store != syncedStore) return;
+            if (isFinishing() || isDestroyed()) return;
+            if (store != syncedStore
+                    || !syncedProfile.equals(PrivateVocabularySync.profileRepository(this))) {
+                syncContent();
+                return;
+            }
             if (added > 0) {
                 Toast.makeText(this, "Добавлено из ChatGPT: " + added, Toast.LENGTH_SHORT).show();
                 if ((cardDialog == null || !cardDialog.isShowing()) && !"player".equals(screen)) render();
             }
-        }));
+        });
+        if (personal) {
+            personalStorySync.sync(this, syncedStore, studyLanguage,
+                    (added, rejected, error) -> callback.done(added, rejected, error));
+        } else {
+            contentSync.sync(syncedStore, callback);
+        }
     }
 
     @Override public void onBackPressed() { if (screen.equals("player")) navigate("stories"); else super.onBackPressed(); }
@@ -1905,6 +1925,7 @@ public final class MainActivity extends Activity {
         imageRepairCancel.set(true);
         cancelCardSpeech();
         if (contentSync != null) contentSync.close();
+        if (personalStorySync != null) personalStorySync.close();
         if (assistant != null) assistant.close();
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (assistantVoiceOutput != null) assistantVoiceOutput.close();
