@@ -5,13 +5,22 @@ import java.util.Locale;
 import static org.junit.Assert.*;
 
 public class SpanishVoicePreferenceTest {
-    @Test public void rioDeLaPlataPrecedesOtherLatinAmericanLocales() {
-        int argentina = SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-AR"));
+    @Test public void requestedLatinAmericanLocalesTakePriority() {
         int uruguay = SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-UY"));
+        int colombia = SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-CO"));
+        int venezuela = SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-VE"));
         int mexico = SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-MX"));
-        assertEquals(0, argentina);
-        assertTrue(argentina < uruguay);
-        assertTrue(uruguay < mexico);
+        int argentina = SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-AR"));
+
+        assertEquals(0, uruguay);
+        assertEquals(1, colombia);
+        assertEquals(2, venezuela);
+        assertEquals(3, mexico);
+        assertEquals(4, argentina);
+        assertTrue(uruguay < colombia);
+        assertTrue(colombia < venezuela);
+        assertTrue(venezuela < mexico);
+        assertTrue(mexico < argentina);
     }
 
     @Test public void rejectsSpainGenericAndNonSpanishVoices() {
