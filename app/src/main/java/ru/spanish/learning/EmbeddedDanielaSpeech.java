@@ -7,6 +7,7 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.k2fsa.sherpa.onnx.GeneratedAudio;
 import com.k2fsa.sherpa.onnx.OfflineTts;
@@ -15,8 +16,10 @@ import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -32,7 +35,9 @@ final class EmbeddedDanielaSpeech {
 
     private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private static final String TAG = "DanielaSpeech";
+    private final ThreadPoolExecutor worker = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     private final AtomicInteger generation = new AtomicInteger();
     private volatile boolean closed;
     private volatile boolean preparing;
@@ -98,19 +103,22 @@ final class EmbeddedDanielaSpeech {
      * Generate each card or story sentence and play PCM locally.
      * Completion is called only after playback drains, not merely after synthesis.
      */
-    void speak(String spanish, float speed, Runnable done, Runnable failed) {
+    void speak(String spanish, float speed, Runnable done, Consumer<String> failed) {
         if (!isReady()) {
-            main.post(failed);
+            main.post(() -> failed.accept("Синтезатор Daniela ещё не готов"));
             return;
         }
         int id = generation.incrementAndGet();
         stopTrack();
+        // Drop stale cards while a slower native inference is finishing.
+        worker.getQueue().clear();
         worker.execute(() -> {
             AudioTrack track = null;
             boolean succeeded = false;
+            String failure = "Неизвестная ошибка воспроизведения";
             try {
                 if (closed || generation.get() != id) return;
-                GeneratedAudio generated = engine.generate(spanish, 0,
+                GeneratedAudio generated = engine.generate(speechText(spanish), 0,
                         Math.max(.5f, Math.min(1.5f, speed)));
                 float[] samples = generated.getSamples();
                 int rate = generated.getSampleRate();
@@ -166,9 +174,12 @@ final class EmbeddedDanielaSpeech {
                         && System.currentTimeMillis() < deadline) {
                     Thread.sleep(20);
                 }
+                if ((track.getPlaybackHeadPosition() & 0xffffffffL) < samples.length)
+                    throw new IllegalStateException("Аудиоустройство не воспроизвело звук");
                 succeeded = !closed && generation.get() == id;
-            } catch (Exception | LinkageError ignored) {
-                // Restore the TTS playback state via the existing failure callback.
+            } catch (Exception | LinkageError ex) {
+                failure = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
+                Log.e(TAG, "Unable to speak with Daniela", ex);
             } finally {
                 if (track != null) {
                     if (currentTrack == track) currentTrack = null;
@@ -176,18 +187,32 @@ final class EmbeddedDanielaSpeech {
                     catch (IllegalStateException ignored) {}
                 }
                 if (!closed && generation.get() == id) {
-                    Runnable callback = succeeded ? done : failed;
+                    final boolean success = succeeded;
+                    final String reason = failure;
                     main.post(() -> {
-                        if (!closed && generation.get() == id) callback.run();
+                        if (!closed && generation.get() == id) {
+                            if (success) done.run();
+                            else failed.accept(reason);
+                        }
                     });
                 }
             }
         });
     }
 
+    // A bare word is not a sentence: append a period for Piper's phonemizer.
+    // Never substitute ll/y or inject Cyrillic into Spanish spelling.
+    static String speechText(String text) {
+        String cleaned = text == null ? "" : text.trim();
+        if (cleaned.isEmpty()) return cleaned;
+        char last = cleaned.charAt(cleaned.length() - 1);
+        return ".!?…".indexOf(last) >= 0 ? cleaned : cleaned + ".";
+    }
+
     void stop() {
         generation.incrementAndGet();
         stopTrack();
+        if (ready) worker.getQueue().clear();
     }
 
     private void stopTrack() {
