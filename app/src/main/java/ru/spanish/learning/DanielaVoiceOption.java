@@ -1,17 +1,16 @@
 package ru.spanish.learning;
 
 /**
- * Optional, independently installed sherpa-onnx Android TTS engine with
- * the precise Piper es_AR-daniela-high model. Never mimic its sound by
- * modifying Spanish spelling or changing the default Android TTS voice.
+ * Bundled, optional Piper Daniela es_AR model.
+ * The verified INT8 variant is shipped inside the signed application APK.
+ * Spanish orthography is passed through unchanged.
  */
 final class DanielaVoiceOption {
     static final String ID = "piper:es_AR-daniela-high";
-    static final String ENGINE_PACKAGE = "com.k2fsa.sherpa.onnx.tts.engine";
-    static final String MODEL_DIRECTORY = "vits-piper-es_AR-daniela-high";
-    static final String MODEL_FILENAME = "es_AR-daniela-high.onnx";
-    static final String INSTALL_PAGE =
-            "https://k2-fsa.github.io/sherpa/onnx/tts/apk-engine.html";
+    static final String MODEL_DIRECTORY = "embedded-daniela";
+    static final String MODEL_PATH = MODEL_DIRECTORY + "/daniela.onnx";
+    static final String TOKENS_PATH = MODEL_DIRECTORY + "/tokens.txt";
+    static final String DATA_DIRECTORY = MODEL_DIRECTORY + "/espeak-ng-data";
     static final String PREVIEW = "El talle de la calle. La lluvia llegó ayer. Yo llevo la llave.";
 
     private DanielaVoiceOption() {}
