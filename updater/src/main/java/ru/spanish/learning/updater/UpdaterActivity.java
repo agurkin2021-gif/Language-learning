@@ -46,7 +46,7 @@ public final class UpdaterActivity extends Activity {
     private static final String BASE = "https://raw.githubusercontent.com/" + REPOSITORY + "/refs/heads/phone-builds/";
     private static final String RELEASE_CERT = "ea5402c00a64b4a6e1940624743c58c38593a12b15ca6c85e955b05ba5ac641d";
     private static final String CALLBACK_SESSION = "session_id";
-    private static final long MAX_APK_BYTES = 100L * 1024 * 1024;
+    private static final long MAX_APK_BYTES = 200L * 1024 * 1024;
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     private static final AtomicBoolean RUNNING = new AtomicBoolean();
     private static volatile WeakReference<UpdaterActivity> active = new WeakReference<>(null);
