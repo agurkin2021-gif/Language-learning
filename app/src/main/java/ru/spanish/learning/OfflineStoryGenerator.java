@@ -40,6 +40,7 @@ public final class OfflineStoryGenerator {
                         .setMaxTopK(40)
                         .build();
                 model = LlmInference.createFromOptions(context.getApplicationContext(), options);
+                final LlmInference auditorModel = model;
                 RegularChatGptBridge.StoryDraft draft = null;
                 String validationError = "";
                 for (int attempt = 0; attempt < 2 && draft == null; attempt++) {
@@ -50,9 +51,19 @@ public final class OfflineStoryGenerator {
                             ? prompt : prompt + "\nВАЖНО: прежний ответ оказался некорректным (" +
                                 validationError + "). Верни только JSON без лишнего текста.");
                     try {
-                        draft = parseResult(response);
-                        if (!language.equals(draft.language()))
+                        RegularChatGptBridge.StoryDraft candidate = parseResult(response);
+                        if (!language.equals(candidate.language()))
                             throw new IllegalArgumentException("Ответ на другом языке");
+                        // Three separate, fail-closed semantic audits. A JSON structure
+                        // and a matching sentence count are not translation QA.
+                        String translation = OfflineStoryTranslationAudit.review(
+                                language, candidate.body(), candidate.translation(),
+                                (pass, rules, data) -> auditorModel.generateResponse(
+                                        rules + "\\nINPUT_JSON:\\n" + data),
+                                pass -> listener.progress("Аудит перевода " + pass
+                                        + "/3: проверяю каждую словоформу и смысл…"));
+                        draft = new RegularChatGptBridge.StoryDraft(
+                                candidate.language(), candidate.title(), candidate.body(), translation);
                     } catch (Exception invalid) {
                         validationError = invalid.getMessage();
                     }
@@ -62,7 +73,7 @@ public final class OfflineStoryGenerator {
                             validationError + ". Попробуйте более короткую тему.");
                 listener.progress("Сохраняю проверенный рассказ в личную библиотеку…");
                 long id = store.addStory(draft.title(), draft.body(), draft.translation(),
-                        "Локальная модель • Qwen2.5 (офлайн)");
+                        "Локальная модель • Qwen2.5 (офлайн, перевод прошёл аудит 3/3)");
                 listener.complete(id, draft.title(), "");
             } catch (OutOfMemoryError e) {
                 listener.complete(-1, "", "Недостаточно оперативной памяти для локальной модели. " +
@@ -104,6 +115,7 @@ public final class OfflineStoryGenerator {
         prompt.append("Story topic: ").append(task.replace('\n', ' ')).append(". ");
         prompt.append("Write EXACTLY 3 short sentences in that language and 3 matching Russian sentences. ");
         prompt.append("Keep original and Russian sentence order identical; use only correct natural grammar. ");
+        prompt.append("Translate each meaningful word-form, including negation, person and tense; keep Russian literal-first. ");
         prompt.append("Use some known words from this learner list naturally: ");
         int selected = 0;
         if (vocabulary != null) {
