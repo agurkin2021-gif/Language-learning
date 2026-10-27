@@ -789,14 +789,11 @@ public final class MainActivity extends Activity {
         box.addView(voiceHelp);
 
         Runnable refreshConnection = () -> {
-            assistantStatus.setText(GptStudyBrokerClient.configured(this)
-                    ? "ChatGPT отвечает внутри приложения • перевод проходит аудит 3/3"
+            String activeAudit = OfficialStudyHandoff.stage(this, studyLanguage);
+            assistantStatus.setText(!activeAudit.isEmpty() ? activeAudit
                     : PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
                         ? "Привяжите постоянный чат для сохранения его истории."
-                        : "Откроется ваш постоянный чат • " +
-                        (PrivateVocabularySync.isConfigured(this)
-                                ? "личный словарь синхронизируется с GitHub"
-                                : "живой доступ ChatGPT к словам ещё не настроен"));
+                        : "Обычный ChatGPT • ответы переносятся пользователем, аудит 1/3 → 3/3");
             connect.setVisibility(View.GONE);
             send.setEnabled(!assistantRequestInFlight);
         };
@@ -816,9 +813,7 @@ public final class MainActivity extends Activity {
         // Subscription Sharing, even if an older version stored broker settings.
         mic.setOnClickListener(v -> openRegularChatGpt(true));
         send.setOnClickListener(v -> submitExistingChatAction());
-        // No new visible settings or controls: long-press the existing send
-        // button once to provision the HTTPS broker. Single tap stays the
-        // only user action for text requests.
+        // Long press cancels an unfinished manual audit; no paid API setup.
         send.setOnLongClickListener(v -> {
             if (OfficialStudyHandoff.pending(this, studyLanguage)) {
                 new AlertDialog.Builder(this).setTitle("Проверка перевода")
@@ -860,10 +855,7 @@ public final class MainActivity extends Activity {
         String auditStage = OfficialStudyHandoff.stage(this, studyLanguage);
         if (!auditStage.isEmpty() && assistantStatus != null)
             assistantStatus.setText(auditStage);
-        if (GptStudyBrokerClient.configured(this) && assistantHistory != null) {
-            String restored = GptStudyBrokerClient.historyText(this, studyLanguage);
-            if (!restored.isEmpty()) assistantHistory.setText(restored);
-        }
+
         if (assistantRequestInFlight) updateAssistantBusy(true, assistantRequestStage);
         else if (pendingSavedStory != null) {
             ChatGptAssistant.SavedStory ready = pendingSavedStory;
@@ -888,11 +880,11 @@ public final class MainActivity extends Activity {
             return;
         }
         java.util.regex.Matcher word = java.util.regex.Pattern.compile(
-                "^(?:добавь|переведи)\\\\s+слово\\\\s*[:：-]?\\\\s*(.+)$",
+                "^(?:добавь|переведи)\\s+слово\\s*[:：-]?\\s*(.+)$",
                 java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
                 .matcher(text);
         java.util.regex.Matcher phrase = java.util.regex.Pattern.compile(
-                "^(?:добавь|переведи)\\\\s+(?:выражение|фразу)\\\\s*[:：-]?\\\\s*(.+)$",
+                "^(?:добавь|переведи)\\s+(?:выражение|фразу)\\s*[:：-]?\\s*(.+)$",
                 java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
                 .matcher(text);
         try {
@@ -903,7 +895,7 @@ public final class MainActivity extends Activity {
                 launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "phrase",
                         phrase.group(1).trim(), store.vocabulary()), "Жду перевод выражения");
             } else if (java.util.regex.Pattern.compile(
-                    "(рассказ|сказк|истори|новелл|\\\\bstory\\\\b|cuento)",
+                    "(рассказ|сказк|истори|новелл|\\bstory\\b|cuento)",
                     java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
                     .matcher(text).find()) {
                 launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "story",
