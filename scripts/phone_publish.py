@@ -236,6 +236,7 @@ def main():
     (args.output_dir / "SHA256SUMS.txt").write_text(digest + "  " + APK_NAME + "\n", encoding="ascii")
     (args.output_dir / "build-info.json").write_text(json.dumps({**expected, "apk_sha256": digest}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     set_output("artifact_ready", "true")
+    previous = channel["head"] if channel else None
     # Binary Git pushes support a 55 MiB APK. The REST create-blob endpoint
     # rejected the same Base64 JSON payload with HTTP 422. Preserve the existing
     # public phone-builds branch and its three-file metadata format.
@@ -292,6 +293,7 @@ if __name__ == "__main__":
     except PublishError as error:
         report("failed", str(error))
         raise SystemExit(1)
-    except Exception:
-        report("failed", "Публикация APK остановлена из-за непредвиденной ошибки; секреты не выведены.")
+    except Exception as error:
+        report("failed", "Публикация APK остановлена из-за непредвиденной ошибки ("
+               + type(error).__name__ + "); секреты не выведены.")
         raise SystemExit(1)
