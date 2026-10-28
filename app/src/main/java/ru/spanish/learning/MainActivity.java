@@ -1,9 +1,6 @@
 package ru.spanish.learning;
 
 import android.app.Activity;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import androidx.browser.customtabs.CustomTabsIntent;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.speech.RecognitionListener;
@@ -46,12 +43,8 @@ public final class MainActivity extends Activity {
     private RemoteContentSync contentSync;
     private PersonalStorySync personalStorySync;
     private ChatGptAssistant assistant;
-    private GptStudyBrokerClient gptBroker;
     private AlertDialog assistantDialog;
     private EditText assistantInput;
-    private boolean awaitingRegularChatGptReply;
-    private String regularChatGptPreparedText = "";
-    private long regularChatGptOpenedAt;
     private TextView assistantHistory;
     private TextView assistantStatus;
     private SpeechRecognizer speechRecognizer;
@@ -118,7 +111,6 @@ public final class MainActivity extends Activity {
         contentSync = new RemoteContentSync();
         personalStorySync = new PersonalStorySync();
         assistant = new ChatGptAssistant(this);
-        gptBroker = new GptStudyBrokerClient();
         player = new SpeechPlayer(this, this::updatePlayer);
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f); player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
@@ -133,7 +125,6 @@ public final class MainActivity extends Activity {
             screen = "stories";
         }
         render();
-        handleIncomingStoryShare(getIntent());
     }
     private boolean studyingEnglish() { return "en".equals(studyLanguage); }
     private String prefKey(String key) { return studyingEnglish() ? "en_" + key : key; }
@@ -409,31 +400,6 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(pause, spaced(10));
 
-        Button chatPlan = rowButton("Тариф ChatGPT: " + ChatGptPlanPreference.label(this), null);
-        chatPlan.setOnClickListener(v -> {
-            final String[] options = {"Бесплатный (Free)", "Plus ($20/мес.)"};
-            new AlertDialog.Builder(this)
-                    .setTitle("Тариф моего аккаунта ChatGPT")
-                    .setSingleChoiceItems(options, ChatGptPlanPreference.selectedIndex(this),
-                            (dialog, which) -> {
-                                ChatGptPlanPreference.select(this,
-                                        which == 1 ? ChatGptPlanPreference.PLUS : ChatGptPlanPreference.FREE);
-                                chatPlan.setText("Тариф ChatGPT: " + ChatGptPlanPreference.label(this));
-                                dialog.dismiss();
-                            })
-                    .setNeutralButton("Что означает выбор", (infoDialog, which) ->
-                            new AlertDialog.Builder(this)
-                                    .setTitle("Тариф ChatGPT")
-                                    .setMessage("Выбор указывает тариф аккаунта, с которым вы входите " +
-                                            "в официальный ChatGPT. Он не покупает подписку, " +
-                                            "не снимает лимиты и не включает платный API. " +
-                                            "У каждого телефона собственная настройка.")
-                                    .setPositiveButton("Понятно", null).show())
-                    .setNegativeButton("Отмена", null)
-                    .show();
-        });
-        box.addView(chatPlan, spaced(10));
-
         box.addView(rowButton("Личный словарь и рассказы — GitHub", this::showVocabularySyncSettings), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
@@ -554,7 +520,6 @@ public final class MainActivity extends Activity {
         try {
             store.resetLearningData();
             assistant.clearHistory(store);
-            OfficialStudyHandoff.clear(this, studyLanguage);
         } catch (RuntimeException e) {
             new AlertDialog.Builder(this)
                     .setTitle("База не сброшена")
@@ -642,8 +607,7 @@ public final class MainActivity extends Activity {
         box.addView(assistantStatus);
 
         Button connect = new Button(this);
-        connect.setText("Старое подключение ChatGPT (лимитировано)");
-        connect.setVisibility(View.GONE);
+        connect.setText("Подключить ChatGPT");
         ui.style(connect, UiStyle.Tone.PRIMARY);
         box.addView(connect, spaced(12));
 
@@ -652,15 +616,13 @@ public final class MainActivity extends Activity {
         assistantHistory.setTextSize(16);
         assistantHistory.setTextColor(primaryText());
         assistantHistory.setPadding(0, dp(10), 0, dp(10));
-        assistantHistory.setText("Привяжите один раз свой существующий диалог ChatGPT. " +
-                "После этого приложение будет открывать ИМЕННО его, сохраняя историю и инструкции проекта. " +
-                "Новый запрос копируется в буфер: вставьте и отправьте его в ChatGPT. " +
-                "Если у ChatGPT подключён личный GitHub, он сможет прочитать актуальный словарь. " +
-                "Ответ-рассказ скопируйте и нажмите «Забрать рассказ».");
+        assistantHistory.setText(assistant.historyText(store).isEmpty()
+                ? "Здесь можно говорить или писать. Контекст приложения уже передаётся автоматически."
+                : assistant.historyText(store));
         assistantHistory.setPadding(dp(14), dp(14), dp(14), dp(14));
         historyScroll.setBackground(ui.rounded(ui.soft, 15, ui.outline));
         historyScroll.addView(assistantHistory);
-        LinearLayout.LayoutParams historyParams = new LinearLayout.LayoutParams(-1, dp(145));
+        LinearLayout.LayoutParams historyParams = new LinearLayout.LayoutParams(-1, dp(240));
         historyParams.bottomMargin = dp(12);
         box.addView(historyScroll, historyParams);
 
@@ -671,15 +633,6 @@ public final class MainActivity extends Activity {
         assistantInput.setTextSize(17);
         ui.styleInput(assistantInput);
         box.addView(assistantInput, spaced(12));
-
-        Button selectConversation = new Button(this);
-        selectConversation.setText(PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
-                ? "Привязать постоянный диалог ChatGPT"
-                : "Постоянный диалог выбран • изменить");
-        selectConversation.setAllCaps(false);
-        ui.style(selectConversation, UiStyle.Tone.OUTLINE);
-        box.addView(selectConversation, spaced(6));
-        selectConversation.setOnClickListener(v -> configureExistingChat(selectConversation));
 
         // Optional editable presets: no network request occurs until "Отправить".
         HorizontalScrollView presetScroll = new HorizontalScrollView(this);
@@ -742,22 +695,16 @@ public final class MainActivity extends Activity {
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Button mic = new Button(this);
-        mic.setText("🎙 Голос ChatGPT");
+        mic.setText("🎙 Разговор");
         ui.style(mic, UiStyle.Tone.OUTLINE);
         Button send = new Button(this);
-        send.setText("Обычный ChatGPT");
+        send.setText("Отправить");
         ui.style(send, UiStyle.Tone.PRIMARY);
         actions.addView(mic, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(0, -2, 1);
         sendParams.setMarginStart(dp(6));
         actions.addView(send, sendParams);
         box.addView(actions);
-        Button receive = new Button(this);
-        receive.setText("Забрать рассказ из ChatGPT");
-        receive.setAllCaps(false);
-        ui.style(receive, UiStyle.Tone.OUTLINE);
-        box.addView(receive, spaced(8));
-        receive.setOnClickListener(v -> importRegularChatGptStory());
         assistantVoiceButton = mic;
         assistantSendButton = send;
 
@@ -782,20 +729,20 @@ public final class MainActivity extends Activity {
         box.addView(assistantProgressRow);
 
         TextView voiceHelp = new TextView(this);
-        voiceHelp.setText("В обычном ChatGPT вставьте скопированный текст. После ответа нажмите «Копировать» и вернитесь сюда.");
+        voiceHelp.setText("Скажите задачу — ИИ проверит распознавание. Сомнительную фразу можно исправить перед отправкой.");
         voiceHelp.setTextColor(secondaryText());
         voiceHelp.setTextSize(13);
         voiceHelp.setPadding(0, dp(8), 0, dp(6));
         box.addView(voiceHelp);
 
         Runnable refreshConnection = () -> {
-            String activeAudit = OfficialStudyHandoff.stage(this, studyLanguage);
-            assistantStatus.setText(!activeAudit.isEmpty() ? activeAudit
-                    : PersistentChatContext.conversationUrl(this, studyLanguage).isEmpty()
-                        ? "Привяжите постоянный чат для сохранения его истории."
-                        : "Обычный ChatGPT • ответы переносятся пользователем, аудит 1/3 → 3/3");
-            connect.setVisibility(View.GONE);
-            send.setEnabled(!assistantRequestInFlight);
+            boolean connected = assistant.isConnected();
+            String account = assistant.accountLabel();
+            assistantStatus.setText(connected
+                    ? "ChatGPT подключён" + (account.isEmpty() ? "" : " • " + account)
+                    : "Нужно один раз подключить этот ChatGPT-аккаунт.");
+            connect.setVisibility(connected ? View.GONE : View.VISIBLE);
+            send.setEnabled(connected && !assistantRequestInFlight);
         };
         refreshConnection.run();
 
@@ -809,27 +756,30 @@ public final class MainActivity extends Activity {
             });
         });
 
-        // The consumer ChatGPT flow never invokes an OpenAI API or
-        // Subscription Sharing, even if an older version stored broker settings.
-        mic.setOnClickListener(v -> openRegularChatGpt(true));
-        send.setOnClickListener(v -> submitExistingChatAction());
-        // Long press cancels an unfinished manual audit; no paid API setup.
-        send.setOnLongClickListener(v -> {
-            if (OfficialStudyHandoff.pending(this, studyLanguage)) {
-                new AlertDialog.Builder(this).setTitle("Проверка перевода")
-                        .setMessage(OfficialStudyHandoff.stage(this, studyLanguage) +
-                                "\n\nНачать заново и удалить несохранённый результат?")
-                        .setPositiveButton("Начать заново", (d, w) -> {
-                            OfficialStudyHandoff.clear(this, studyLanguage);
-                            if (assistantStatus != null)
-                                assistantStatus.setText("Проверка отменена. Введите новое задание.");
-                        })
-                        .setNegativeButton("Продолжить", null).show();
-            } else {
-                Toast.makeText(this, "Обычный ChatGPT: без платного API",
-                        Toast.LENGTH_SHORT).show();
+        mic.setOnClickListener(v -> {
+            if (assistantVoiceActive) stopAssistantVoice();
+            else {
+                if (!assistant.isConnected()) {
+                    assistantStatus.setText("Сначала подключите ChatGPT.");
+                    return;
+                }
+                assistantVoiceActive = true;
+                assistantVoiceReviewPending = false;
+                assistantVoiceErrors = 0;
+                updateAssistantVoiceButton();
+                startAssistantVoice();
             }
-            return true;
+        });
+        send.setOnClickListener(v -> {
+            if (assistantRequestInFlight) return; // never send the same request twice
+            boolean voice = assistantVoiceReviewPending;
+            if (assistantVoiceActive) stopAssistantVoice();
+            assistantVoiceReviewPending = false;
+            if (voice) {
+                assistantVoiceActive = true;
+                updateAssistantVoiceButton();
+            }
+            sendAssistantMessage(assistantInput.getText().toString().trim(), voice);
         });
 
         assistantDialog = new AlertDialog.Builder(this)
@@ -852,537 +802,11 @@ public final class MainActivity extends Activity {
             if (!isFinishing() && !isDestroyed() && !"player".equals(screen)) render();
         });
         assistantDialog.show();
-        String auditStage = OfficialStudyHandoff.stage(this, studyLanguage);
-        if (!auditStage.isEmpty() && assistantStatus != null)
-            assistantStatus.setText(auditStage);
-
         if (assistantRequestInFlight) updateAssistantBusy(true, assistantRequestStage);
         else if (pendingSavedStory != null) {
             ChatGptAssistant.SavedStory ready = pendingSavedStory;
             pendingSavedStory = null;
             showStoryReadyDialog(ready);
-        }
-    }
-
-    /** The same send button supports user-mediated transfers via official ChatGPT. */
-    private void submitExistingChatAction() {
-        if (assistantInput == null || assistantRequestInFlight) return;
-        if (OfficialStudyHandoff.pending(this, studyLanguage)) {
-            String pending = OfficialStudyHandoff.preparedPrompt(this, studyLanguage);
-            if (!pending.isEmpty()) launchOfficialHandoff(pending,
-                    OfficialStudyHandoff.stage(this, studyLanguage));
-            else showVerifiedOfficialMaterial();
-            return;
-        }
-        String text = assistantInput.getText().toString().trim();
-        if (text.isEmpty()) {
-            assistantInput.setError("Напишите задание");
-            return;
-        }
-        java.util.regex.Matcher word = java.util.regex.Pattern.compile(
-                "^(?:добавь|переведи)\\s+слово\\s*[:：-]?\\s*(.+)$",
-                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
-                .matcher(text);
-        java.util.regex.Matcher phrase = java.util.regex.Pattern.compile(
-                "^(?:добавь|переведи)\\s+(?:выражение|фразу)\\s*[:：-]?\\s*(.+)$",
-                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
-                .matcher(text);
-        try {
-            if (word.matches()) {
-                launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "word",
-                        word.group(1).trim(), store.vocabulary()), "Жду перевод слова");
-            } else if (phrase.matches()) {
-                launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "phrase",
-                        phrase.group(1).trim(), store.vocabulary()), "Жду перевод выражения");
-            } else if (java.util.regex.Pattern.compile(
-                    "(рассказ|сказк|истори|новелл|\\bstory\\b|cuento)",
-                    java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
-                    .matcher(text).find()) {
-                launchOfficialHandoff(OfficialStudyHandoff.begin(this, studyLanguage, "story",
-                        text, store.vocabulary()), "Жду рассказ");
-            } else {
-                // Plain conversation is handled by consumer ChatGPT itself.
-                openRegularChatGpt(false);
-            }
-        } catch (Exception error) {
-            new AlertDialog.Builder(this).setTitle("Не удалось подготовить ChatGPT")
-                    .setMessage(error.getMessage()).setPositiveButton("OK", null).show();
-        }
-    }
-
-    private void launchOfficialHandoff(String prompt, String description) {
-        String url = PersistentChatContext.conversationUrl(this, studyLanguage);
-        if (url.isEmpty()) {
-            configureExistingChat(null);
-            return;
-        }
-        try {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            if (clipboard == null) throw new IllegalStateException("Буфер обмена недоступен");
-            clipboard.setPrimaryClip(ClipData.newPlainText("Задание ChatGPT", prompt));
-            awaitingRegularChatGptReply = true;
-            regularChatGptPreparedText = prompt;
-            regularChatGptOpenedAt = SystemClock.uptimeMillis();
-            if (assistantStatus != null)
-                assistantStatus.setText(description + ". Вставьте задание в ChatGPT, " +
-                        "скопируйте JSON-ответ и вернитесь в приложение.");
-            new CustomTabsIntent.Builder().setShowTitle(true).build()
-                    .launchUrl(this, Uri.parse(url));
-        } catch (Exception error) {
-            if (assistantStatus != null) assistantStatus.setText(error.getMessage());
-            Toast.makeText(this, "Не удалось открыть ChatGPT", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void nextOfficialAudit(String prompt, String description) {
-        new AlertDialog.Builder(this)
-                .setTitle("Трёхступенчатая проверка")
-                .setMessage(description + "\n\nСледующее задание будет скопировано в буфер. " +
-                        "Откройте тот же диалог ChatGPT, вставьте и отправьте его, " +
-                        "потом скопируйте JSON-ответ и вернитесь.")
-                .setPositiveButton("Открыть ChatGPT", (dialog, which) ->
-                        launchOfficialHandoff(prompt, description))
-                .setNegativeButton("Позже", null)
-                .show();
-    }
-
-    private void showVerifiedOfficialMaterial() {
-        try {
-            OfficialStudyHandoff.Outcome ready =
-                    OfficialStudyHandoff.alreadyVerified(this, studyLanguage);
-            Store destination = store;
-            new AlertDialog.Builder(this).setTitle("Проверка 3/3 пройдена")
-                    .setMessage(("story".equals(ready.kind()) ? "Рассказ «" + ready.title() + "»" :
-                            ready.term() + " — " + ready.translation()) +
-                            "\n\nМатериал прошёл три отдельных аудита ChatGPT. " +
-                            "Сохранить в учебную базу?")
-                    .setPositiveButton("Сохранить", (dialog, which) -> {
-                        if (store != destination) {
-                            Toast.makeText(this, "Язык изменён; повторите", Toast.LENGTH_LONG).show();
-                            return;
-                        }
-                        try {
-                            if ("story".equals(ready.kind())) {
-                                if (!destination.addStoryIfMissing(ready.title(), ready.body(),
-                                        ready.translation(), "Обычный ChatGPT • аудит 3/3")) {
-                                    Toast.makeText(this, "Рассказ уже существует", Toast.LENGTH_LONG).show();
-                                } else {
-                                    long id = -1;
-                                    for (Store.Story story : destination.stories())
-                                        if (ready.title().equals(story.title())) {
-                                            id = story.id();
-                                            break;
-                                        }
-                                    if (id > 0)
-                                        showStoryReadyDialog(new ChatGptAssistant.SavedStory(id, ready.title()));
-                                    else Toast.makeText(this, "Рассказ сохранён", Toast.LENGTH_LONG).show();
-                                }
-                            } else {
-                                StoryVocabulary.requireVerified(ready.term(), ready.translation());
-                                int cardKind = "phrase".equals(ready.kind()) ? 1 : 0;
-                                if (destination.containsCard(ready.term(), cardKind)) {
-                                    Toast.makeText(this, "Уже есть в словаре", Toast.LENGTH_LONG).show();
-                                } else if (cardKind == 1) {
-                                    destination.addCardIfMissing(ready.term(), ready.translation(), 1, 0);
-                                    Toast.makeText(this, "Выражение добавлено", Toast.LENGTH_LONG).show();
-                                } else {
-                                    destination.addStoryWord(ready.term(), ready.translation(), 0);
-                                    Toast.makeText(this, "Слово добавлено", Toast.LENGTH_LONG).show();
-                                }
-                            }
-                            OfficialStudyHandoff.clear(this, studyLanguage);
-                            awaitingRegularChatGptReply = false;
-                            if (assistantStatus != null)
-                                assistantStatus.setText("Материал проверен 3/3 и обработан.");
-                        } catch (Exception error) {
-                            new AlertDialog.Builder(this).setTitle("Не сохранено")
-                                    .setMessage(error.getMessage()).setPositiveButton("OK", null).show();
-                        }
-                    })
-                    .setNegativeButton("Позже", null).show();
-        } catch (Exception e) {
-            showStoryImportError(e.getMessage());
-        }
-    }
-
-    /** Only a private relay secret is stored on Android; the OpenAI key stays on a server. */
-    private void configureGptBroker(Button source) {
-        LinearLayout inputs = new LinearLayout(this);
-        inputs.setOrientation(LinearLayout.VERTICAL);
-        inputs.setPadding(dp(18), dp(10), dp(18), dp(6));
-        TextView note = new TextView(this);
-        note.setText("Этот режим работает автоматически через официальный OpenAI API, " +
-                "который оплачивается отдельно от подписки ChatGPT. " +
-                "Нужен ваш HTTPS-сервер со скриптом bridge/chatgpt_broker.py. " +
-                "Без настройки платные запросы не выполняются.");
-        note.setTextSize(14);
-        note.setTextColor(primaryText());
-        inputs.addView(note, spaced(6));
-        EditText address = new EditText(this);
-        address.setSingleLine(true);
-        address.setHint("https://study.example.com");
-        address.setText(GptStudyBrokerClient.baseUrl(this));
-        address.setInputType(android.text.InputType.TYPE_CLASS_TEXT
-                | android.text.InputType.TYPE_TEXT_VARIATION_URI);
-        inputs.addView(address, spaced(8));
-        EditText token = new EditText(this);
-        token.setSingleLine(true);
-        token.setHint("Токен посредника (не ключ OpenAI)");
-        token.setInputType(android.text.InputType.TYPE_CLASS_TEXT
-                | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        inputs.addView(token, spaced(8));
-        new AlertDialog.Builder(this)
-                .setTitle("Подключить посредника ChatGPT")
-                .setView(inputs)
-                .setPositiveButton("Сохранить", (d, which) -> {
-                    try {
-                        GptStudyBrokerClient.configure(this,
-                                address.getText().toString(), token.getText().toString());
-                        if (source != null) source.setText("Обычный ChatGPT");
-                        if (assistantStatus != null)
-                            assistantStatus.setText("Автоматический ChatGPT подключён. Платные запросы " +
-                                    "отправляются только по нажатию существующей кнопки.");
-                    } catch (Exception error) {
-                        new AlertDialog.Builder(this).setTitle("Не подключено")
-                                .setMessage(error.getMessage()).setPositiveButton("OK", null).show();
-                    }
-                })
-                .setNeutralButton("Отключить", (d, which) -> {
-                    GptStudyBrokerClient.disconnect(this);
-                    if (source != null)
-                        source.setText("Обычный ChatGPT");
-                    if (assistantStatus != null)
-                        assistantStatus.setText("Посредник отключён. Платных запросов нет.");
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
-    }
-
-    private void submitGptBrokerTask(String kind, boolean phrase, String task) {
-        if (assistantRequestInFlight || assistantInput == null) return;
-        if (!GptStudyBrokerClient.configured(this)) {
-            // Until the owner has explicitly provisioned the paid API relay,
-            // keep the existing ChatGPT handoff exactly as it was.
-            openRegularChatGpt(false);
-            return;
-        }
-        final String submittedTask = task == null ? "" : task.trim();
-        if (submittedTask.isEmpty()) {
-            assistantInput.setError(kind.equals("word")
-                    ? "Введите точную форму слова или выражения" : "Введите тему рассказа");
-            return;
-        }
-        if (kind.equals("word") && submittedTask.length() > 120) {
-            assistantInput.setError("Одна точная форма, не больше 120 символов");
-            return;
-        }
-        Store destination = store;
-        String language = studyLanguage;
-        updateAssistantBusy(true, "Отправляю задание через защищённый посредник…");
-        gptBroker.request(this, destination, language, kind, submittedTask,
-                new GptStudyBrokerClient.Listener() {
-                    @Override public void progress(String stage) {
-                        runOnUiThread(() -> {
-                            if (!isFinishing() && !isDestroyed())
-                                updateAssistantBusy(true, stage);
-                        });
-                    }
-                    @Override public void completed(org.json.JSONObject result, String error) {
-                        runOnUiThread(() -> {
-                            if (isFinishing() || isDestroyed()) return;
-                            updateAssistantBusy(false, "");
-                            if (error != null && !error.isEmpty()) {
-                                if (assistantStatus != null) assistantStatus.setText(error);
-                                new AlertDialog.Builder(MainActivity.this)
-                                        .setTitle("ChatGPT не добавил материал")
-                                        .setMessage(error).setPositiveButton("OK", null).show();
-                                return;
-                            }
-                            try {
-                                if (result == null) throw new IllegalStateException("Пустой ответ");
-                                if (!"chat".equals(kind))
-                                    GptStudyBrokerClient.checkAudits(result);
-                                if (!language.equals(result.getString("language")))
-                                    throw new IllegalArgumentException("Ответ на другом языке");
-                                if ("story".equals(kind)) {
-                                    RegularChatGptBridge.StoryDraft draft =
-                                            GptStudyBrokerClient.story(result);
-                                    boolean added = destination.addStoryIfMissing(draft.title(),
-                                            draft.body(), draft.translation(),
-                                            "ChatGPT API • три аудита перевода");
-                                    if (!added) {
-                                        Toast.makeText(MainActivity.this,
-                                                "Рассказ уже существует", Toast.LENGTH_LONG).show();
-                                        return;
-                                    }
-                                    long id = -1;
-                                    for (Store.Story story : destination.stories()) {
-                                        if (draft.title().equals(story.title())) {
-                                            id = story.id(); break;
-                                        }
-                                    }
-                                    if (assistantStatus != null)
-                                        assistantStatus.setText("РАССКАЗ ГОТОВ: " + draft.title());
-                                    if (store == destination && id > 0)
-                                        showStoryReadyDialog(new ChatGptAssistant.SavedStory(id, draft.title()));
-                                    else Toast.makeText(MainActivity.this,
-                                            "Рассказ сохранён в библиотеке " + language,
-                                            Toast.LENGTH_LONG).show();
-                                } else if ("chat".equals(kind)) {
-                                    String reply = result.getString("text").trim();
-                                    if (reply.isEmpty()) throw new IllegalArgumentException("Пустой ответ ChatGPT");
-                                    if (assistantHistory != null) {
-                                        String old = assistantHistory.getText().toString();
-                                        assistantHistory.setText(old + "\n\nВы: " + submittedTask +
-                                                "\nChatGPT: " + reply);
-                                    }
-                                    if (assistantStatus != null)
-                                        assistantStatus.setText("ChatGPT ответил внутри приложения");
-                                    if (assistantVoiceActive) {
-                                        assistantVoiceProcessing = true;
-                                        final int epoch = assistantVoiceEpoch;
-                                        if (assistantVoiceOutput == null)
-                                            assistantVoiceOutput = new AssistantVoiceOutput(MainActivity.this);
-                                        assistantVoiceOutput.speak(reply, spoken -> {
-                                            if (!assistantVoiceActive || epoch != assistantVoiceEpoch) return;
-                                            assistantVoiceProcessing = false;
-                                            if (!spoken) {
-                                                stopAssistantVoice();
-                                                if (assistantStatus != null)
-                                                    assistantStatus.setText("Установите русский голос синтеза речи Android.");
-                                                return;
-                                            }
-                                            if (assistantStatus != null) assistantStatus.setText("Продолжаем разговор…");
-                                            pendingVoiceRestart = () -> {
-                                                pendingVoiceRestart = null;
-                                                if (assistantVoiceActive && epoch == assistantVoiceEpoch)
-                                                    startAssistantVoice();
-                                            };
-                                            assistantVoiceHandler.postDelayed(pendingVoiceRestart, 600);
-                                        });
-                                    }
-                                } else {
-                                    String word = result.getString("word").trim();
-                                    String meaning = result.getString("translation").trim();
-                                    if (!word.equals(submittedTask))
-                                        throw new IllegalArgumentException("Изменена исходная словоформа");
-                                    StoryVocabulary.requireVerified(word, meaning);
-                                    if (destination.containsCard(word, phrase ? 1 : 0)) {
-                                        Toast.makeText(MainActivity.this, "Уже есть в словаре",
-                                                Toast.LENGTH_LONG).show();
-                                        return;
-                                    }
-                                    boolean added;
-                                    if (phrase) {
-                                        added = destination.addCardIfMissing(word, meaning, 1, 0);
-                                    } else {
-                                        destination.addStoryWord(word, meaning, 0);
-                                        added = true;
-                                    }
-                                    if (assistantStatus != null)
-                                        assistantStatus.setText((added ? "Проверено 3/3 и добавлено: "
-                                                : "Уже есть: ") + word + " — " + meaning);
-                                    Toast.makeText(MainActivity.this,
-                                            "Перевод прошёл аудит 3/3: " + word,
-                                            Toast.LENGTH_LONG).show();
-                                }
-                            } catch (Exception validationError) {
-                                new AlertDialog.Builder(MainActivity.this)
-                                        .setTitle("Материал не сохранён")
-                                        .setMessage(validationError.getMessage())
-                                        .setPositiveButton("OK", null).show();
-                            }
-                        });
-                    }
-                });
-    }
-
-    /**
-     * Official ChatGPT in a trusted browser tab: no app subscription sharing,
-     * OAuth token or paid API key. Browsers do not expose ChatGPT's composer,
-     * so the user explicitly pastes the prepared context and sends the message.
-     */
-    private void openRegularChatGpt(boolean voice) {
-        if (assistantRequestInFlight) {
-            Toast.makeText(this, "Сначала завершите текущую операцию", Toast.LENGTH_LONG).show();
-            return;
-        }
-        String text = assistantInput == null ? "" : assistantInput.getText().toString().trim();
-        if (text.isEmpty()) text = voice
-                ? "Помогай мне учить язык. Я задам вопрос голосом в чате."
-                : "Напиши короткий рассказ с использованием освоенных слов из моего словаря.";
-        String url = PersistentChatContext.conversationUrl(this, studyLanguage);
-        if (url.isEmpty()) {
-            configureExistingChat(null);
-            return;
-        }
-        String prepared;
-        try {
-            String repo = PrivateVocabularySync.isConfigured(this)
-                    ? PrivateVocabularySync.repository(this) : "";
-            String id = PrivateVocabularySync.isConfigured(this)
-                    ? PrivateVocabularySync.profileId(this) : "";
-            prepared = PersistentChatContext.followUp(text, studyLanguage, repo, id);
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            if (clipboard == null) throw new IllegalStateException("Буфер обмена недоступен");
-            clipboard.setPrimaryClip(ClipData.newPlainText("Задание и мой словарь", prepared));
-            awaitingRegularChatGptReply = true;
-            regularChatGptPreparedText = prepared;
-            regularChatGptOpenedAt = SystemClock.uptimeMillis();
-            if (assistantStatus != null) {
-                assistantStatus.setText("Открыт ваш постоянный чат с его историей. Вставьте короткое задание " +
-                        "и нажмите отправку. После ответа скопируйте JSON рассказа и вернитесь: " +
-                        "приложение само предложит сохранение. Доступ к актуальному словарю " +
-                        "требует отдельного разрешённого подключения GitHub в ChatGPT.");
-            }
-            new CustomTabsIntent.Builder().setShowTitle(true).build()
-                    .launchUrl(this, Uri.parse(url));
-        } catch (Exception error) {
-            String message = error.getMessage() == null ? "Не удалось открыть ChatGPT" : error.getMessage();
-            if (assistantStatus != null) assistantStatus.setText(message);
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-        }
-    }
-
-    /**
-     * Store only a specific EXISTING conversation URL, separately for ES/EN,
-     * never a shared snapshot or a new empty chat. Neither credentials nor
-     * conversation contents are stored here.
-     */
-    private void configureExistingChat(Button source) {
-        String language = studyLanguage;
-        EditText address = new EditText(this);
-        address.setSingleLine(true);
-        address.setInputType(android.text.InputType.TYPE_CLASS_TEXT
-                | android.text.InputType.TYPE_TEXT_VARIATION_URI);
-        address.setHint("https://chatgpt.com/c/...");
-        address.setText(PersistentChatContext.conversationUrl(this, language));
-        address.selectAll();
-
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(dp(18), dp(12), dp(18), dp(8));
-        TextView description = new TextView(this);
-        description.setText("Откройте в обычном ChatGPT существующий чат с нужной историей. " +
-                "Скопируйте его адрес и вставьте сюда один раз. " +
-                "Для английского и испанского можно указать разные диалоги. " +
-                "На телефоне жены будет отдельная привязка. " +
-                "Без доступа ChatGPT к личному словарю его новые изменения сами сюда не попадут.");
-        description.setTextColor(primaryText());
-        description.setTextSize(14);
-        layout.addView(description, spaced(6));
-        layout.addView(address, spaced(10));
-
-        new AlertDialog.Builder(this)
-                .setTitle("Мой постоянный диалог ChatGPT")
-                .setView(layout)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    try {
-                        PersistentChatContext.link(this, language, address.getText().toString());
-                        if (source != null) source.setText("Постоянный диалог выбран • изменить");
-                        if (assistantStatus != null)
-                            assistantStatus.setText("Диалог привязан. При отправке откроется этот же разговор.");
-                        Toast.makeText(this, "Сохранён существующий диалог", Toast.LENGTH_LONG).show();
-                    } catch (IllegalArgumentException e) {
-                        new AlertDialog.Builder(this).setTitle("Неверная ссылка")
-                                .setMessage(e.getMessage())
-                                .setPositiveButton("Повторить", (d, w) -> configureExistingChat(source))
-                                .show();
-                    }
-                })
-                .setNeutralButton("Отвязать", (dialog, which) -> {
-                    PersistentChatContext.unlink(this, language);
-                    if (source != null) source.setText("Привязать постоянный диалог ChatGPT");
-                    if (assistantStatus != null)
-                        assistantStatus.setText("Диалог отвязан. Для отправки нужна новая привязка.");
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
-    }
-
-    /** Manual fallback: explicit clipboard reading only while our app is foreground. */
-    private void importRegularChatGptStory() {
-        try {
-            if ("Все три аудита пройдены. Осталось сохранить".equals(
-                    OfficialStudyHandoff.stage(this, studyLanguage))) {
-                showVerifiedOfficialMaterial();
-                return;
-            }
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            ClipData clip = clipboard == null ? null : clipboard.getPrimaryClip();
-            if (clip == null || clip.getItemCount() < 1)
-                throw new IllegalArgumentException("Сначала скопируйте JSON-ответ ChatGPT");
-            CharSequence raw = clip.getItemAt(0).coerceToText(this);
-            importRegularChatGptStoryText(raw == null ? "" : raw.toString());
-        } catch (Exception e) {
-            showStoryImportError(e.getMessage());
-        }
-    }
-
-    private void showStoryImportError(String error) {
-        String message = error == null ? "Не удалось разобрать ответ ChatGPT" : error;
-        new AlertDialog.Builder(this).setTitle("Рассказ не импортирован")
-                .setMessage(message + "\\n\\nСкопируйте сам текст JSON-ответа, а не ссылку на переписку.")
-                .setPositiveButton("OK", null).show();
-    }
-
-    /** No imported story/word may bypass three separate ChatGPT audit replies. */
-    private void importRegularChatGptStoryText(String raw) {
-        try {
-            OfficialStudyHandoff.Outcome outcome =
-                    OfficialStudyHandoff.accept(this, studyLanguage, raw);
-            awaitingRegularChatGptReply = false;
-            regularChatGptPreparedText = "";
-            if ("verified".equals(outcome.status())) {
-                showVerifiedOfficialMaterial();
-            } else if ("audit".equals(outcome.status())) {
-                if (assistantStatus != null)
-                    assistantStatus.setText(OfficialStudyHandoff.stage(this, studyLanguage));
-                nextOfficialAudit(outcome.prompt(), outcome.message());
-            } else {
-                throw new IllegalStateException("Проверка ещё не завершена");
-            }
-        } catch (Exception error) {
-            String message = error.getMessage() == null ? "Недопустимый ответ ChatGPT"
-                    : error.getMessage();
-            new AlertDialog.Builder(this).setTitle("Ничего не сохранено")
-                    .setMessage(message +
-                            "\n\nСкопируйте полный JSON-ответ текущего этапа из обычного ChatGPT. " +
-                            "При отклонении аудита начните заново.")
-                    .setPositiveButton("OK", null).show();
-        }
-    }
-
-    private void handleIncomingStoryShare(Intent intent) {
-        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())
-                || !"text/plain".equals(intent.getType())) return;
-        intent.setAction(null); // Do not re-import on rotate/resume.
-        CharSequence shared = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-        String raw = shared == null ? "" : shared.toString().trim();
-        if (raw.isEmpty()) return;
-        if (!raw.startsWith("{") && !raw.startsWith("```")) {
-            showStoryImportError("Передан не JSON рассказа. Ссылка на беседу не содержит текста рассказа.");
-            return;
-        }
-        awaitingRegularChatGptReply = false;
-        importRegularChatGptStoryText(raw);
-    }
-
-    private void maybeReceiveCopiedStory() {
-        if (!awaitingRegularChatGptReply || SystemClock.uptimeMillis() - regularChatGptOpenedAt < 1200)
-            return;
-        // Read the clipboard only upon return from our own ChatGPT tab.
-        ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (cb == null || !cb.hasPrimaryClip()) return;
-        ClipData clip = cb.getPrimaryClip();
-        if (clip == null || clip.getItemCount() == 0) return;
-        CharSequence shared = clip.getItemAt(0).coerceToText(this);
-        String text = shared == null ? "" : shared.toString().trim();
-        if (text.isEmpty() || text.equals(regularChatGptPreparedText)
-                || (!text.startsWith("{") && !text.startsWith("```"))) return;
-        if (OfficialStudyHandoff.isOurReply(this, studyLanguage, text)) {
-            awaitingRegularChatGptReply = false;
-            importRegularChatGptStoryText(text);
         }
     }
 
@@ -1396,7 +820,12 @@ public final class MainActivity extends Activity {
                     String request = VocabularyGapTopics.prompt(index, studyingEnglish());
                     assistantInput.setText(request);
                     assistantInput.setSelection(assistantInput.length());
-                    openRegularChatGpt(false);
+                    if (!assistant.isConnected()) {
+                        if (assistantStatus != null)
+                            assistantStatus.setText("Подключите ChatGPT, затем нажмите «Отправить».");
+                        return;
+                    }
+                    sendAssistantMessage(request, false);
                 })
                 .setNegativeButton("Отмена", null)
                 .show();
@@ -1404,7 +833,7 @@ public final class MainActivity extends Activity {
 
     private void updateAssistantVoiceButton() {
         if (assistantVoiceButton != null)
-            assistantVoiceButton.setText("🎙 Голос ChatGPT");
+            assistantVoiceButton.setText(assistantVoiceActive ? "■ Остановить" : "🎙 Разговор");
     }
 
     private void stopAssistantVoice() {
@@ -1433,8 +862,8 @@ public final class MainActivity extends Activity {
         if (assistantProgressRow != null)
             assistantProgressRow.setVisibility(busy ? View.VISIBLE : View.GONE);
         if (assistantSendButton != null) {
-            assistantSendButton.setText(busy ? "⏳ Генерирую…" : "Обычный ChatGPT");
-            assistantSendButton.setEnabled(!busy);
+            assistantSendButton.setText(busy ? "⏳ Генерирую…" : "Отправить");
+            assistantSendButton.setEnabled(!busy && assistant.isConnected());
         }
         if (assistantInput != null) assistantInput.setEnabled(!busy);
         if (assistantGapButton != null) assistantGapButton.setEnabled(!busy);
@@ -1624,21 +1053,6 @@ public final class MainActivity extends Activity {
                 final float score = confidence != null && confidence.length > 0 ? confidence[0] : -1f;
                 assistantInput.setText(heard.get(0));
                 assistantInput.setSelection(assistantInput.length());
-                // The old voice transcript refinement used Subscription Sharing.
-                // For an explicitly configured broker, use Android's ASR directly:
-                // never alter the spoken form silently (especially Spanish words).
-                if (GptStudyBrokerClient.configured(MainActivity.this)) {
-                    assistantVoiceProcessing = false;
-                    if (score < 0.60f || heard.size() > 1 &&
-                            !heard.get(0).equalsIgnoreCase(heard.get(1))) {
-                        stopAssistantVoice();
-                        assistantVoiceReviewPending = true;
-                        assistantStatus.setText("Проверьте распознанный текст и нажмите существующую кнопку отправки.");
-                    } else {
-                        submitExistingChatAction();
-                    }
-                    return;
-                }
                 assistantStatus.setText("ИИ проверяет, что именно вы сказали…");
                 assistant.refineVoiceTranscript(store, heard, (ok, revision) -> runOnUiThread(() -> {
                     if (!active()) return;
@@ -1714,7 +1128,6 @@ public final class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        handleIncomingStoryShare(intent);
     }
 
     private void cards() {
@@ -2506,7 +1919,6 @@ public final class MainActivity extends Activity {
         if (prefs.getBoolean(prefKey("cardDraftOpen"), false) && (cardDialog == null || !cardDialog.isShowing())) addCard();
         syncContent();
         PrivateVocabularySync.schedule(this);
-        maybeReceiveCopiedStory();
     }
     @Override protected void onPause() { stopAssistantVoice(); cancelCardSpeech(); player.pause(); remember(); rememberCardDraft(); super.onPause(); }
     @Override protected void onDestroy() {
@@ -2515,7 +1927,6 @@ public final class MainActivity extends Activity {
         if (contentSync != null) contentSync.close();
         if (personalStorySync != null) personalStorySync.close();
         if (assistant != null) assistant.close();
-        if (gptBroker != null) gptBroker.close();
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (assistantVoiceOutput != null) assistantVoiceOutput.close();
         player.close();
