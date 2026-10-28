@@ -3,4 +3,8 @@
     <include domain="sharedpref" path="." />
     <include domain="file" path="card-images/" />
     <include domain="file" path="card-images-en/" />
+    <include domain="file" path="card-images-mama/" />
+    <include domain="file" path="card-images-en-mama/" />
+    <include domain="file" path="card-images-dima/" />
+    <include domain="file" path="card-images-en-dima/" />
 </full-backup-content>
