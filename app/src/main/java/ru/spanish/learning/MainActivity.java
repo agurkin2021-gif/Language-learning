@@ -39,6 +39,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class MainActivity extends Activity {
     private Store store;
     private Store spanishStore, englishStore;
+    private final java.util.Map<String, Store> profileStores = new java.util.HashMap<>();
+    private String activeProfile = StudyProfile.PAPA;
     private String studyLanguage = "es";
     private RemoteContentSync contentSync;
     private PersonalStorySync personalStorySync;
@@ -104,9 +106,10 @@ public final class MainActivity extends Activity {
             legacyUpdater.cancel(72102);
         }
         prefs = getSharedPreferences("ui", MODE_PRIVATE);
-        studyLanguage = "en".equals(prefs.getString("studyLanguage", "es")) ? "en" : "es";
-        spanishStore = new Store(this);
-        if ("en".equals(studyLanguage)) englishStore = Store.english(this);
+        activeProfile = StudyProfile.active(this);
+        studyLanguage = "en".equals(prefs.getString(StudyProfile.languageKey(activeProfile), "es")) ? "en" : "es";
+        spanishStore = profileStore(activeProfile, false);
+        if ("en".equals(studyLanguage)) englishStore = profileStore(activeProfile, true);
         store = "en".equals(studyLanguage) ? englishStore : spanishStore;
         contentSync = new RemoteContentSync();
         personalStorySync = new PersonalStorySync();
@@ -127,7 +130,70 @@ public final class MainActivity extends Activity {
         render();
     }
     private boolean studyingEnglish() { return "en".equals(studyLanguage); }
-    private String prefKey(String key) { return studyingEnglish() ? "en_" + key : key; }
+    private Store profileStore(String profile, boolean english) {
+        String key = StudyProfile.normalized(profile) + (english ? "-en" : "-es");
+        Store existing = profileStores.get(key);
+        if (existing != null) return existing;
+        Store created = Store.forProfile(this, profile, english);
+        profileStores.put(key, created);
+        return created;
+    }
+    private String prefKey(String key) {
+        return StudyProfile.preferenceKey(activeProfile, studyLanguage, key);
+    }
+
+    /** The only profile selector is inside Settings; no extra top-bar control. */
+    private void chooseProfile(AlertDialog settingsDialog) {
+        String[] choices = StudyProfile.LABELS;
+        int selected = java.util.Arrays.asList(StudyProfile.IDS).indexOf(activeProfile);
+        new AlertDialog.Builder(this).setTitle("Профиль")
+                .setSingleChoiceItems(choices, selected, (dialog, which) -> {
+                    dialog.dismiss();
+                    String next = StudyProfile.IDS[which];
+                    if (next.equals(activeProfile)) return;
+                    if (imageRepairRunning || assistantRequestInFlight || storyWordRequestInFlight
+                            || assistantVoiceProcessing) {
+                        Toast.makeText(this, "Завершите текущую операцию перед сменой профиля",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    settingsDialog.dismiss();
+                    selectProfile(next);
+                }).setNegativeButton("Отмена", null).show();
+    }
+
+    private void selectProfile(String next) {
+        next = StudyProfile.normalized(next);
+        if (next.equals(activeProfile)) return;
+        stopAssistantVoice();
+        player.pause();
+        cancelCardSpeech();
+        remember();
+        if (cardDialog != null && cardDialog.isShowing()) cardDialog.dismiss();
+        pendingSavedStory = null;
+        storyId = -1;
+        activeProfile = next;
+        // Persist selection before any image or sync operation reads active profile.
+        prefs.edit().putString("activeProfile", next).commit();
+        studyLanguage = "en".equals(prefs.getString(StudyProfile.languageKey(next), "es")) ? "en" : "es";
+        spanishStore = profileStore(next, false);
+        englishStore = studyingEnglish() ? profileStore(next, true) : null;
+        store = studyingEnglish() ? englishStore : spanishStore;
+        player.setLearningLanguage(studyLanguage);
+        player.speed = prefs.getFloat(prefKey("speed"), .85f);
+        player.pauseMs = prefs.getInt(prefKey("pause"), 1500);
+        player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
+        kind = prefs.getInt(prefKey("kind"), 0);
+        category = prefs.getInt(prefKey("category"), 0);
+        reviewIndex = prefs.getInt(prefKey("reviewIndex"), 0);
+        reviewStep = prefs.getLong(prefKey("reviewStep"), 0);
+        screen = prefs.getString(prefKey("screen"), "cards");
+        if ("player".equals(screen)) screen = "stories";
+        cardRevealed = false;
+        render();
+        syncContent();
+        PrivateVocabularySync.schedule(this);
+    }
 
     private void selectStudyLanguage(String next) {
         if (!"en".equals(next) && !"es".equals(next)) return;
@@ -151,8 +217,8 @@ public final class MainActivity extends Activity {
         if (cardDialog != null && cardDialog.isShowing()) cardDialog.dismiss();
         pendingSavedStory = null;
         studyLanguage = next;
-        prefs.edit().putString("studyLanguage", studyLanguage).commit();
-        if (studyingEnglish() && englishStore == null) englishStore = Store.english(this);
+        prefs.edit().putString(StudyProfile.languageKey(activeProfile), studyLanguage).commit();
+        if (studyingEnglish() && englishStore == null) englishStore = profileStore(activeProfile, true);
         store = studyingEnglish() ? englishStore : spanishStore;
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f);
@@ -400,6 +466,8 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(pause, spaced(10));
 
+        Button profileButton = rowButton("Профиль: " + StudyProfile.name(activeProfile), null);
+        box.addView(profileButton, spaced(10));
         box.addView(rowButton("Личный словарь и рассказы — GitHub", this::showVocabularySyncSettings), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
@@ -418,6 +486,7 @@ public final class MainActivity extends Activity {
                 .setNegativeButton("Закрыть", null)
                 .create();
 
+        profileButton.setOnClickListener(v -> chooseProfile(dialog));
         resetButton.setOnClickListener(v -> confirmResetDatabase(dialog));
         darkSwitch.setOnCheckedChangeListener((v, checked) -> {
             if (checked == darkTheme) return;
@@ -438,9 +507,10 @@ public final class MainActivity extends Activity {
         explanation.setText("Нужен отдельный приватный репозиторий GitHub и fine-grained token " +
                 "с правом Contents: Read and write только для него. " +
                 "Слова и устойчивые выражения будут выгружаться автоматически при изменениях и запуске приложения. " +
-                "Личные рассказы загружаются из этого же приватного репозитория при открытии: " +
-                "content/stories-es.json и content/stories-en.json. " +
-                "У каждого человека должен быть СВОЙ приватный репозиторий. " +
+                "Личные рассказы загружаются из этого же приватного репозитория при открытии. " +
+                "Для Папы: content/stories-es.json; для Мамы: content/mama/stories-es.json; " +
+                "для Димы: content/dima/stories-es.json (для английского — stories-en.json). " +
+                "У профилей отдельные словари и рассказы в одном приватном репозитории. " +
                 "Не вставляйте токен в чат.\n\n" +
                 "Словарь: " + PrivateVocabularySync.status(this) + "\n" +
                 "Рассказы: " + PersonalStorySync.status(this));
@@ -502,9 +572,10 @@ public final class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("Сбросить базу?")
-                .setMessage("Будут удалены слова, выражения, рассказы и прогресс "
+                .setMessage("Профиль «" + StudyProfile.name(activeProfile)
+                        + "». Будут удалены слова, выражения, рассказы и прогресс "
                         + (studyingEnglish() ? "АНГЛИЙСКОГО" : "ИСПАНСКОГО")
-                        + " языка и его история ChatGPT на этом телефоне. Другая база и её история останутся нетронутыми. Отменить удаление нельзя.")
+                        + " языка и его история ChatGPT. Остальные профили и языки не изменятся. Отменить удаление нельзя.")
                 .setNegativeButton("Отмена", null)
                 .setPositiveButton("Продолжить", (first, which) ->
                         new AlertDialog.Builder(this)
@@ -1888,7 +1959,8 @@ public final class MainActivity extends Activity {
     private void syncContent() {
         if (contentSync == null || personalStorySync == null || syncingContent) return;
         boolean personal = PrivateVocabularySync.isConfigured(this);
-        if (!personal && studyingEnglish()) return;
+        // Never deliver Papa's public feed into the empty Mama/Dima profiles.
+        if (!personal && (studyingEnglish() || !StudyProfile.isPapa(activeProfile))) return;
         syncingContent = true;
         Store syncedStore = store;
         String syncedProfile = PrivateVocabularySync.profileRepository(this);
@@ -1930,8 +2002,8 @@ public final class MainActivity extends Activity {
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (assistantVoiceOutput != null) assistantVoiceOutput.close();
         player.close();
-        if (englishStore != null) englishStore.close();
-        if (spanishStore != null) spanishStore.close();
+        for (Store saved : profileStores.values()) saved.close();
+        profileStores.clear();
         super.onDestroy();
     }
 }

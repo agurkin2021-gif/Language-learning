@@ -12,22 +12,32 @@ import java.util.List;
 public final class Store extends SQLiteOpenHelper {
     private final Context context;
     private final boolean english;
+    private final String profileId;
     public record Card(long id, String spanish, String meaning, int kind, int category, boolean mastered, int lastResult, int reviewCount, long nextDue) {}
     public record Story(long id, String title, String body, String translation, String source, int position) {}
     public enum StoryWordSave { ADDED, ALREADY_STUDYING, RESTORED }
 
-    public Store(Context context) { this(context, "learning.db", false); }
-    Store(Context context, String databaseName) { this(context, databaseName, false); }
-    static Store english(Context context) { return new Store(context, "learning_en.db", true); }
+    public Store(Context context) { this(context, "learning.db", false, StudyProfile.PAPA); }
+    Store(Context context, String databaseName) { this(context, databaseName, false, StudyProfile.PAPA); }
+    static Store english(Context context) { return new Store(context, "learning_en.db", true, StudyProfile.PAPA); }
     static Store englishForTest(Context context, String databaseName) {
-        return new Store(context, databaseName, true);
+        return new Store(context, databaseName, true, StudyProfile.PAPA);
     }
-    private Store(Context context, String databaseName, boolean english) {
+    static Store forProfile(Context context, String id, boolean english) {
+        String profile = StudyProfile.normalized(id);
+        return new Store(context, StudyProfile.databaseName(profile, english), english, profile);
+    }
+    static Store forProfileTest(Context context, String dbName, String id, boolean english) {
+        return new Store(context, dbName, english, StudyProfile.normalized(id));
+    }
+    private Store(Context context, String databaseName, boolean english, String profileId) {
         super(context, databaseName, null, 7);
         this.context = context.getApplicationContext();
         this.english = english;
+        this.profileId = profileId;
     }
     boolean isEnglish() { return english; }
+    String profileId() { return profileId; }
 
     private void changed() {
         new BackupManager(context).dataChanged();
@@ -40,8 +50,9 @@ public final class Store extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE stories(id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, translation TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)");
         db.execSQL("CREATE TABLE remote_items(external_id TEXT PRIMARY KEY NOT NULL, item_type TEXT NOT NULL, local_id INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE app_state(key TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)");
-        if (english) {
-            // Never seed Spanish lessons or sync the Spanish feed into English.
+        if (english || !StudyProfile.isPapa(profileId)) {
+            // Mother and Dima start completely empty in both languages.
+            // Papa's existing SQLite databases and seed are never migrated or overwritten.
             ContentValues state = new ContentValues();
             state.put("key", "shared_content_disabled");
             state.put("value", 1);
@@ -82,7 +93,7 @@ public final class Store extends SQLiteOpenHelper {
         }
         // Existing installations already have their initial cards. Future schema
         // upgrades must never restore words that a user deliberately deleted.
-        if (oldVersion < 6 && !english) DefaultCards.seed(db);
+        if (oldVersion < 6 && !english && StudyProfile.isPapa(profileId)) DefaultCards.seed(db);
     }
 
     private boolean sharedContentDisabled(SQLiteDatabase db) {
@@ -389,7 +400,7 @@ public final class Store extends SQLiteOpenHelper {
     }
 
     private boolean personalStoriesDisabled(SQLiteDatabase db) {
-        if (!english && sharedContentDisabled(db)) return true;
+        if (!english && StudyProfile.isPapa(profileId) && sharedContentDisabled(db)) return true;
         try (Cursor c = db.rawQuery("SELECT value FROM app_state WHERE key=?",
                 new String[]{"personal_story_reset"})) {
             return c.moveToFirst() && c.getInt(0) != 0;

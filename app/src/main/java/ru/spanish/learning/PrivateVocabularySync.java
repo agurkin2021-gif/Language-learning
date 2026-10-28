@@ -176,8 +176,12 @@ public final class PrivateVocabularySync {
                 throw new IllegalArgumentException("Репозиторий должен быть приватным");
             String branch = repository.getString("default_branch");
             if (branch.isEmpty()) throw new IllegalArgumentException("У репозитория нет основной ветки");
-            uploadLanguage(context, config, branch, "es", generation, state);
-            uploadLanguage(context, config, branch, "en", generation, state);
+            // All six private dictionaries are backed up, not only the last
+            // profile opened on the phone. Separate folders prevent collisions.
+            for (String profile : StudyProfile.IDS) {
+                uploadLanguage(context, config, branch, profile, "es", generation, state);
+                uploadLanguage(context, config, branch, profile, "en", generation, state);
+            }
             if (generation == GENERATION.get()) {
                 state.edit().putString("status", "Словарь синхронизирован с приватным GitHub").apply();
             }
@@ -193,18 +197,18 @@ public final class PrivateVocabularySync {
     }
 
     private static void uploadLanguage(Context context, Config config, String branch,
-                                       String language, int generation, SharedPreferences state) throws Exception {
+                                       String profile, String language, int generation,
+                                       SharedPreferences state) throws Exception {
         if (generation != GENERATION.get()) return;
-        Store local = "en".equals(language) ? Store.english(context) : new Store(context);
+        Store local = Store.forProfile(context, profile, "en".equals(language));
         List<Store.Card> cards;
         try { cards = local.vocabulary(); }
         finally { local.close(); }
-        String cacheKey = "published_" + language;
-        // Every installation uses its own device UUID. Even a new empty EN
-        // dictionary is recorded, without overwriting another device's data.
-        String json = snapshot(language, config.deviceId(), cards).toString();
+        String cacheKey = "published_" + (StudyProfile.isPapa(profile) ? "" : profile + "_") + language;
+        // Papa retains the exact legacy path, other family members are scoped.
+        String json = snapshot(profile, language, config.deviceId(), cards).toString();
         String digest = hexDigest(json);
-        String path = "vocabulary/" + language + "-" + config.deviceId() + ".json";
+        String path = StudyProfile.vocabularyPath(profile, language, config.deviceId());
         String apiUrl = API + config.repo() + "/contents/" + path;
         for (int attempt = 0; attempt < 3; attempt++) {
             if (generation != GENERATION.get()) return;
@@ -239,10 +243,16 @@ public final class PrivateVocabularySync {
 
     /** Includes every card, every phrase and both mastery states; no 300-card cap. */
     static JSONObject snapshot(String language, String deviceId, List<Store.Card> cards) throws Exception {
+        return snapshot(StudyProfile.PAPA, language, deviceId, cards);
+    }
+
+    static JSONObject snapshot(String profile, String language, String deviceId,
+                               List<Store.Card> cards) throws Exception {
         JSONObject root = new JSONObject();
         root.put("schema", 1);
         root.put("language", language);
         root.put("device_id", deviceId);
+        if (!StudyProfile.isPapa(profile)) root.put("profile", StudyProfile.normalized(profile));
         JSONArray entries = new JSONArray();
         for (Store.Card card : cards) {
             JSONObject entry = new JSONObject();
@@ -271,6 +281,12 @@ public final class PrivateVocabularySync {
     /** Stories are read from the same PRIVATE repo that receives this phone's vocabulary. */
     public static String downloadStoryFeed(Context context, String language, String expectedRepo)
             throws Exception {
+        return downloadStoryFeed(context, language, expectedRepo, StudyProfile.PAPA);
+    }
+
+    public static String downloadStoryFeed(Context context, String language,
+                                           String expectedRepo, String profile)
+            throws Exception {
         if (!"es".equals(language) && !"en".equals(language))
             throw new IllegalArgumentException("language");
         Config config = readConfig(context);
@@ -281,7 +297,7 @@ public final class PrivateVocabularySync {
             throw new IllegalArgumentException("Репозиторий должен быть приватным");
         String branch = repository.getString("default_branch");
         if (branch.isEmpty()) throw new IllegalArgumentException("У репозитория нет основной ветки");
-        String path = "content/stories-" + language + ".json";
+        String path = StudyProfile.storyFeedPath(profile, language);
         JSONObject file = request("GET", API + config.repo() + "/contents/" + path +
                 "?ref=" + URLEncoder.encode(branch, "UTF-8"), config.token(), null, true);
         if (file == null) return new JSONObject().put("version", 1)
