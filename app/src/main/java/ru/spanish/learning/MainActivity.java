@@ -507,9 +507,10 @@ public final class MainActivity extends Activity {
         explanation.setText("Нужен отдельный приватный репозиторий GitHub и fine-grained token " +
                 "с правом Contents: Read and write только для него. " +
                 "Слова и устойчивые выражения будут выгружаться автоматически при изменениях и запуске приложения. " +
-                "Личные рассказы загружаются из этого же приватного репозитория при открытии: " +
-                "content/stories-es.json и content/stories-en.json. " +
-                "У каждого человека должен быть СВОЙ приватный репозиторий. " +
+                "Личные рассказы загружаются из этого же приватного репозитория при открытии. " +
+                "Для Папы: content/stories-es.json; для Мамы: content/mama/stories-es.json; " +
+                "для Димы: content/dima/stories-es.json (для английского — stories-en.json). " +
+                "У профилей отдельные словари и рассказы в одном приватном репозитории. " +
                 "Не вставляйте токен в чат.\n\n" +
                 "Словарь: " + PrivateVocabularySync.status(this) + "\n" +
                 "Рассказы: " + PersonalStorySync.status(this));
@@ -571,9 +572,10 @@ public final class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("Сбросить базу?")
-                .setMessage("Будут удалены слова, выражения, рассказы и прогресс "
+                .setMessage("Профиль «" + StudyProfile.name(activeProfile)
+                        + "». Будут удалены слова, выражения, рассказы и прогресс "
                         + (studyingEnglish() ? "АНГЛИЙСКОГО" : "ИСПАНСКОГО")
-                        + " языка и его история ChatGPT на этом телефоне. Другая база и её история останутся нетронутыми. Отменить удаление нельзя.")
+                        + " языка и его история ChatGPT. Остальные профили и языки не изменятся. Отменить удаление нельзя.")
                 .setNegativeButton("Отмена", null)
                 .setPositiveButton("Продолжить", (first, which) ->
                         new AlertDialog.Builder(this)
