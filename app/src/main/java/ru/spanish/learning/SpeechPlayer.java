@@ -200,6 +200,11 @@ public final class SpeechPlayer {
         return false;
     }
 
+    /** Snapshot the same TTS voice the listener currently hears. */
+    public String selectedVoiceNameForExport() {
+        Voice active = ready && tts != null ? tts.getVoice() : null;
+        return active == null ? "" : active.getName();
+    }
     public boolean ready() { return ready; }
 
     public void speakCard(String spanish) {

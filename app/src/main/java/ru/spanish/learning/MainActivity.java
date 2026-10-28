@@ -1789,33 +1789,84 @@ public final class MainActivity extends Activity {
         repeat = button("Повторить предложение", player::repeat);
         Button readAll = button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
         ui.style(readAll, UiStyle.Tone.OUTLINE);
-        Button share = button("Отправить рассказ", this::shareCurrentStory);
+        Button share = button("Отправить аудио", this::shareCurrentStory);
         ui.style(share, UiStyle.Tone.OUTLINE);
         Button back = button("← Библиотека", () -> navigate("stories"));
         ui.style(back, UiStyle.Tone.OUTLINE);
     }
+    private StoryAudioExporter audioExporter;
+    private AlertDialog audioExportDialog;
+
     private void shareCurrentStory() {
+        if (audioExporter != null) return;
         Store.Story selected = null;
         for (Store.Story story : store.stories()) {
-            if (story.id() == storyId) {
-                selected = story;
-                break;
-            }
+            if (story.id() == storyId) { selected = story; break; }
         }
-        if (selected == null) {
-            Toast.makeText(this, "Рассказ не найден", Toast.LENGTH_SHORT).show();
+        if (selected == null || selected.body().trim().isEmpty()) {
+            Toast.makeText(this, "Нет текста для озвучивания", Toast.LENGTH_SHORT).show();
             return;
         }
-        Intent send = new Intent(Intent.ACTION_SEND);
-        send.setType("text/plain");
-        send.putExtra(Intent.EXTRA_SUBJECT, selected.title());
-        send.putExtra(Intent.EXTRA_TEXT,
-                StoryShareText.compose(selected.title(), selected.body(), selected.translation()));
-        try {
-            startActivity(Intent.createChooser(send, "Отправить рассказ"));
-        } catch (ActivityNotFoundException notInstalled) {
-            Toast.makeText(this, "Нет приложения для отправки рассказа", Toast.LENGTH_LONG).show();
+        if (!player.ready() || player.selectedVoiceNameForExport().isEmpty()) {
+            Toast.makeText(this, "Голос Android ещё не готов. Проверьте настройки озвучивания.",
+                    Toast.LENGTH_LONG).show();
+            return;
         }
+        player.pause();
+        final String title = selected.title();
+        StoryAudioExporter exporter = new StoryAudioExporter(this, title, selected.body(),
+                studyLanguage, player.selectedVoiceNameForExport(), player.speed,
+                new StoryAudioExporter.Listener() {
+                    @Override public void progress(int done, int total) {
+                        if (audioExporter == null || audioExportDialog == null
+                                || !audioExportDialog.isShowing()) return;
+                        audioExportDialog.setMessage("Создаю аудио: " + done + " из " + total);
+                    }
+                    @Override public void finished(Uri uri) {
+                        if (audioExporter == null) return;
+                        audioExporter = null;
+                        if (audioExportDialog != null) audioExportDialog.dismiss();
+                        audioExportDialog = null;
+                        if (isFinishing() || isDestroyed()) return;
+                        Intent send = new Intent(Intent.ACTION_SEND);
+                        send.setType("audio/wav");
+                        send.putExtra(Intent.EXTRA_STREAM, uri);
+                        send.putExtra(Intent.EXTRA_SUBJECT, title);
+                        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        send.setClipData(android.content.ClipData.newUri(
+                                getContentResolver(), "Аудиорассказ", uri));
+                        try {
+                            startActivity(Intent.createChooser(send, "Отправить аудио"));
+                        } catch (ActivityNotFoundException noMessenger) {
+                            Toast.makeText(MainActivity.this,
+                                    "Нет приложения для отправки аудио", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                    @Override public void failed(String problem) {
+                        if (audioExporter == null) return;
+                        audioExporter = null;
+                        if (audioExportDialog != null) audioExportDialog.dismiss();
+                        audioExportDialog = null;
+                        if (!isFinishing() && !isDestroyed())
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle("Не удалось создать аудио")
+                                    .setMessage(problem).setPositiveButton("Закрыть", null).show();
+                    }
+                });
+        audioExporter = exporter;
+        audioExportDialog = new AlertDialog.Builder(this)
+                .setTitle("Отправить аудиорассказ")
+                .setMessage("Подготавливаю голос Android…")
+                .setNegativeButton("Отмена", (dialog, which) -> {
+                    if (audioExporter == exporter) {
+                        audioExporter.cancel();
+                        audioExporter = null;
+                        audioExportDialog = null;
+                    }
+                })
+                .setCancelable(false).create();
+        audioExportDialog.show();
+        exporter.start();
     }
     private interface TranslationText { String get(); }
 
@@ -2023,6 +2074,7 @@ public final class MainActivity extends Activity {
         cancelCardSpeech();
         if (contentSync != null) contentSync.close();
         if (personalStorySync != null) personalStorySync.close();
+        if (audioExporter != null) { audioExporter.cancel(); audioExporter = null; }
         if (assistant != null) assistant.close();
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (assistantVoiceOutput != null) assistantVoiceOutput.close();
