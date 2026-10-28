@@ -447,9 +447,9 @@ public final class MainActivity extends Activity {
         Button speed = rowButton("Скорость речи: " + player.speed + "× (рассказы и карточки)", null);
         speed.setOnClickListener(v ->
                 new AlertDialog.Builder(this).setTitle("Скорость речи — рассказы и карточки")
-                        .setItems(new String[]{"0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
+                        .setItems(new String[]{"0.3×", "0.4×", "0.5×", "0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
                             player.pause();
-                            player.speed = new float[]{.6f,.75f,.85f,1f,1.2f}[w];
+                            player.speed = new float[]{.3f,.4f,.5f,.6f,.75f,.85f,1f,1.2f}[w];
                             speed.setText("Скорость речи: " + player.speed + "× (рассказы и карточки)");
                             remember();
                             updatePlayer();
