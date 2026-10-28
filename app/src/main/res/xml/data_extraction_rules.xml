@@ -4,11 +4,19 @@
         <include domain="sharedpref" path="." />
         <include domain="file" path="card-images/" />
         <include domain="file" path="card-images-en/" />
+        <include domain="file" path="card-images-mama/" />
+        <include domain="file" path="card-images-en-mama/" />
+        <include domain="file" path="card-images-dima/" />
+        <include domain="file" path="card-images-en-dima/" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="." />
         <include domain="sharedpref" path="." />
         <include domain="file" path="card-images/" />
         <include domain="file" path="card-images-en/" />
+        <include domain="file" path="card-images-mama/" />
+        <include domain="file" path="card-images-en-mama/" />
+        <include domain="file" path="card-images-dima/" />
+        <include domain="file" path="card-images-en-dima/" />
     </device-transfer>
 </data-extraction-rules>
