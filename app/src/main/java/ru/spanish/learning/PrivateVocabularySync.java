@@ -1,5 +1,8 @@
 package ru.spanish.learning;
 
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.security.keystore.KeyGenParameterSpec;
@@ -47,6 +50,8 @@ public final class PrivateVocabularySync {
     private static final String KEY_ALIAS = "SpanishLearningPrivateVocabularyV1";
     private static final String SECRET_FILE = "vocabulary_sync.enc";
     private static final String STATE_PREFS = "vocabulary_sync_state";
+    private static final int PERIODIC_JOB_ID = 72131;
+    private static final long MIN_SYNC_INTERVAL_MS = 15 * 60 * 1000L;
     private static final ScheduledExecutorService EXECUTOR =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "vocabulary-upload");
@@ -106,23 +111,58 @@ public final class PrivateVocabularySync {
             throw e;
         }
         context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+        // Persistent JobScheduler work survives app process death and reboot.
+        ensureBackgroundSync(context);
         schedule(context);
     }
 
     public static synchronized void disable(Context context) {
         GENERATION.incrementAndGet();
         if (pending != null) pending.cancel(false);
+        JobScheduler jobs = context.getSystemService(JobScheduler.class);
+        if (jobs != null) jobs.cancel(PERIODIC_JOB_ID);
         new AtomicFile(secretFile(context)).delete();
         context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE).edit().clear().apply();
     }
 
-    /** Debounced after edits and on app launch; offline failure is retried on next event. */
+    /**
+     * Keep a durable periodic network job in addition to immediate sync on local edits.
+     * Android may defer jobs in Doze / restricted battery mode; offline changes remain
+     * in SQLite and the next permitted network run exports a complete new snapshot.
+     */
+    static synchronized void ensureBackgroundSync(Context context) {
+        if (!isConfigured(context)) return;
+        JobScheduler jobs = context.getSystemService(JobScheduler.class);
+        if (jobs == null || jobs.getPendingJob(PERIODIC_JOB_ID) != null) return;
+        JobInfo job = new JobInfo.Builder(PERIODIC_JOB_ID,
+                new ComponentName(context, VocabularySyncJobService.class))
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .setPersisted(true)
+                .setPeriodic(MIN_SYNC_INTERVAL_MS)
+                .build();
+        jobs.schedule(job);
+    }
+
+    /** Debounced after edits and on app launch; offline retry has a durable network job. */
     public static synchronized void schedule(Context context) {
         if (!isConfigured(context)) return;
+        ensureBackgroundSync(context);
         Context app = context.getApplicationContext();
         int generation = GENERATION.incrementAndGet();
         if (pending != null) pending.cancel(false);
         pending = EXECUTOR.schedule(() -> sync(app, generation), 2, TimeUnit.SECONDS);
+    }
+
+    /** Invoked by a system job, not tied to an Activity or any ChatGPT usage limit. */
+    static void runScheduled(Context context, Runnable finished) {
+        Context app = context.getApplicationContext();
+        EXECUTOR.execute(() -> {
+            try {
+                if (isConfigured(app)) sync(app, GENERATION.get());
+            } finally {
+                finished.run();
+            }
+        });
     }
 
     private static void sync(Context context, int generation) {
@@ -160,17 +200,27 @@ public final class PrivateVocabularySync {
         try { cards = local.vocabulary(); }
         finally { local.close(); }
         String cacheKey = "published_" + language;
-        // An empty fresh installation must never erase data uploaded by another device.
-        if (cards.isEmpty() && !state.contains(cacheKey)) return;
+        // Every installation uses its own device UUID. Even a new empty EN
+        // dictionary is recorded, without overwriting another device's data.
         String json = snapshot(language, config.deviceId(), cards).toString();
         String digest = hexDigest(json);
-        if (digest.equals(state.getString(cacheKey, null))) return;
         String path = "vocabulary/" + language + "-" + config.deviceId() + ".json";
         String apiUrl = API + config.repo() + "/contents/" + path;
         for (int attempt = 0; attempt < 3; attempt++) {
             if (generation != GENERATION.get()) return;
             JSONObject current = request("GET", apiUrl + "?ref=" +
                     URLEncoder.encode(branch, "UTF-8"), config.token(), null, true);
+            // Verify the actual remote contents, not only a cached local
+            // receipt: restore files deleted or modified on GitHub, and
+            // avoid redundant commits when the snapshot is unchanged.
+            if (current != null && "file".equals(current.optString("type"))
+                    && "base64".equals(current.optString("encoding"))) {
+                byte[] remote = Base64.decode(current.optString("content"), Base64.DEFAULT);
+                if (digest.equals(hexDigest(new String(remote, StandardCharsets.UTF_8)))) {
+                    state.edit().putString(cacheKey, digest).apply();
+                    return;
+                }
+            }
             JSONObject body = new JSONObject();
             body.put("message", "Sync " + language + " personal vocabulary from Android");
             body.put("branch", branch);
