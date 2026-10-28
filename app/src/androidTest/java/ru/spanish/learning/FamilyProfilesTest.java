@@ -35,8 +35,8 @@ public final class FamilyProfilesTest extends AndroidTestCase {
             assertEquals(0, dima.vocabulary().size());
             assertEquals(0, dima.stories().size());
 
-            mama.addCard("buen día", "добрый день", 0, 0);
-            dima.addCard("buen día", "добрый день", 0, 0);
+            mama.addCard("buen día", "добрый день", 0, 2);
+            dima.addCard("buen día", "добрый день", 0, 2);
             assertEquals(1, mama.vocabulary().size());
             assertEquals(1, dima.vocabulary().size());
             assertTrue("Adding to Mama must not alter Papa", papa.vocabulary().size() >= 900);
