@@ -30,22 +30,29 @@ public final class FamilyProfilesTest extends AndroidTestCase {
              Store mama = Store.forProfileTest(getContext(), mamaDb, "mama", false);
              Store dima = Store.forProfileTest(getContext(), dimaDb, "dima", false)) {
             assertTrue("Papa legacy starter words remain", papa.vocabulary().size() >= 900);
-            assertEquals(0, mama.vocabulary().size());
+            assertEquals(700, mama.vocabulary().size());
+            assertEquals(183, mama.cards(false, 0, 1).size());
+            assertEquals(406, mama.cards(false, 0, 2).size());
+            assertEquals(111, mama.cards(false, 0, 3).size());
+            assertEquals(0, mama.mastered().size());
             assertEquals(0, mama.stories().size());
-            assertEquals(0, dima.vocabulary().size());
+            assertEquals(700, dima.vocabulary().size());
+            assertEquals(0, dima.mastered().size());
+            assertEquals(700, BeginnerCards.size());
             assertEquals(0, dima.stories().size());
 
             mama.addCard("buen día", "добрый день", 0, 2);
             dima.addCard("buen día", "добрый день", 0, 2);
-            assertEquals(1, mama.vocabulary().size());
-            assertEquals(1, dima.vocabulary().size());
+            assertEquals(701, mama.vocabulary().size());
+            assertEquals(701, dima.vocabulary().size());
             assertTrue("Adding to Mama must not alter Papa", papa.vocabulary().size() >= 900);
-            mama.setMastered(mama.vocabulary().get(0).id(), true);
-            assertTrue(mama.vocabulary().get(0).mastered());
-            assertFalse(dima.vocabulary().get(0).mastered());
-            mama.deleteCard(mama.vocabulary().get(0).id());
-            assertEquals(0, mama.vocabulary().size());
-            assertEquals(1, dima.vocabulary().size());
+            long mamaAdded = mama.vocabulary().get(700).id();
+            mama.setMastered(mamaAdded, true);
+            assertTrue(mama.vocabulary().get(700).mastered());
+            assertFalse(dima.vocabulary().get(700).mastered());
+            mama.deleteCard(mamaAdded);
+            assertEquals(700, mama.vocabulary().size());
+            assertEquals(701, dima.vocabulary().size());
         } finally {
             for (String name : new String[]{papaDb, mamaDb, dimaDb})
                 getContext().deleteDatabase(name);
@@ -85,8 +92,8 @@ public final class FamilyProfilesTest extends AndroidTestCase {
                     "device-test", dima.vocabulary());
             assertEquals("mama", snapshotMama.getString("profile"));
             assertEquals("dima", snapshotDima.getString("profile"));
-            assertEquals(1, snapshotMama.getJSONArray("entries").length());
-            assertEquals(0, snapshotDima.getJSONArray("entries").length());
+            assertEquals(701, snapshotMama.getJSONArray("entries").length());
+            assertEquals(700, snapshotDima.getJSONArray("entries").length());
             assertEquals("vocabulary/mama/es-device-test.json",
                     StudyProfile.vocabularyPath("mama", "es", "device-test"));
             assertEquals("vocabulary/dima/es-device-test.json",
@@ -94,6 +101,66 @@ public final class FamilyProfilesTest extends AndroidTestCase {
         } finally {
             getContext().deleteDatabase(mamaDb);
             getContext().deleteDatabase(dimaDb);
+        }
+    }
+
+    /** Existing version-7 Mama/Dima databases receive exactly one starter pack. */
+    public void testUpgradeSeedsExistingFamilyProfileWithoutOverwritingManualCards() {
+        String dbName = "test-family-a01-upgrade.db";
+        getContext().deleteDatabase(dbName);
+        try {
+            try (Store mama = Store.forProfileTest(getContext(), dbName, "mama", false)) {
+                assertEquals(700, mama.vocabulary().size());
+                // Simulate an earlier v7 installation which was empty except for
+                // a personal, already mastered word. Keep its ID and translation.
+                android.database.sqlite.SQLiteDatabase db = mama.getWritableDatabase();
+                db.delete("cards", null, null);
+                db.delete("app_state", "key=?", new String[]{"beginner_700_seeded"});
+                mama.addCard("mi palabra especial", "моё особенное слово", 0, 2);
+                long id = mama.vocabulary().get(0).id();
+                mama.setMastered(id, true);
+                db.setVersion(7);
+            }
+            try (Store mama = Store.forProfileTest(getContext(), dbName, "mama", false)) {
+                assertEquals(701, mama.vocabulary().size());
+                assertEquals(1, mama.mastered().size());
+                assertEquals("mi palabra especial", mama.mastered().get(0).spanish());
+                assertEquals("моё особенное слово", mama.mastered().get(0).meaning());
+            }
+            try (Store mama = Store.forProfileTest(getContext(), dbName, "mama", false)) {
+                assertEquals("Reopening must not insert duplicates", 701, mama.vocabulary().size());
+            }
+        } finally {
+            getContext().deleteDatabase(dbName);
+        }
+    }
+
+    public void testFamilyResetAndDeletionNeverReinsertStarterWords() {
+        String resetName = "test-family-a01-reset.db";
+        String deleteName = "test-family-a01-delete.db";
+        getContext().deleteDatabase(resetName);
+        getContext().deleteDatabase(deleteName);
+        try {
+            try (Store dima = Store.forProfileTest(getContext(), deleteName, "dima", false)) {
+                assertEquals(700, dima.vocabulary().size());
+                assertTrue(dima.deleteCard(dima.vocabulary().get(0).id()));
+                assertEquals(699, dima.vocabulary().size());
+            }
+            try (Store dima = Store.forProfileTest(getContext(), deleteName, "dima", false)) {
+                assertEquals("Deleted starter word stays removed", 699, dima.vocabulary().size());
+            }
+            try (Store mama = Store.forProfileTest(getContext(), resetName, "mama", false)) {
+                mama.resetLearningData();
+                assertEquals(0, mama.vocabulary().size());
+                // Even an accidental version-7->8 migration must respect reset.
+                mama.getWritableDatabase().setVersion(7);
+            }
+            try (Store mama = Store.forProfileTest(getContext(), resetName, "mama", false)) {
+                assertEquals("Explicit reset must not reseed", 0, mama.vocabulary().size());
+            }
+        } finally {
+            getContext().deleteDatabase(resetName);
+            getContext().deleteDatabase(deleteName);
         }
     }
 }

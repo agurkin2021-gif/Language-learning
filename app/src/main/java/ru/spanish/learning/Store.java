@@ -31,7 +31,7 @@ public final class Store extends SQLiteOpenHelper {
         return new Store(context, dbName, english, StudyProfile.normalized(id));
     }
     private Store(Context context, String databaseName, boolean english, String profileId) {
-        super(context, databaseName, null, 7);
+        super(context, databaseName, null, 8);
         this.context = context.getApplicationContext();
         this.english = english;
         this.profileId = profileId;
@@ -57,6 +57,12 @@ public final class Store extends SQLiteOpenHelper {
             state.put("key", "shared_content_disabled");
             state.put("value", 1);
             db.insertOrThrow("app_state", null, state);
+            // A0-A1 starter words are seeded ONLY for a new Mama/Dima Spanish DB.
+            // Their English DBs remain empty; Papa keeps the old exact data.
+            if (!english) {
+                BeginnerCards.seed(db);
+                setAppFlag(db, "beginner_700_seeded");
+            }
             return;
         }
         ContentValues v = new ContentValues();
@@ -94,6 +100,27 @@ public final class Store extends SQLiteOpenHelper {
         // Existing installations already have their initial cards. Future schema
         // upgrades must never restore words that a user deliberately deleted.
         if (oldVersion < 6 && !english && StudyProfile.isPapa(profileId)) DefaultCards.seed(db);
+        if (oldVersion < 8 && !english && !StudyProfile.isPapa(profileId)) {
+            // Users on the previous empty family profile release receive the pack
+            // exactly once. An explicit database reset must NOT refill deleted data.
+            if (!appFlag(db, "beginner_700_seeded") && !appFlag(db, "personal_story_reset"))
+                BeginnerCards.seed(db);
+            setAppFlag(db, "beginner_700_seeded");
+        }
+    }
+
+    private static boolean appFlag(SQLiteDatabase db, String key) {
+        try (Cursor cursor = db.rawQuery("SELECT value FROM app_state WHERE key=?",
+                new String[]{key})) {
+            return cursor.moveToFirst() && cursor.getInt(0) != 0;
+        }
+    }
+
+    private static void setAppFlag(SQLiteDatabase db, String key) {
+        ContentValues state = new ContentValues();
+        state.put("key", key);
+        state.put("value", 1);
+        db.insertWithOnConflict("app_state", null, state, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     private boolean sharedContentDisabled(SQLiteDatabase db) {
