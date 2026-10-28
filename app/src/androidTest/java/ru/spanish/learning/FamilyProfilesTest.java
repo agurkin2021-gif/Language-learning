@@ -35,11 +35,11 @@ public final class FamilyProfilesTest extends AndroidTestCase {
             assertEquals(406, mama.cards(false, 0, 2).size());
             assertEquals(111, mama.cards(false, 0, 3).size());
             assertEquals(0, mama.mastered().size());
-            assertEquals(0, mama.stories().size());
+            assertEquals(1, mama.stories().size());
             assertEquals(700, dima.vocabulary().size());
             assertEquals(0, dima.mastered().size());
             assertEquals(700, BeginnerCards.size());
-            assertEquals(0, dima.stories().size());
+            assertEquals(1, dima.stories().size());
 
             mama.addCard("buen día", "добрый день", 0, 2);
             dima.addCard("buen día", "добрый день", 0, 2);
@@ -77,13 +77,13 @@ public final class FamilyProfilesTest extends AndroidTestCase {
                     .put("items", new JSONArray().put(story));
             assertEquals(1, PersonalStorySync.importStories(
                     mama, feed, "family/private", "es").added());
-            assertEquals(0, dima.stories().size());
+            assertEquals(1, dima.stories().size());
             assertEquals(0, PersonalStorySync.importStories(
                     mama, feed, "family/private", "es").added());
             assertEquals(1, PersonalStorySync.importStories(
                     dima, feed, "family/private", "es").added());
-            assertEquals(1, mama.stories().size());
-            assertEquals(1, dima.stories().size());
+            assertEquals(2, mama.stories().size());
+            assertEquals(2, dima.stories().size());
 
             mama.addCard("mensaje", "сообщение", 0, 2);
             JSONObject snapshotMama = PrivateVocabularySync.snapshot("mama", "es",
