@@ -27,6 +27,9 @@ public final class Store extends SQLiteOpenHelper {
         String profile = StudyProfile.normalized(id);
         return new Store(context, StudyProfile.databaseName(profile, english), english, profile);
     }
+    static Store forProfileTest(Context context, String dbName, String id, boolean english) {
+        return new Store(context, dbName, english, StudyProfile.normalized(id));
+    }
     private Store(Context context, String databaseName, boolean english, String profileId) {
         super(context, databaseName, null, 7);
         this.context = context.getApplicationContext();
@@ -397,7 +400,7 @@ public final class Store extends SQLiteOpenHelper {
     }
 
     private boolean personalStoriesDisabled(SQLiteDatabase db) {
-        if (!english && sharedContentDisabled(db)) return true;
+        if (!english && StudyProfile.isPapa(profileId) && sharedContentDisabled(db)) return true;
         try (Cursor c = db.rawQuery("SELECT value FROM app_state WHERE key=?",
                 new String[]{"personal_story_reset"})) {
             return c.moveToFirst() && c.getInt(0) != 0;
