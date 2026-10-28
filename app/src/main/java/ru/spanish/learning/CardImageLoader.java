@@ -126,7 +126,8 @@ final class CardImageLoader {
 
     /** English illustrations never share a directory with Spanish cards. */
     static File imageFile(Context context, String word, boolean english) {
-        return new File(new File(context.getFilesDir(), english ? "card-images-en" : "card-images"),
+        return new File(new File(context.getFilesDir(),
+                StudyProfile.imageDirectory(StudyProfile.active(context), english)),
                 key(word) + ".svg");
     }
 
