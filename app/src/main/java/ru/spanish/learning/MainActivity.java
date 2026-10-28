@@ -1789,8 +1789,33 @@ public final class MainActivity extends Activity {
         repeat = button("Повторить предложение", player::repeat);
         Button readAll = button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
         ui.style(readAll, UiStyle.Tone.OUTLINE);
+        Button share = button("Отправить рассказ", this::shareCurrentStory);
+        ui.style(share, UiStyle.Tone.OUTLINE);
         Button back = button("← Библиотека", () -> navigate("stories"));
         ui.style(back, UiStyle.Tone.OUTLINE);
+    }
+    private void shareCurrentStory() {
+        Store.Story selected = null;
+        for (Store.Story story : store.stories()) {
+            if (story.id() == storyId) {
+                selected = story;
+                break;
+            }
+        }
+        if (selected == null) {
+            Toast.makeText(this, "Рассказ не найден", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_SUBJECT, selected.title());
+        send.putExtra(Intent.EXTRA_TEXT,
+                StoryShareText.compose(selected.title(), selected.body(), selected.translation()));
+        try {
+            startActivity(Intent.createChooser(send, "Отправить рассказ"));
+        } catch (ActivityNotFoundException notInstalled) {
+            Toast.makeText(this, "Нет приложения для отправки рассказа", Toast.LENGTH_LONG).show();
+        }
     }
     private interface TranslationText { String get(); }
 
