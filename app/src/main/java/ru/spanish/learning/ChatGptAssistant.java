@@ -1221,7 +1221,9 @@ public final class ChatGptAssistant {
     }
 
     private String historyKey(Store store) {
-        return store != null && store.isEnglish() ? "history_en" : "history";
+        String id = store == null ? StudyProfile.PAPA : store.profileId();
+        String legacy = store != null && store.isEnglish() ? "history_en" : "history";
+        return StudyProfile.isPapa(id) ? legacy : legacy + "_" + id;
     }
 
     private JSONArray loadHistory(Store store) {
