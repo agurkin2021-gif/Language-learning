@@ -31,7 +31,7 @@ public final class Store extends SQLiteOpenHelper {
         return new Store(context, dbName, english, StudyProfile.normalized(id));
     }
     private Store(Context context, String databaseName, boolean english, String profileId) {
-        super(context, databaseName, null, 8);
+        super(context, databaseName, null, 9);
         this.context = context.getApplicationContext();
         this.english = english;
         this.profileId = profileId;
@@ -62,6 +62,7 @@ public final class Store extends SQLiteOpenHelper {
             if (!english) {
                 BeginnerCards.seed(db);
                 setAppFlag(db, "beginner_700_seeded");
+                FamilyStory.seed(db);
             }
             return;
         }
@@ -106,6 +107,11 @@ public final class Store extends SQLiteOpenHelper {
             if (!appFlag(db, "beginner_700_seeded") && !appFlag(db, "personal_story_reset"))
                 BeginnerCards.seed(db);
             setAppFlag(db, "beginner_700_seeded");
+        }
+        if (oldVersion < 9 && !english && !StudyProfile.isPapa(profileId)) {
+            // Install the family story on existing Mama/Dima profiles once,
+            // without overwriting user stories or restoring a deleted story.
+            FamilyStory.seed(db);
         }
     }
 
