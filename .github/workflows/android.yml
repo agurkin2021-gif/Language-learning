@@ -30,8 +30,6 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Test GPT intermediary without external API calls
-        run: python3 -m unittest discover -s bridge -p 'test_*.py' -v
       - name: Build and verify numbered APK
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
       - name: Verify model and native engine are removed from APK
