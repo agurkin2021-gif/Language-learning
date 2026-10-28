@@ -7,8 +7,3 @@ local.properties
 *ANDROID_SIGNING_CONFIG*
 phone-signing-private/
 .idea/
-
-# Private GPT broker credentials; NEVER publish them
-bridge/.env
-bridge/.env.*
-!bridge/.env.example
