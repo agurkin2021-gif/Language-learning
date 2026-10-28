@@ -30,6 +30,10 @@ public class PrivateVocabularySyncTest extends AndroidTestCase {
                 assertEquals("мы гуляли", exact.getString("translation"));
                 assertTrue(exact.getBoolean("mastered"));
                 assertEquals("word", exact.getString("kind"));
+                assertEquals(1, exact.getInt("category"));
+                assertEquals(1, exact.getInt("review_count"));
+                assertEquals(2, exact.getInt("last_result"));
+                assertTrue(exact.has("next_due"));
 
                 // Changing mastery and deleting cards updates the next full snapshot;
                 // deleted entries must not be carried forward by stale incremental state.
