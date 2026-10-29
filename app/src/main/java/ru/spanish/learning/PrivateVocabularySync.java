@@ -181,6 +181,8 @@ public final class PrivateVocabularySync {
             for (String profile : StudyProfile.IDS) {
                 uploadLanguage(context, config, branch, profile, "es", generation, state);
                 uploadLanguage(context, config, branch, profile, "en", generation, state);
+                uploadStories(context, config, branch, profile, "es", generation);
+                uploadStories(context, config, branch, profile, "en", generation);
             }
             if (generation == GENERATION.get()) {
                 state.edit().putString("status", "Словарь синхронизирован с приватным GitHub").apply();
@@ -234,6 +236,56 @@ public final class PrivateVocabularySync {
                 if (generation != GENERATION.get()) return;
                 request("PUT", apiUrl, config.token(), body, false);
                 state.edit().putString(cacheKey, digest).apply();
+                return;
+            } catch (HttpConflict conflict) {
+                if (attempt == 2) throw conflict;
+            }
+        }
+    }
+
+    /** Per-profile, per-language story backup. Separate from the curated incoming story feed. */
+    private static void uploadStories(Context context, Config config, String branch,
+                                      String profile, String language, int generation) throws Exception {
+        if (generation != GENERATION.get()) return;
+        Store local = Store.forProfile(context, profile, "en".equals(language));
+        List<Store.Story> stories;
+        try { stories = local.stories(); } finally { local.close(); }
+        JSONObject root = new JSONObject();
+        root.put("schema", 1);
+        root.put("profile", profile);
+        root.put("language", language);
+        root.put("device_id", config.deviceId());
+        JSONArray entries = new JSONArray();
+        for (Store.Story story : stories) {
+            JSONObject entry = new JSONObject();
+            entry.put("id", story.id());
+            entry.put("title", story.title());
+            entry.put("spanish", story.body());
+            entry.put("russian", story.translation());
+            entry.put("source", story.source());
+            entry.put("position", story.position());
+            entries.put(entry);
+        }
+        root.put("entries", entries);
+        String json = root.toString();
+        String digest = hexDigest(json);
+        String path = "stories/" + profile + "/" + language + "-" + config.deviceId() + ".json";
+        String apiUrl = API + config.repo() + "/contents/" + path;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (generation != GENERATION.get()) return;
+            JSONObject current = request("GET", apiUrl + "?ref=" +
+                    URLEncoder.encode(branch, "UTF-8"), config.token(), null, true);
+            if (current != null && "base64".equals(current.optString("encoding"))) {
+                byte[] remote = Base64.decode(current.optString("content"), Base64.DEFAULT);
+                if (digest.equals(hexDigest(new String(remote, StandardCharsets.UTF_8)))) return;
+            }
+            JSONObject body = new JSONObject();
+            body.put("message", "Backup " + profile + " " + language + " stories from Android");
+            body.put("branch", branch);
+            body.put("content", Base64.encodeToString(json.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP));
+            if (current != null) body.put("sha", current.getString("sha"));
+            try {
+                request("PUT", apiUrl, config.token(), body, false);
                 return;
             } catch (HttpConflict conflict) {
                 if (attempt == 2) throw conflict;
@@ -308,6 +360,29 @@ public final class PrivateVocabularySync {
         if (encoded.length() > 720000) throw new IllegalArgumentException("Файл рассказов слишком большой");
         byte[] bytes = Base64.decode(encoded, Base64.DEFAULT);
         if (bytes.length > 512 * 1024) throw new IllegalArgumentException("Файл рассказов слишком большой");
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /** Curated incoming cards live in a separate path from phone-generated backups. */
+    public static String downloadCardFeed(Context context, String language,
+                                          String expectedRepo, String profile) throws Exception {
+        if (!"es".equals(language) && !"en".equals(language))
+            throw new IllegalArgumentException("language");
+        Config config = readConfig(context);
+        if (!config.repo().equals(expectedRepo)) throw new IllegalStateException("Profile changed");
+        JSONObject repository = request("GET", API + config.repo(), config.token(), null, false);
+        if (!repository.optBoolean("private", false))
+            throw new IllegalArgumentException("Repository must be private");
+        String branch = repository.getString("default_branch");
+        String path = "content/" + StudyProfile.normalized(profile) + "/cards-" + language + ".json";
+        JSONObject file = request("GET", API + config.repo() + "/contents/" + path +
+                "?ref=" + URLEncoder.encode(branch, "UTF-8"), config.token(), null, true);
+        if (file == null) return new JSONObject().put("version", 1)
+                .put("items", new JSONArray()).toString();
+        if (!"file".equals(file.optString("type")) || !"base64".equals(file.optString("encoding")))
+            throw new IllegalArgumentException("Invalid cards feed");
+        byte[] bytes = Base64.decode(file.getString("content"), Base64.DEFAULT);
+        if (bytes.length > 512 * 1024) throw new IllegalArgumentException("Cards feed too large");
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
