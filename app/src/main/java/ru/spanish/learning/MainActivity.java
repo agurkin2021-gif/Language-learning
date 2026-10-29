@@ -2033,32 +2033,19 @@ public final class MainActivity extends Activity {
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
     }
     private void syncContent() {
-        if (contentSync == null || personalStorySync == null || syncingContent) return;
-        boolean personal = PrivateVocabularySync.isConfigured(this);
-        // Never deliver Papa's public feed into the empty Mama/Dima profiles.
-        if (!personal && (studyingEnglish() || !StudyProfile.isPapa(activeProfile))) return;
+        if (personalStorySync == null || syncingContent) return;
         syncingContent = true;
         Store syncedStore = store;
-        String syncedProfile = PrivateVocabularySync.profileRepository(this);
-        RemoteContentSync.Callback callback = (added, rejected, error) -> runOnUiThread(() -> {
-            syncingContent = false;
-            if (isFinishing() || isDestroyed()) return;
-            if (store != syncedStore
-                    || !syncedProfile.equals(PrivateVocabularySync.profileRepository(this))) {
-                syncContent();
-                return;
-            }
-            if (added > 0) {
-                Toast.makeText(this, "Добавлено из ChatGPT: " + added, Toast.LENGTH_SHORT).show();
-                if ((cardDialog == null || !cardDialog.isShowing()) && !"player".equals(screen)) render();
-            }
-        });
-        if (personal) {
-            personalStorySync.sync(this, syncedStore, studyLanguage,
-                    (added, rejected, error) -> callback.done(added, rejected, error));
-        } else {
-            contentSync.sync(syncedStore, callback);
-        }
+        personalStorySync.sync(this, syncedStore, studyLanguage, (added, rejected, error) ->
+                runOnUiThread(() -> {
+                    syncingContent = false;
+                    if (isFinishing() || isDestroyed()) return;
+                    if (store != syncedStore) { syncContent(); return; }
+                    if (added > 0) {
+                        Toast.makeText(this, "Добавлено из GitHub: " + added, Toast.LENGTH_SHORT).show();
+                        if ((cardDialog == null || !cardDialog.isShowing()) && !"player".equals(screen)) render();
+                    }
+                }));
     }
 
     @Override public void onBackPressed() { if (screen.equals("player")) navigate("stories"); else super.onBackPressed(); }
