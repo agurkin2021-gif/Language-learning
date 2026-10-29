@@ -65,7 +65,7 @@ public final class PersonalStorySync {
         connection.setUseCaches(false);
         try {
             int status = connection.getResponseCode();
-            if (status == 404) return "{\\\"version\\\":1,\\\"items\\\":[]}";
+            if (status == 404) return new JSONObject().put("version", 1).put("items", new JSONArray()).toString();
             if (status != 200) throw new IllegalStateException("HTTP " + status);
             try (InputStream input = connection.getInputStream();
                  ByteArrayOutputStream output = new ByteArrayOutputStream()) {
