@@ -438,6 +438,38 @@ public final class Store extends SQLiteOpenHelper {
         return true;
     }
 
+    public boolean importPrivateCard(String externalId, String spanish, String meaning, int kind, int category) {
+        if (externalId == null || externalId.isBlank() || spanish == null || spanish.isBlank()
+                || meaning == null || meaning.isBlank()) throw new IllegalArgumentException("card");
+        if (kind != 0 && kind != 1) throw new IllegalArgumentException("kind");
+        if (kind == 0 && (category < 1 || category > 3)) throw new IllegalArgumentException("category");
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        boolean inserted = false;
+        try {
+            if (personalStoriesDisabled(db) || remoteImported(db, externalId)) {
+                db.setTransactionSuccessful();
+                return false;
+            }
+            long localId = 0;
+            try (Cursor c = db.rawQuery("SELECT id FROM cards WHERE kind=? AND LOWER(TRIM(spanish))=LOWER(?) LIMIT 1",
+                    new String[]{Integer.toString(kind), spanish.trim()})) {
+                if (c.moveToFirst()) localId = c.getLong(0);
+            }
+            if (localId == 0) {
+                ContentValues v = new ContentValues();
+                v.put("spanish", spanish.trim()); v.put("meaning", meaning.trim());
+                v.put("kind", kind); v.put("category", kind == 1 ? 0 : category);
+                localId = db.insertOrThrow("cards", null, v);
+                inserted = true;
+            }
+            markRemoteImported(db, externalId, kind == 1 ? "phrase" : "word", localId);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+        if (inserted) changed();
+        return inserted;
+    }
+
     /** English is shared-content-disabled by default, but private stories are allowed
      * until the user deliberately resets that local database.
      */
