@@ -5,6 +5,11 @@ import android.content.SharedPreferences;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.Locale;
+import java.net.URL;
+import java.net.HttpURLConnection;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -15,7 +20,7 @@ public final class PersonalStorySync {
     public interface Callback { void done(int added, int rejected, String error); }
 
     public static String status(Context context) {
-        if (!PrivateVocabularySync.isConfigured(context)) return "Личный канал не подключён";
+        
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getString(statusKey(StudyProfile.active(context)), "Ожидается первая проверка");
     }
@@ -29,21 +34,13 @@ public final class PersonalStorySync {
                 if (store.personalStoriesDisabled()) {
                     setStatus(app, store.profileId(), "Рассказы отключены после сброса базы");
                 } else {
-                    String profile = PrivateVocabularySync.profileRepository(app);
-                    if (profile.isEmpty()) throw new IllegalStateException("No personal repository");
-                    String cardsJson = PrivateVocabularySync.downloadCardFeed(
-                            app, language, profile, store.profileId());
-                    if (!profile.equals(PrivateVocabularySync.profileRepository(app)))
-                        throw new IllegalStateException("Profile changed");
-                    Result cards = importCards(store, new JSONObject(cardsJson), profile, language);
+                    String profile = store.profileId();
+                    String cardsJson = download("content/" + profile + "/cards-" + language + ".json");
+                    Result cards = importCards(store, new JSONObject(cardsJson), "public", language);
                     added += cards.added();
                     rejected += cards.rejected();
-                    String json = PrivateVocabularySync.downloadStoryFeed(
-                            app, language, profile, store.profileId());
-                    // A profile changed during network access must not inject its old stories.
-                    if (!profile.equals(PrivateVocabularySync.profileRepository(app)))
-                        throw new IllegalStateException("Profile changed");
-                    Result result = importStories(store, new JSONObject(json), profile, language);
+                    String json = download("content/" + profile + "/stories-" + language + ".json");
+                    Result result = importStories(store, new JSONObject(json), "public", language);
                     added += result.added();
                     rejected += result.rejected();
                     setStatus(app, store.profileId(), rejected == 0
@@ -58,6 +55,28 @@ public final class PersonalStorySync {
             }
             callback.done(added, rejected, error);
         });
+    }
+
+    private static String download(String path) throws Exception {
+        String url = "https://raw.githubusercontent.com/agurkin2021-gif/Language-learning/live-content/" + path;
+        HttpURLConnection connection = (HttpURLConnection) new URL(url + "?t=" + System.currentTimeMillis()).openConnection();
+        connection.setConnectTimeout(7000);
+        connection.setReadTimeout(12000);
+        connection.setUseCaches(false);
+        try {
+            int status = connection.getResponseCode();
+            if (status == 404) return "{\\\"version\\\":1,\\\"items\\\":[]}";
+            if (status != 200) throw new IllegalStateException("HTTP " + status);
+            try (InputStream input = connection.getInputStream();
+                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                byte[] buffer = new byte[8192];
+                for (int n; (n = input.read(buffer)) != -1;) {
+                    if (output.size() + n > 1024 * 1024) throw new IllegalArgumentException("Feed too large");
+                    output.write(buffer, 0, n);
+                }
+                return output.toString(StandardCharsets.UTF_8.name());
+            }
+        } finally { connection.disconnect(); }
     }
 
     record Result(int added, int rejected) {}
