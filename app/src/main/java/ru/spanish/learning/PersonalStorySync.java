@@ -31,14 +31,21 @@ public final class PersonalStorySync {
                 } else {
                     String profile = PrivateVocabularySync.profileRepository(app);
                     if (profile.isEmpty()) throw new IllegalStateException("No personal repository");
+                    String cardsJson = PrivateVocabularySync.downloadCardFeed(
+                            app, language, profile, store.profileId());
+                    if (!profile.equals(PrivateVocabularySync.profileRepository(app)))
+                        throw new IllegalStateException("Profile changed");
+                    Result cards = importCards(store, new JSONObject(cardsJson), profile, language);
+                    added += cards.added();
+                    rejected += cards.rejected();
                     String json = PrivateVocabularySync.downloadStoryFeed(
                             app, language, profile, store.profileId());
                     // A profile changed during network access must not inject its old stories.
                     if (!profile.equals(PrivateVocabularySync.profileRepository(app)))
                         throw new IllegalStateException("Profile changed");
                     Result result = importStories(store, new JSONObject(json), profile, language);
-                    added = result.added();
-                    rejected = result.rejected();
+                    added += result.added();
+                    rejected += result.rejected();
                     setStatus(app, store.profileId(), rejected == 0
                             ? "Личные рассказы проверены (" + language.toUpperCase(Locale.ROOT) + ")"
                             : "Добавлено: " + added + "; отклонено: " + rejected);
@@ -54,6 +61,35 @@ public final class PersonalStorySync {
     }
 
     record Result(int added, int rejected) {}
+
+    static Result importCards(Store store, JSONObject root, String repository, String language)
+            throws Exception {
+        if (root.optInt("version", 1) != 1) throw new IllegalArgumentException("Card feed version");
+        JSONArray items = root.optJSONArray("items");
+        if (items == null) items = new JSONArray();
+        if (items.length() > 5000) throw new IllegalArgumentException("Too many cards");
+        int added = 0, rejected = 0;
+        String prefix = "private-card:" + repository + ":" + store.profileId() + ":" + language + ":";
+        for (int i = 0; i < items.length(); i++) {
+            try {
+                JSONObject item = items.getJSONObject(i);
+                String type = item.getString("type");
+                if (!"word".equals(type) && !"phrase".equals(type))
+                    throw new IllegalArgumentException("type");
+                String id = clean(item.getString("id"), 120);
+                String word = clean(item.getString("spanish"), 500);
+                String meaning = clean(item.getString("meaning"), 1000);
+                if (id.isEmpty() || word.isEmpty() || meaning.isEmpty())
+                    throw new IllegalArgumentException("empty card");
+                int kind = "phrase".equals(type) ? 1 : 0;
+                int category = kind == 1 ? 0 : item.getInt("category");
+                if (store.importPrivateCard(prefix + id, word, meaning, kind, category)) added++;
+            } catch (Exception bad) { rejected++; }
+        }
+        return new Result(added, rejected);
+    }
+
+
 
     static Result importStories(Store store, JSONObject root, String repository, String language)
             throws Exception {
