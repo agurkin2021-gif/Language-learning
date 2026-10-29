@@ -209,6 +209,7 @@ orden|порядок, приказ|2
 permiso|разрешение|2
 plazo|срок|2
 riesgo|риск|2
+trámite|официальная процедура|2
 solución|решение проблемы|2
 actual|нынешний|3
 adecuado|подходящий|3
@@ -308,6 +309,8 @@ profundo|глубокий|3
 responsable|ответственный|3
 urgente|срочный|3
 valioso|ценный|3
+transparente|прозрачный|3
+voluntario|добровольный|3
 """;
     static int seed(SQLiteDatabase db) {
         Set<String> present = new HashSet<>();
