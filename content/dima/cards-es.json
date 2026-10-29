@@ -1,0 +1,2105 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "dima-300-001",
+      "type": "word",
+      "spanish": "admitir",
+      "meaning": "признавать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-002",
+      "type": "word",
+      "spanish": "advertir",
+      "meaning": "предупреждать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-003",
+      "type": "word",
+      "spanish": "afirmar",
+      "meaning": "утверждать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-004",
+      "type": "word",
+      "spanish": "agregar",
+      "meaning": "добавлять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-005",
+      "type": "word",
+      "spanish": "aguantar",
+      "meaning": "терпеть",
+      "category": 1
+    },
+    {
+      "id": "dima-300-006",
+      "type": "word",
+      "spanish": "alentar",
+      "meaning": "подбадривать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-007",
+      "type": "word",
+      "spanish": "analizar",
+      "meaning": "анализировать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-008",
+      "type": "word",
+      "spanish": "anotar",
+      "meaning": "записывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-009",
+      "type": "word",
+      "spanish": "aplaudir",
+      "meaning": "аплодировать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-010",
+      "type": "word",
+      "spanish": "apoyar",
+      "meaning": "поддерживать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-011",
+      "type": "word",
+      "spanish": "aprovechar",
+      "meaning": "использовать с пользой",
+      "category": 1
+    },
+    {
+      "id": "dima-300-012",
+      "type": "word",
+      "spanish": "aprobar",
+      "meaning": "одобрять, сдавать экзамен",
+      "category": 1
+    },
+    {
+      "id": "dima-300-013",
+      "type": "word",
+      "spanish": "arriesgar",
+      "meaning": "рисковать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-014",
+      "type": "word",
+      "spanish": "atender",
+      "meaning": "обслуживать, отвечать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-015",
+      "type": "word",
+      "spanish": "atraer",
+      "meaning": "привлекать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-016",
+      "type": "word",
+      "spanish": "aumentar",
+      "meaning": "увеличивать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-017",
+      "type": "word",
+      "spanish": "avanzar",
+      "meaning": "продвигаться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-018",
+      "type": "word",
+      "spanish": "barrer",
+      "meaning": "подметать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-019",
+      "type": "word",
+      "spanish": "bloquear",
+      "meaning": "блокировать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-020",
+      "type": "word",
+      "spanish": "brillar",
+      "meaning": "сиять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-021",
+      "type": "word",
+      "spanish": "calcular",
+      "meaning": "вычислять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-022",
+      "type": "word",
+      "spanish": "calmar",
+      "meaning": "успокаивать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-023",
+      "type": "word",
+      "spanish": "castigar",
+      "meaning": "наказывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-024",
+      "type": "word",
+      "spanish": "charlar",
+      "meaning": "болтать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-025",
+      "type": "word",
+      "spanish": "chocar",
+      "meaning": "сталкиваться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-026",
+      "type": "word",
+      "spanish": "colaborar",
+      "meaning": "сотрудничать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-027",
+      "type": "word",
+      "spanish": "colocar",
+      "meaning": "размещать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-028",
+      "type": "word",
+      "spanish": "comentar",
+      "meaning": "комментировать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-029",
+      "type": "word",
+      "spanish": "competir",
+      "meaning": "соревноваться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-030",
+      "type": "word",
+      "spanish": "completar",
+      "meaning": "завершать, заполнять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-031",
+      "type": "word",
+      "spanish": "comprobar",
+      "meaning": "проверять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-032",
+      "type": "word",
+      "spanish": "concentrarse",
+      "meaning": "сосредоточиваться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-033",
+      "type": "word",
+      "spanish": "confiar",
+      "meaning": "доверять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-034",
+      "type": "word",
+      "spanish": "conservar",
+      "meaning": "сохранять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-035",
+      "type": "word",
+      "spanish": "consultar",
+      "meaning": "спрашивать, консультироваться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-036",
+      "type": "word",
+      "spanish": "convencer",
+      "meaning": "убеждать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-037",
+      "type": "word",
+      "spanish": "corregir",
+      "meaning": "исправлять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-038",
+      "type": "word",
+      "spanish": "costar",
+      "meaning": "стоить",
+      "category": 1
+    },
+    {
+      "id": "dima-300-039",
+      "type": "word",
+      "spanish": "criticar",
+      "meaning": "критиковать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-040",
+      "type": "word",
+      "spanish": "cumplimentar",
+      "meaning": "заполнять бланк",
+      "category": 1
+    },
+    {
+      "id": "dima-300-041",
+      "type": "word",
+      "spanish": "debatir",
+      "meaning": "обсуждать, спорить",
+      "category": 1
+    },
+    {
+      "id": "dima-300-042",
+      "type": "word",
+      "spanish": "decidir",
+      "meaning": "решать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-043",
+      "type": "word",
+      "spanish": "defender",
+      "meaning": "защищать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-044",
+      "type": "word",
+      "spanish": "demostrar",
+      "meaning": "доказывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-045",
+      "type": "word",
+      "spanish": "depender",
+      "meaning": "зависеть",
+      "category": 1
+    },
+    {
+      "id": "dima-300-046",
+      "type": "word",
+      "spanish": "describir",
+      "meaning": "описывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-047",
+      "type": "word",
+      "spanish": "desear",
+      "meaning": "желать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-048",
+      "type": "word",
+      "spanish": "despedirse",
+      "meaning": "прощаться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-049",
+      "type": "word",
+      "spanish": "detectar",
+      "meaning": "обнаруживать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-050",
+      "type": "word",
+      "spanish": "detener",
+      "meaning": "останавливать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-051",
+      "type": "word",
+      "spanish": "discutir",
+      "meaning": "спорить",
+      "category": 1
+    },
+    {
+      "id": "dima-300-052",
+      "type": "word",
+      "spanish": "distinguir",
+      "meaning": "различать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-053",
+      "type": "word",
+      "spanish": "dudar",
+      "meaning": "сомневаться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-054",
+      "type": "word",
+      "spanish": "empujar",
+      "meaning": "толкать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-055",
+      "type": "word",
+      "spanish": "encargar",
+      "meaning": "заказывать, поручать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-056",
+      "type": "word",
+      "spanish": "enfrentar",
+      "meaning": "сталкиваться с",
+      "category": 1
+    },
+    {
+      "id": "dima-300-057",
+      "type": "word",
+      "spanish": "engañar",
+      "meaning": "обманывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-058",
+      "type": "word",
+      "spanish": "entregar",
+      "meaning": "вручать, доставлять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-059",
+      "type": "word",
+      "spanish": "escapar",
+      "meaning": "сбегать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-060",
+      "type": "word",
+      "spanish": "esconder",
+      "meaning": "прятать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-061",
+      "type": "word",
+      "spanish": "evitar",
+      "meaning": "избегать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-062",
+      "type": "word",
+      "spanish": "exigir",
+      "meaning": "требовать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-063",
+      "type": "word",
+      "spanish": "fallar",
+      "meaning": "ошибаться, давать сбой",
+      "category": 1
+    },
+    {
+      "id": "dima-300-064",
+      "type": "word",
+      "spanish": "fijarse",
+      "meaning": "обращать внимание",
+      "category": 1
+    },
+    {
+      "id": "dima-300-065",
+      "type": "word",
+      "spanish": "firmar",
+      "meaning": "подписывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-066",
+      "type": "word",
+      "spanish": "frenar",
+      "meaning": "тормозить",
+      "category": 1
+    },
+    {
+      "id": "dima-300-067",
+      "type": "word",
+      "spanish": "fundar",
+      "meaning": "основывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-068",
+      "type": "word",
+      "spanish": "herir",
+      "meaning": "ранить",
+      "category": 1
+    },
+    {
+      "id": "dima-300-069",
+      "type": "word",
+      "spanish": "huir",
+      "meaning": "убегать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-070",
+      "type": "word",
+      "spanish": "identificar",
+      "meaning": "опознавать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-071",
+      "type": "word",
+      "spanish": "impedir",
+      "meaning": "препятствовать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-072",
+      "type": "word",
+      "spanish": "incluir",
+      "meaning": "включать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-073",
+      "type": "word",
+      "spanish": "indicar",
+      "meaning": "указывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-074",
+      "type": "word",
+      "spanish": "influir",
+      "meaning": "влиять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-075",
+      "type": "word",
+      "spanish": "insistir",
+      "meaning": "настаивать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-076",
+      "type": "word",
+      "spanish": "investigar",
+      "meaning": "исследовать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-077",
+      "type": "word",
+      "spanish": "juntar",
+      "meaning": "собирать вместе",
+      "category": 1
+    },
+    {
+      "id": "dima-300-078",
+      "type": "word",
+      "spanish": "lanzar",
+      "meaning": "бросать, запускать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-079",
+      "type": "word",
+      "spanish": "lidiar",
+      "meaning": "справляться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-080",
+      "type": "word",
+      "spanish": "limitar",
+      "meaning": "ограничивать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-081",
+      "type": "word",
+      "spanish": "lograr",
+      "meaning": "добиваться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-082",
+      "type": "word",
+      "spanish": "luchar",
+      "meaning": "бороться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-083",
+      "type": "word",
+      "spanish": "medir",
+      "meaning": "измерять",
+      "category": 1
+    },
+    {
+      "id": "dima-300-084",
+      "type": "word",
+      "spanish": "mentir",
+      "meaning": "лгать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-085",
+      "type": "word",
+      "spanish": "merecer",
+      "meaning": "заслуживать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-086",
+      "type": "word",
+      "spanish": "negociar",
+      "meaning": "вести переговоры",
+      "category": 1
+    },
+    {
+      "id": "dima-300-087",
+      "type": "word",
+      "spanish": "obligar",
+      "meaning": "обязывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-088",
+      "type": "word",
+      "spanish": "ocultar",
+      "meaning": "скрывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-089",
+      "type": "word",
+      "spanish": "organizar",
+      "meaning": "организовывать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-090",
+      "type": "word",
+      "spanish": "participar",
+      "meaning": "участвовать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-091",
+      "type": "word",
+      "spanish": "pertenecer",
+      "meaning": "принадлежать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-092",
+      "type": "word",
+      "spanish": "planear",
+      "meaning": "планировать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-093",
+      "type": "word",
+      "spanish": "proteger",
+      "meaning": "защищать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-094",
+      "type": "word",
+      "spanish": "quejarse",
+      "meaning": "жаловаться",
+      "category": 1
+    },
+    {
+      "id": "dima-300-095",
+      "type": "word",
+      "spanish": "rechazar",
+      "meaning": "отвергать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-096",
+      "type": "word",
+      "spanish": "reclamar",
+      "meaning": "требовать, предъявлять претензию",
+      "category": 1
+    },
+    {
+      "id": "dima-300-097",
+      "type": "word",
+      "spanish": "resolver",
+      "meaning": "решать проблему",
+      "category": 1
+    },
+    {
+      "id": "dima-300-098",
+      "type": "word",
+      "spanish": "revisar",
+      "meaning": "проверять, пересматривать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-099",
+      "type": "word",
+      "spanish": "sugerir",
+      "meaning": "предлагать, советовать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-100",
+      "type": "word",
+      "spanish": "valorar",
+      "meaning": "ценить, оценивать",
+      "category": 1
+    },
+    {
+      "id": "dima-300-101",
+      "type": "word",
+      "spanish": "acuerdo",
+      "meaning": "соглашение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-102",
+      "type": "word",
+      "spanish": "actitud",
+      "meaning": "отношение, позиция",
+      "category": 2
+    },
+    {
+      "id": "dima-300-103",
+      "type": "word",
+      "spanish": "actividad",
+      "meaning": "деятельность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-104",
+      "type": "word",
+      "spanish": "advertencia",
+      "meaning": "предупреждение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-105",
+      "type": "word",
+      "spanish": "alquiler",
+      "meaning": "аренда",
+      "category": 2
+    },
+    {
+      "id": "dima-300-106",
+      "type": "word",
+      "spanish": "ambiente",
+      "meaning": "обстановка, среда",
+      "category": 2
+    },
+    {
+      "id": "dima-300-107",
+      "type": "word",
+      "spanish": "amistad",
+      "meaning": "дружба",
+      "category": 2
+    },
+    {
+      "id": "dima-300-108",
+      "type": "word",
+      "spanish": "anuncio",
+      "meaning": "объявление",
+      "category": 2
+    },
+    {
+      "id": "dima-300-109",
+      "type": "word",
+      "spanish": "apoyo",
+      "meaning": "поддержка",
+      "category": 2
+    },
+    {
+      "id": "dima-300-110",
+      "type": "word",
+      "spanish": "apuro",
+      "meaning": "спешка",
+      "category": 2
+    },
+    {
+      "id": "dima-300-111",
+      "type": "word",
+      "spanish": "argumento",
+      "meaning": "довод",
+      "category": 2
+    },
+    {
+      "id": "dima-300-112",
+      "type": "word",
+      "spanish": "asunto",
+      "meaning": "дело, вопрос",
+      "category": 2
+    },
+    {
+      "id": "dima-300-113",
+      "type": "word",
+      "spanish": "atención",
+      "meaning": "внимание",
+      "category": 2
+    },
+    {
+      "id": "dima-300-114",
+      "type": "word",
+      "spanish": "aumento",
+      "meaning": "повышение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-115",
+      "type": "word",
+      "spanish": "autoridad",
+      "meaning": "власть, орган власти",
+      "category": 2
+    },
+    {
+      "id": "dima-300-116",
+      "type": "word",
+      "spanish": "avance",
+      "meaning": "прогресс",
+      "category": 2
+    },
+    {
+      "id": "dima-300-117",
+      "type": "word",
+      "spanish": "beneficio",
+      "meaning": "выгода, польза",
+      "category": 2
+    },
+    {
+      "id": "dima-300-118",
+      "type": "word",
+      "spanish": "bronca",
+      "meaning": "злость",
+      "category": 2
+    },
+    {
+      "id": "dima-300-119",
+      "type": "word",
+      "spanish": "calidad",
+      "meaning": "качество",
+      "category": 2
+    },
+    {
+      "id": "dima-300-120",
+      "type": "word",
+      "spanish": "cambio",
+      "meaning": "изменение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-121",
+      "type": "word",
+      "spanish": "cantidad",
+      "meaning": "количество",
+      "category": 2
+    },
+    {
+      "id": "dima-300-122",
+      "type": "word",
+      "spanish": "capacidad",
+      "meaning": "способность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-123",
+      "type": "word",
+      "spanish": "carácter",
+      "meaning": "характер",
+      "category": 2
+    },
+    {
+      "id": "dima-300-124",
+      "type": "word",
+      "spanish": "causa",
+      "meaning": "причина",
+      "category": 2
+    },
+    {
+      "id": "dima-300-125",
+      "type": "word",
+      "spanish": "certeza",
+      "meaning": "уверенность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-126",
+      "type": "word",
+      "spanish": "cita",
+      "meaning": "встреча, запись на приём",
+      "category": 2
+    },
+    {
+      "id": "dima-300-127",
+      "type": "word",
+      "spanish": "comercio",
+      "meaning": "торговля",
+      "category": 2
+    },
+    {
+      "id": "dima-300-128",
+      "type": "word",
+      "spanish": "compañero",
+      "meaning": "товарищ, одноклассник",
+      "category": 2
+    },
+    {
+      "id": "dima-300-129",
+      "type": "word",
+      "spanish": "competencia",
+      "meaning": "соревнование, конкуренция",
+      "category": 2
+    },
+    {
+      "id": "dima-300-130",
+      "type": "word",
+      "spanish": "compromiso",
+      "meaning": "обязательство",
+      "category": 2
+    },
+    {
+      "id": "dima-300-131",
+      "type": "word",
+      "spanish": "comunidad",
+      "meaning": "сообщество",
+      "category": 2
+    },
+    {
+      "id": "dima-300-132",
+      "type": "word",
+      "spanish": "consecuencia",
+      "meaning": "последствие",
+      "category": 2
+    },
+    {
+      "id": "dima-300-133",
+      "type": "word",
+      "spanish": "consejo",
+      "meaning": "совет",
+      "category": 2
+    },
+    {
+      "id": "dima-300-134",
+      "type": "word",
+      "spanish": "consumo",
+      "meaning": "потребление",
+      "category": 2
+    },
+    {
+      "id": "dima-300-135",
+      "type": "word",
+      "spanish": "contrato",
+      "meaning": "договор",
+      "category": 2
+    },
+    {
+      "id": "dima-300-136",
+      "type": "word",
+      "spanish": "control",
+      "meaning": "контроль",
+      "category": 2
+    },
+    {
+      "id": "dima-300-137",
+      "type": "word",
+      "spanish": "costumbre",
+      "meaning": "привычка, обычай",
+      "category": 2
+    },
+    {
+      "id": "dima-300-138",
+      "type": "word",
+      "spanish": "crecimiento",
+      "meaning": "рост",
+      "category": 2
+    },
+    {
+      "id": "dima-300-139",
+      "type": "word",
+      "spanish": "crítica",
+      "meaning": "критика",
+      "category": 2
+    },
+    {
+      "id": "dima-300-140",
+      "type": "word",
+      "spanish": "culpa",
+      "meaning": "вина",
+      "category": 2
+    },
+    {
+      "id": "dima-300-141",
+      "type": "word",
+      "spanish": "decisión",
+      "meaning": "решение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-142",
+      "type": "word",
+      "spanish": "demora",
+      "meaning": "задержка",
+      "category": 2
+    },
+    {
+      "id": "dima-300-143",
+      "type": "word",
+      "spanish": "desafío",
+      "meaning": "вызов, сложная задача",
+      "category": 2
+    },
+    {
+      "id": "dima-300-144",
+      "type": "word",
+      "spanish": "desarrollo",
+      "meaning": "развитие",
+      "category": 2
+    },
+    {
+      "id": "dima-300-145",
+      "type": "word",
+      "spanish": "descuento",
+      "meaning": "скидка",
+      "category": 2
+    },
+    {
+      "id": "dima-300-146",
+      "type": "word",
+      "spanish": "deseo",
+      "meaning": "желание",
+      "category": 2
+    },
+    {
+      "id": "dima-300-147",
+      "type": "word",
+      "spanish": "destino",
+      "meaning": "пункт назначения, судьба",
+      "category": 2
+    },
+    {
+      "id": "dima-300-148",
+      "type": "word",
+      "spanish": "detalle",
+      "meaning": "подробность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-149",
+      "type": "word",
+      "spanish": "diferencia",
+      "meaning": "разница",
+      "category": 2
+    },
+    {
+      "id": "dima-300-150",
+      "type": "word",
+      "spanish": "dificultad",
+      "meaning": "трудность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-151",
+      "type": "word",
+      "spanish": "disculpa",
+      "meaning": "извинение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-152",
+      "type": "word",
+      "spanish": "discusión",
+      "meaning": "спор",
+      "category": 2
+    },
+    {
+      "id": "dima-300-153",
+      "type": "word",
+      "spanish": "duda",
+      "meaning": "сомнение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-154",
+      "type": "word",
+      "spanish": "educación",
+      "meaning": "образование",
+      "category": 2
+    },
+    {
+      "id": "dima-300-155",
+      "type": "word",
+      "spanish": "efecto",
+      "meaning": "эффект",
+      "category": 2
+    },
+    {
+      "id": "dima-300-156",
+      "type": "word",
+      "spanish": "elección",
+      "meaning": "выбор",
+      "category": 2
+    },
+    {
+      "id": "dima-300-157",
+      "type": "word",
+      "spanish": "emergencia",
+      "meaning": "чрезвычайная ситуация",
+      "category": 2
+    },
+    {
+      "id": "dima-300-158",
+      "type": "word",
+      "spanish": "empresa",
+      "meaning": "компания",
+      "category": 2
+    },
+    {
+      "id": "dima-300-159",
+      "type": "word",
+      "spanish": "energía",
+      "meaning": "энергия",
+      "category": 2
+    },
+    {
+      "id": "dima-300-160",
+      "type": "word",
+      "spanish": "engaño",
+      "meaning": "обман",
+      "category": 2
+    },
+    {
+      "id": "dima-300-161",
+      "type": "word",
+      "spanish": "entorno",
+      "meaning": "окружение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-162",
+      "type": "word",
+      "spanish": "equipo",
+      "meaning": "команда, оборудование",
+      "category": 2
+    },
+    {
+      "id": "dima-300-163",
+      "type": "word",
+      "spanish": "error",
+      "meaning": "ошибка",
+      "category": 2
+    },
+    {
+      "id": "dima-300-164",
+      "type": "word",
+      "spanish": "esfuerzo",
+      "meaning": "усилие",
+      "category": 2
+    },
+    {
+      "id": "dima-300-165",
+      "type": "word",
+      "spanish": "espacio",
+      "meaning": "пространство",
+      "category": 2
+    },
+    {
+      "id": "dima-300-166",
+      "type": "word",
+      "spanish": "etapa",
+      "meaning": "этап",
+      "category": 2
+    },
+    {
+      "id": "dima-300-167",
+      "type": "word",
+      "spanish": "experiencia",
+      "meaning": "опыт",
+      "category": 2
+    },
+    {
+      "id": "dima-300-168",
+      "type": "word",
+      "spanish": "explicación",
+      "meaning": "объяснение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-169",
+      "type": "word",
+      "spanish": "éxito",
+      "meaning": "успех",
+      "category": 2
+    },
+    {
+      "id": "dima-300-170",
+      "type": "word",
+      "spanish": "falla",
+      "meaning": "неисправность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-171",
+      "type": "word",
+      "spanish": "favor",
+      "meaning": "услуга, одолжение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-172",
+      "type": "word",
+      "spanish": "fecha",
+      "meaning": "дата",
+      "category": 2
+    },
+    {
+      "id": "dima-300-173",
+      "type": "word",
+      "spanish": "fuerza",
+      "meaning": "сила",
+      "category": 2
+    },
+    {
+      "id": "dima-300-174",
+      "type": "word",
+      "spanish": "gasto",
+      "meaning": "расход",
+      "category": 2
+    },
+    {
+      "id": "dima-300-175",
+      "type": "word",
+      "spanish": "gobierno",
+      "meaning": "правительство",
+      "category": 2
+    },
+    {
+      "id": "dima-300-176",
+      "type": "word",
+      "spanish": "habilidad",
+      "meaning": "навык",
+      "category": 2
+    },
+    {
+      "id": "dima-300-177",
+      "type": "word",
+      "spanish": "hecho",
+      "meaning": "факт, событие",
+      "category": 2
+    },
+    {
+      "id": "dima-300-178",
+      "type": "word",
+      "spanish": "herramienta",
+      "meaning": "инструмент",
+      "category": 2
+    },
+    {
+      "id": "dima-300-179",
+      "type": "word",
+      "spanish": "impuesto",
+      "meaning": "налог",
+      "category": 2
+    },
+    {
+      "id": "dima-300-180",
+      "type": "word",
+      "spanish": "información",
+      "meaning": "информация",
+      "category": 2
+    },
+    {
+      "id": "dima-300-181",
+      "type": "word",
+      "spanish": "informe",
+      "meaning": "отчёт",
+      "category": 2
+    },
+    {
+      "id": "dima-300-182",
+      "type": "word",
+      "spanish": "intención",
+      "meaning": "намерение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-183",
+      "type": "word",
+      "spanish": "interés",
+      "meaning": "интерес",
+      "category": 2
+    },
+    {
+      "id": "dima-300-184",
+      "type": "word",
+      "spanish": "jefe",
+      "meaning": "начальник",
+      "category": 2
+    },
+    {
+      "id": "dima-300-185",
+      "type": "word",
+      "spanish": "juicio",
+      "meaning": "судебное разбирательство",
+      "category": 2
+    },
+    {
+      "id": "dima-300-186",
+      "type": "word",
+      "spanish": "límite",
+      "meaning": "предел",
+      "category": 2
+    },
+    {
+      "id": "dima-300-187",
+      "type": "word",
+      "spanish": "logro",
+      "meaning": "достижение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-188",
+      "type": "word",
+      "spanish": "mentira",
+      "meaning": "ложь",
+      "category": 2
+    },
+    {
+      "id": "dima-300-189",
+      "type": "word",
+      "spanish": "meta",
+      "meaning": "цель",
+      "category": 2
+    },
+    {
+      "id": "dima-300-190",
+      "type": "word",
+      "spanish": "miedo",
+      "meaning": "страх",
+      "category": 2
+    },
+    {
+      "id": "dima-300-191",
+      "type": "word",
+      "spanish": "motivo",
+      "meaning": "причина, мотив",
+      "category": 2
+    },
+    {
+      "id": "dima-300-192",
+      "type": "word",
+      "spanish": "necesidad",
+      "meaning": "потребность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-193",
+      "type": "word",
+      "spanish": "oportunidad",
+      "meaning": "возможность",
+      "category": 2
+    },
+    {
+      "id": "dima-300-194",
+      "type": "word",
+      "spanish": "opinión",
+      "meaning": "мнение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-195",
+      "type": "word",
+      "spanish": "orden",
+      "meaning": "порядок, приказ",
+      "category": 2
+    },
+    {
+      "id": "dima-300-196",
+      "type": "word",
+      "spanish": "permiso",
+      "meaning": "разрешение",
+      "category": 2
+    },
+    {
+      "id": "dima-300-197",
+      "type": "word",
+      "spanish": "plazo",
+      "meaning": "срок",
+      "category": 2
+    },
+    {
+      "id": "dima-300-198",
+      "type": "word",
+      "spanish": "riesgo",
+      "meaning": "риск",
+      "category": 2
+    },
+    {
+      "id": "dima-300-199",
+      "type": "word",
+      "spanish": "trámite",
+      "meaning": "официальная процедура",
+      "category": 2
+    },
+    {
+      "id": "dima-300-200",
+      "type": "word",
+      "spanish": "solución",
+      "meaning": "решение проблемы",
+      "category": 2
+    },
+    {
+      "id": "dima-300-201",
+      "type": "word",
+      "spanish": "actual",
+      "meaning": "нынешний",
+      "category": 3
+    },
+    {
+      "id": "dima-300-202",
+      "type": "word",
+      "spanish": "adecuado",
+      "meaning": "подходящий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-203",
+      "type": "word",
+      "spanish": "ajeno",
+      "meaning": "чужой",
+      "category": 3
+    },
+    {
+      "id": "dima-300-204",
+      "type": "word",
+      "spanish": "amplio",
+      "meaning": "просторный, широкий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-205",
+      "type": "word",
+      "spanish": "ansioso",
+      "meaning": "тревожный, нетерпеливый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-206",
+      "type": "word",
+      "spanish": "apropiado",
+      "meaning": "уместный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-207",
+      "type": "word",
+      "spanish": "atento",
+      "meaning": "внимательный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-208",
+      "type": "word",
+      "spanish": "atractivo",
+      "meaning": "привлекательный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-209",
+      "type": "word",
+      "spanish": "auténtico",
+      "meaning": "подлинный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-210",
+      "type": "word",
+      "spanish": "automático",
+      "meaning": "автоматический",
+      "category": 3
+    },
+    {
+      "id": "dima-300-211",
+      "type": "word",
+      "spanish": "básico",
+      "meaning": "основной, базовый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-212",
+      "type": "word",
+      "spanish": "brillante",
+      "meaning": "блестящий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-213",
+      "type": "word",
+      "spanish": "capaz",
+      "meaning": "способный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-214",
+      "type": "word",
+      "spanish": "casual",
+      "meaning": "случайный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-215",
+      "type": "word",
+      "spanish": "cierto",
+      "meaning": "определённый, верный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-216",
+      "type": "word",
+      "spanish": "complicado",
+      "meaning": "сложный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-217",
+      "type": "word",
+      "spanish": "concreto",
+      "meaning": "конкретный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-218",
+      "type": "word",
+      "spanish": "confiable",
+      "meaning": "надёжный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-219",
+      "type": "word",
+      "spanish": "confuso",
+      "meaning": "непонятный, запутанный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-220",
+      "type": "word",
+      "spanish": "constante",
+      "meaning": "постоянный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-221",
+      "type": "word",
+      "spanish": "conveniente",
+      "meaning": "удобный, целесообразный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-222",
+      "type": "word",
+      "spanish": "creativo",
+      "meaning": "творческий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-223",
+      "type": "word",
+      "spanish": "cruel",
+      "meaning": "жестокий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-224",
+      "type": "word",
+      "spanish": "cuidadoso",
+      "meaning": "осторожный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-225",
+      "type": "word",
+      "spanish": "curioso",
+      "meaning": "любопытный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-226",
+      "type": "word",
+      "spanish": "decente",
+      "meaning": "приличный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-227",
+      "type": "word",
+      "spanish": "definitivo",
+      "meaning": "окончательный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-228",
+      "type": "word",
+      "spanish": "delicado",
+      "meaning": "нежный, деликатный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-229",
+      "type": "word",
+      "spanish": "desagradable",
+      "meaning": "неприятный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-230",
+      "type": "word",
+      "spanish": "desconocido",
+      "meaning": "неизвестный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-231",
+      "type": "word",
+      "spanish": "desesperado",
+      "meaning": "отчаявшийся",
+      "category": 3
+    },
+    {
+      "id": "dima-300-232",
+      "type": "word",
+      "spanish": "desordenado",
+      "meaning": "неопрятный, беспорядочный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-233",
+      "type": "word",
+      "spanish": "destacado",
+      "meaning": "выдающийся",
+      "category": 3
+    },
+    {
+      "id": "dima-300-234",
+      "type": "word",
+      "spanish": "detallado",
+      "meaning": "подробный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-235",
+      "type": "word",
+      "spanish": "directo",
+      "meaning": "прямой",
+      "category": 3
+    },
+    {
+      "id": "dima-300-236",
+      "type": "word",
+      "spanish": "dispuesto",
+      "meaning": "готовый, расположенный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-237",
+      "type": "word",
+      "spanish": "diverso",
+      "meaning": "разнообразный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-238",
+      "type": "word",
+      "spanish": "doble",
+      "meaning": "двойной",
+      "category": 3
+    },
+    {
+      "id": "dima-300-239",
+      "type": "word",
+      "spanish": "económico",
+      "meaning": "экономичный, недорогой",
+      "category": 3
+    },
+    {
+      "id": "dima-300-240",
+      "type": "word",
+      "spanish": "efectivo",
+      "meaning": "действенный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-241",
+      "type": "word",
+      "spanish": "eficiente",
+      "meaning": "эффективный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-242",
+      "type": "word",
+      "spanish": "egoísta",
+      "meaning": "эгоистичный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-243",
+      "type": "word",
+      "spanish": "elegante",
+      "meaning": "элегантный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-244",
+      "type": "word",
+      "spanish": "emocionante",
+      "meaning": "захватывающий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-245",
+      "type": "word",
+      "spanish": "enorme",
+      "meaning": "огромный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-246",
+      "type": "word",
+      "spanish": "entero",
+      "meaning": "целый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-247",
+      "type": "word",
+      "spanish": "equilibrado",
+      "meaning": "сбалансированный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-248",
+      "type": "word",
+      "spanish": "esencial",
+      "meaning": "существенный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-249",
+      "type": "word",
+      "spanish": "estable",
+      "meaning": "стабильный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-250",
+      "type": "word",
+      "spanish": "estricto",
+      "meaning": "строгий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-251",
+      "type": "word",
+      "spanish": "exacto",
+      "meaning": "точный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-252",
+      "type": "word",
+      "spanish": "exagerado",
+      "meaning": "преувеличенный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-253",
+      "type": "word",
+      "spanish": "excelente",
+      "meaning": "отличный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-254",
+      "type": "word",
+      "spanish": "excesivo",
+      "meaning": "чрезмерный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-255",
+      "type": "word",
+      "spanish": "exigente",
+      "meaning": "требовательный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-256",
+      "type": "word",
+      "spanish": "extraño",
+      "meaning": "странный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-257",
+      "type": "word",
+      "spanish": "familiar",
+      "meaning": "знакомый, семейный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-258",
+      "type": "word",
+      "spanish": "flexible",
+      "meaning": "гибкий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-259",
+      "type": "word",
+      "spanish": "frecuente",
+      "meaning": "частый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-260",
+      "type": "word",
+      "spanish": "frustrado",
+      "meaning": "расстроенный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-261",
+      "type": "word",
+      "spanish": "fundamental",
+      "meaning": "основополагающий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-262",
+      "type": "word",
+      "spanish": "generoso",
+      "meaning": "щедрый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-263",
+      "type": "word",
+      "spanish": "grave",
+      "meaning": "серьёзный, тяжёлый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-264",
+      "type": "word",
+      "spanish": "habitual",
+      "meaning": "привычный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-265",
+      "type": "word",
+      "spanish": "honesto",
+      "meaning": "честный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-266",
+      "type": "word",
+      "spanish": "horrendo",
+      "meaning": "ужасный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-267",
+      "type": "word",
+      "spanish": "ideal",
+      "meaning": "идеальный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-268",
+      "type": "word",
+      "spanish": "idéntico",
+      "meaning": "идентичный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-269",
+      "type": "word",
+      "spanish": "increíble",
+      "meaning": "невероятный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-270",
+      "type": "word",
+      "spanish": "independiente",
+      "meaning": "независимый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-271",
+      "type": "word",
+      "spanish": "indispensable",
+      "meaning": "незаменимый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-272",
+      "type": "word",
+      "spanish": "injusto",
+      "meaning": "несправедливый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-273",
+      "type": "word",
+      "spanish": "inmediato",
+      "meaning": "немедленный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-274",
+      "type": "word",
+      "spanish": "inquieto",
+      "meaning": "беспокойный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-275",
+      "type": "word",
+      "spanish": "intenso",
+      "meaning": "интенсивный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-276",
+      "type": "word",
+      "spanish": "interno",
+      "meaning": "внутренний",
+      "category": 3
+    },
+    {
+      "id": "dima-300-277",
+      "type": "word",
+      "spanish": "justo",
+      "meaning": "справедливый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-278",
+      "type": "word",
+      "spanish": "laboral",
+      "meaning": "трудовой",
+      "category": 3
+    },
+    {
+      "id": "dima-300-279",
+      "type": "word",
+      "spanish": "legal",
+      "meaning": "законный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-280",
+      "type": "word",
+      "spanish": "limitado",
+      "meaning": "ограниченный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-281",
+      "type": "word",
+      "spanish": "maduro",
+      "meaning": "зрелый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-282",
+      "type": "word",
+      "spanish": "mínimo",
+      "meaning": "минимальный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-283",
+      "type": "word",
+      "spanish": "modesto",
+      "meaning": "скромный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-284",
+      "type": "word",
+      "spanish": "múltiple",
+      "meaning": "множественный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-285",
+      "type": "word",
+      "spanish": "obligatorio",
+      "meaning": "обязательный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-286",
+      "type": "word",
+      "spanish": "oficial",
+      "meaning": "официальный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-287",
+      "type": "word",
+      "spanish": "optimista",
+      "meaning": "оптимистичный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-288",
+      "type": "word",
+      "spanish": "original",
+      "meaning": "оригинальный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-289",
+      "type": "word",
+      "spanish": "paciente",
+      "meaning": "терпеливый",
+      "category": 3
+    },
+    {
+      "id": "dima-300-290",
+      "type": "word",
+      "spanish": "particular",
+      "meaning": "особый, конкретный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-291",
+      "type": "word",
+      "spanish": "pendiente",
+      "meaning": "ожидающий решения",
+      "category": 3
+    },
+    {
+      "id": "dima-300-292",
+      "type": "word",
+      "spanish": "práctico",
+      "meaning": "практичный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-293",
+      "type": "word",
+      "spanish": "preciso",
+      "meaning": "точный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-294",
+      "type": "word",
+      "spanish": "probable",
+      "meaning": "вероятный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-295",
+      "type": "word",
+      "spanish": "profundo",
+      "meaning": "глубокий",
+      "category": 3
+    },
+    {
+      "id": "dima-300-296",
+      "type": "word",
+      "spanish": "responsable",
+      "meaning": "ответственный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-297",
+      "type": "word",
+      "spanish": "urgente",
+      "meaning": "срочный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-298",
+      "type": "word",
+      "spanish": "valioso",
+      "meaning": "ценный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-299",
+      "type": "word",
+      "spanish": "transparente",
+      "meaning": "прозрачный",
+      "category": 3
+    },
+    {
+      "id": "dima-300-300",
+      "type": "word",
+      "spanish": "voluntario",
+      "meaning": "добровольный",
+      "category": 3
+    }
+  ]
+}
