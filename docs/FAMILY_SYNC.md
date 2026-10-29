@@ -1,47 +1,29 @@
-# Separate family content synchronization
+# Family content delivery (public GitHub)
 
-The private GitHub repository configured in Android Settings is required. Never commit a GitHub token to source code. The three profiles remain independent: `papa`, `mama`, `dima`.
-
-## Incoming content (edit in the private repository)
+No private GitHub repository or token is needed to add study material. The Android app downloads profile-specific files from the public `live-content` branch of `agurkin2021-gif/Language-learning` on app resume.
 
 | Profile | Spanish cards | Spanish stories | English cards | English stories |
 |---|---|---|---|---|
-| Papa | `content/papa/cards-es.json` | `content/stories-es.json` | `content/papa/cards-en.json` | `content/stories-en.json` |
+| Papa | `content/papa/cards-es.json` | `content/papa/stories-es.json` | `content/papa/cards-en.json` | `content/papa/stories-en.json` |
 | Mama | `content/mama/cards-es.json` | `content/mama/stories-es.json` | `content/mama/cards-en.json` | `content/mama/stories-en.json` |
 | Dima | `content/dima/cards-es.json` | `content/dima/stories-es.json` | `content/dima/cards-en.json` | `content/dima/stories-en.json` |
 
-Cards feed format:
+The Dima Spanish feed contains 300 new words. Missing files are treated as empty feeds.
+
+Cards JSON example:
 
 ```json
-{
-  "version": 1,
-  "items": [
-    {"id": "dima-example-001", "type": "word", "spanish": "aprovechar", "meaning": "использовать с пользой", "category": 1}
-  ]
-}
+{"version":1,"items":[{"id":"dima-300-001","type":"word","spanish":"admitir","meaning":"признавать","category":1}]}
 ```
 
-Categories: 1 verbs, 2 nouns, 3 adjectives. For expressions use `"type":"phrase"` and omit category. Each id must be stable and unique within the file. Never reuse a deleted id for a different card. A new file is optional: missing files are treated as empty feeds. Incoming content is additive, not destructive; changing a translation on GitHub will not overwrite an existing studied card. An explicit reset prevents automatic reimport.
+Categories: 1 verbs, 2 nouns, 3 adjectives. Use `type: phrase` for expressions. Every item must have a unique stable ID. Incoming sync adds missing cards without resetting mastery or duplicating Spanish terms; deleted remote items are tracked to prevent repeated reimport.
 
-Stories feed format (existing):
+Stories JSON example:
 
 ```json
-{
-  "version": 1,
-  "items": [
-    {"id": "dima-story-001", "type": "story", "title": "Un día", "spanish": "Hoy es un día especial.", "russian": "Сегодня особенный день."}
-  ]
-}
+{"version":1,"items":[{"id":"dima-story-001","type":"story","title":"Un día","spanish":"Hoy es un día especial.","russian":"Сегодня особенный день."}]}
 ```
 
-## Outgoing backups (written by Android)
+**Privacy:** The public repository contains only manually published learning content, never device-specific mastery, private progress or automatic backups. The optional legacy private backup mechanism remains separate and requires explicit configuration. This is one-way delivery of published cards and stories, not full cross-device state merging.
 
-- `vocabulary/es-<device-id>.json` and `vocabulary/en-<device-id>.json` for Papa (legacy paths)
-- `vocabulary/mama/{es,en}-<device-id>.json` and `vocabulary/dima/{es,en}-<device-id>.json`
-- `stories/{papa,mama,dima}/{es,en}-<device-id>.json`
-
-Backups are device-specific snapshots, not editable incoming feeds. Do not edit them to add cards; edit the `content/<profile>/cards-<language>.json` feed instead. Backups preserve card mastery and review counts, and include all locally stored stories. There is currently **no automatic cross-device conflict resolution, restore of deleted phone data, or bidirectional merge of edits**. The phone remains the authority for its own study state. No UI controls are added.
-
-## Release checks
-
-Build and run Android tests; verify Papa/Mama/Dima import isolation, repeated sync idempotency, deleted-card tombstones, explicit-reset behavior, offline retries, and APK update migration before releasing. A GitHub commit alone does not install an APK.
+An updated Android APK must be built and installed before the new public sync code works on a phone. Verify the CI build and phone migration before release.
