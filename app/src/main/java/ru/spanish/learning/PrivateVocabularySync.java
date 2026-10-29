@@ -363,6 +363,29 @@ public final class PrivateVocabularySync {
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
+    /** Curated incoming cards live in a separate path from phone-generated backups. */
+    public static String downloadCardFeed(Context context, String language,
+                                          String expectedRepo, String profile) throws Exception {
+        if (!"es".equals(language) && !"en".equals(language))
+            throw new IllegalArgumentException("language");
+        Config config = readConfig(context);
+        if (!config.repo().equals(expectedRepo)) throw new IllegalStateException("Profile changed");
+        JSONObject repository = request("GET", API + config.repo(), config.token(), null, false);
+        if (!repository.optBoolean("private", false))
+            throw new IllegalArgumentException("Repository must be private");
+        String branch = repository.getString("default_branch");
+        String path = "content/" + StudyProfile.normalized(profile) + "/cards-" + language + ".json";
+        JSONObject file = request("GET", API + config.repo() + "/contents/" + path +
+                "?ref=" + URLEncoder.encode(branch, "UTF-8"), config.token(), null, true);
+        if (file == null) return new JSONObject().put("version", 1)
+                .put("items", new JSONArray()).toString();
+        if (!"file".equals(file.optString("type")) || !"base64".equals(file.optString("encoding")))
+            throw new IllegalArgumentException("Invalid cards feed");
+        byte[] bytes = Base64.decode(file.getString("content"), Base64.DEFAULT);
+        if (bytes.length > 512 * 1024) throw new IllegalArgumentException("Cards feed too large");
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
     private static String hexDigest(String text) throws Exception {
         byte[] bytes = MessageDigest.getInstance("SHA-256")
                 .digest(text.getBytes(StandardCharsets.UTF_8));
