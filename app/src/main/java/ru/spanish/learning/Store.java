@@ -31,7 +31,7 @@ public final class Store extends SQLiteOpenHelper {
         return new Store(context, dbName, english, StudyProfile.normalized(id));
     }
     private Store(Context context, String databaseName, boolean english, String profileId) {
-        super(context, databaseName, null, 9);
+        super(context, databaseName, null, 10);
         this.context = context.getApplicationContext();
         this.english = english;
         this.profileId = profileId;
@@ -63,6 +63,10 @@ public final class Store extends SQLiteOpenHelper {
                 BeginnerCards.seed(db);
                 setAppFlag(db, "beginner_700_seeded");
                 FamilyStory.seed(db);
+                if (StudyProfile.DIMA.equals(profileId)) {
+                    DimaExtraCards.seed(db);
+                    setAppFlag(db, "dima_extra_300_seeded");
+                }
             }
             return;
         }
@@ -113,6 +117,15 @@ public final class Store extends SQLiteOpenHelper {
             // without overwriting user stories or restoring a deleted story.
             FamilyStory.seed(db);
         }
+        if (oldVersion < 10) upgradeDimaCards(db);
+    }
+
+    // Existing Dima profiles receive the pack once. Never reseed after a deliberate reset.
+    private void upgradeDimaCards(SQLiteDatabase db) {
+        if (english || !StudyProfile.DIMA.equals(profileId)) return;
+        if (!appFlag(db, "dima_extra_300_seeded") && !appFlag(db, "personal_story_reset"))
+            DimaExtraCards.seed(db);
+        setAppFlag(db, "dima_extra_300_seeded");
     }
 
     private static boolean appFlag(SQLiteDatabase db, String key) {
