@@ -71,6 +71,7 @@ public final class FamilyProfilesTest extends AndroidTestCase {
             assertFalse(dima.personalStoriesDisabled());
             JSONObject story = new JSONObject().put("type", "story")
                     .put("id", "new-story").put("title", "Las noticias")
+                    .put("profile", "mama").put("language", "es")
                     .put("spanish", "Milei habló hoy. Muchas personas escucharon.")
                     .put("russian", "Милей говорил сегодня. Многие люди слушали.");
             JSONObject feed = new JSONObject().put("version", 1)
@@ -80,6 +81,7 @@ public final class FamilyProfilesTest extends AndroidTestCase {
             assertEquals(1, dima.stories().size());
             assertEquals(0, PersonalStorySync.importStories(
                     mama, feed, "family/private", "es").added());
+            story.put("profile", "dima");
             assertEquals(1, PersonalStorySync.importStories(
                     dima, feed, "family/private", "es").added());
             assertEquals(2, mama.stories().size());
