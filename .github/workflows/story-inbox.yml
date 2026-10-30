@@ -1,0 +1,68 @@
+name: Story inbox (single entrypoint)
+on:
+  issues:
+    types: [opened, reopened, edited]
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: story-single-ingress
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    # Only the repository OWNER can submit stories. Public issue spam is ignored.
+    if: ${{ startsWith(github.event.issue.title, 'STORY:') && github.event.issue.user.login == github.repository_owner }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: live-content
+          fetch-depth: 0
+      - name: Extract one exact JSON story from issue body
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          event = json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))
+          payload = json.loads(event['issue'].get('body') or '')
+          if not isinstance(payload, dict):
+              raise SystemExit('The issue body must be ONE JSON object')
+          pathlib.Path(os.environ['RUNNER_TEMP'], 'story-payload.json').write_text(
+              json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+          PY
+      - name: Publish through the only validated intake script
+        id: publish
+        shell: bash
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          result="$(python3 scripts/story_inbox.py add < "$RUNNER_TEMP/story-payload.json")"
+          python3 scripts/story_inbox.py check
+          echo "$result"
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+          if ! git diff --quiet -- content/stories.json; then
+            git config user.name "story-inbox[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add content/stories.json
+            git commit -m "Story inbox: publish issue #$ISSUE_NUMBER"
+            git push origin HEAD:live-content
+          fi
+      - name: Confirm processed request and close issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RESULT: ${{ steps.publish.outputs.result }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "Story inbox accepted: $RESULT. Canonical destination: live-content/content/stories.json. Phone import depends on installed APK and per-profile reset settings."
+          gh issue close "$ISSUE_NUMBER" --repo "$GH_REPO"
+      - name: Report rejection without changing stories
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "Story inbox rejected this request. No story was published. Check the validation error in this workflow run; correct the issue JSON and re-open or edit the issue."
