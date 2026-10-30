@@ -1,6 +1,8 @@
 > **ПУБЛИКАЦИЯ РАССКАЗОВ (ЕДИНСТВЕННЫЙ МАРШРУТ):** сначала читайте [AGENTS.md](AGENTS.md).
-> Для всех профилей и языков — только ветка `live-content`, файл
-> `content/stories.json`, валидация `scripts/story_inbox.py`.
+> При команде «добавь рассказ» ChatGPT создаёт **одну GitHub Issue**
+> с названием `STORY: <название>` и телом в формате JSON (см. `AGENTS.md`).
+> GitHub Actions автоматически вызывает `live-content/scripts/story_inbox.py`
+> и записывает в **единственный** файл `live-content/content/stories.json`.
 > Старые `content/live_content.json` и `content/<profile>/stories-<lang>.json`
 > не использовать для новых рассказов. Новую историю достаточно опубликовать
 > в единый канал; после однократного APK-обновления приложение подхватит её само.
