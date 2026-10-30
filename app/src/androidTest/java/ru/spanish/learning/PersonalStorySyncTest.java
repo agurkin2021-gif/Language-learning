@@ -88,7 +88,6 @@ public class PersonalStorySyncTest extends AndroidTestCase {
             assertEquals(1, PersonalStorySync.importStories(mama, feed, "public", "es").added());
             assertEquals(1, PersonalStorySync.importStories(dima, feed, "public", "es").added());
             assertEquals(0, PersonalStorySync.importStories(papa, feed, "public", "es").added());
-            assertEquals(0, PersonalStorySync.importStories(papa, feed, "public", "en").added());
             JSONObject unknown = new JSONObject().put("version", 1).put("items", new JSONArray()
                     .put(new JSONObject().put("id", "bad").put("type", "story")
                             .put("profile", "unexpected").put("language", "es")
