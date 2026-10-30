@@ -36,7 +36,7 @@ public final class FamilyProfilesTest extends AndroidTestCase {
             assertEquals(111, mama.cards(false, 0, 3).size());
             assertEquals(0, mama.mastered().size());
             assertEquals(1, mama.stories().size());
-            assertEquals(700, dima.vocabulary().size());
+            assertEquals(1000, dima.vocabulary().size());
             assertEquals(0, dima.mastered().size());
             assertEquals(700, BeginnerCards.size());
             assertEquals(1, dima.stories().size());
@@ -44,15 +44,15 @@ public final class FamilyProfilesTest extends AndroidTestCase {
             mama.addCard("buen día", "добрый день", 0, 2);
             dima.addCard("buen día", "добрый день", 0, 2);
             assertEquals(701, mama.vocabulary().size());
-            assertEquals(701, dima.vocabulary().size());
+            assertEquals(1001, dima.vocabulary().size());
             assertTrue("Adding to Mama must not alter Papa", papa.vocabulary().size() >= 900);
             long mamaAdded = mama.vocabulary().get(700).id();
             mama.setMastered(mamaAdded, true);
             assertTrue(mama.vocabulary().get(700).mastered());
-            assertFalse(dima.vocabulary().get(700).mastered());
+            assertFalse(dima.vocabulary().get(1000).mastered());
             mama.deleteCard(mamaAdded);
             assertEquals(700, mama.vocabulary().size());
-            assertEquals(701, dima.vocabulary().size());
+            assertEquals(1001, dima.vocabulary().size());
         } finally {
             for (String name : new String[]{papaDb, mamaDb, dimaDb})
                 getContext().deleteDatabase(name);
@@ -93,7 +93,7 @@ public final class FamilyProfilesTest extends AndroidTestCase {
             assertEquals("mama", snapshotMama.getString("profile"));
             assertEquals("dima", snapshotDima.getString("profile"));
             assertEquals(701, snapshotMama.getJSONArray("entries").length());
-            assertEquals(700, snapshotDima.getJSONArray("entries").length());
+            assertEquals(1000, snapshotDima.getJSONArray("entries").length());
             assertEquals("vocabulary/mama/es-device-test.json",
                     StudyProfile.vocabularyPath("mama", "es", "device-test"));
             assertEquals("vocabulary/dima/es-device-test.json",
@@ -142,12 +142,12 @@ public final class FamilyProfilesTest extends AndroidTestCase {
         getContext().deleteDatabase(deleteName);
         try {
             try (Store dima = Store.forProfileTest(getContext(), deleteName, "dima", false)) {
-                assertEquals(700, dima.vocabulary().size());
+                assertEquals(1000, dima.vocabulary().size());
                 assertTrue(dima.deleteCard(dima.vocabulary().get(0).id()));
-                assertEquals(699, dima.vocabulary().size());
+                assertEquals(999, dima.vocabulary().size());
             }
             try (Store dima = Store.forProfileTest(getContext(), deleteName, "dima", false)) {
-                assertEquals("Deleted starter word stays removed", 699, dima.vocabulary().size());
+                assertEquals("Deleted starter word stays removed", 999, dima.vocabulary().size());
             }
             try (Store mama = Store.forProfileTest(getContext(), resetName, "mama", false)) {
                 mama.resetLearningData();
