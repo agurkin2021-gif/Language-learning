@@ -28,23 +28,32 @@
 `language=en`. Русский перевод обязателен. Допустим также `id` (стабильный ID).
 Нельзя помещать личный словарь, прогресс и токены в публичный файл.
 
-Публикация в локальном checkout ветки `live-content`:
+**Единственный внешний вход для ChatGPT — GitHub Issue.** Создаётся одна
+заявка в `agurkin2021-gif/Language-learning`:
+- заголовок: `STORY: <название>`;
+- тело: **один JSON-объект** по схеме выше, без Markdown;
+- создатель: владелец репозитория (остальные заявки Action игнорирует).
+
+Workflow `main/.github/workflows/story-inbox.yml` автоматически читает
+JSON из заявки, запускает `live-content/scripts/story_inbox.py add`,
+проверяет и записывает **только** `live-content/content/stories.json`.
+После успешной обработки заявку закрывает с комментарием `Story inbox accepted`.
+Не создавать JSON вручную в прежних файлах и не выполнять прямой
+`update_file` feed. При ошибке JSON заявка остаётся открытой с объяснением.
+
+Локальная команда для отладки из checkout `live-content` (не основной
+путь публикации в ChatGPT):
 
 ```bash
-python3 scripts/story_inbox.py add < /path/to/story.json
+python3 scripts/story_inbox.py add < submission.json
 python3 scripts/story_inbox.py check
-git add content/stories.json
-git commit -m "Publish family story"
-git push origin live-content
 ```
 
-При работе через GitHub connector меняется **только** `content/stories.json`
-ветки `live-content` через `fetch_file` → добавление элемента → `update_file`
-с полученным SHA → повторное чтение для подтверждения. Перед записью соблюдаются
-те же условия, что в `scripts/story_inbox.py`: обязательные поля, уникальный ID,
-UTF-8, не более 500 историй, не более 1 MiB, выравнивание количества
-предложений/строк текста и перевода по Android `Sentences.split`.
-GitHub Actions `Validate single story feed` выполняет независимую проверку.
+Заявка с `"replace": true` исправляет существующий рассказ по
+профилю/языку/названию и сохраняет исходный ID. Новая заявка без этого
+поля никогда не перезаписывает другой текст. Для подтверждения результата
+нужно увидеть закрытие Issue с комментарием Action и существование ID
+в едином feed. Доступность рассказа на телефоне проверяется отдельно.
 
 Повтор одного запроса по тому же профилю, языку и названию не создаёт дубль.
 Исправление рассказа делается с сохранением прежнего `id` через
