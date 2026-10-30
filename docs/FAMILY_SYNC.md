@@ -1,29 +1,58 @@
-# Family content delivery (public GitHub)
+# Единый приём рассказов / Family content delivery
 
-No private GitHub repository or token is needed to add study material. The Android app downloads profile-specific files from the public `live-content` branch of `agurkin2021-gif/Language-learning` on app resume.
+**СТРОГО ОДИН ВХОД ДЛЯ ВСЕХ РАССКАЗОВ:** `agurkin2021-gif/Language-learning`,
+ветка `live-content`, файл `content/stories.json`. Публикацию выполняет
+`scripts/story_inbox.py` из этой же ветки. Обращения к `content/live_content.json`,
+`content/papa/stories-es.json`, `content/stories-es.json` или
+`content/mama/stories-es.json` запрещены для НОВЫХ рассказов.
 
-| Profile | Spanish cards | Spanish stories | English cards | English stories |
-|---|---|---|---|---|
-| Papa | `content/papa/cards-es.json` | `content/papa/stories-es.json` | `content/papa/cards-en.json` | `content/papa/stories-en.json` |
-| Mama | `content/mama/cards-es.json` | `content/mama/stories-es.json` | `content/mama/cards-en.json` | `content/mama/stories-en.json` |
-| Dima | `content/dima/cards-es.json` | `content/dima/stories-es.json` | `content/dima/cards-en.json` | `content/dima/stories-en.json` |
+При запросе «добавь рассказ» агент принимает текст и целевые `profile`/`language`,
+подготавливает JSON и добавляет запись в **единственный** файл. Не нужно
+пересобирать APK для каждого нового рассказа после однократного перехода
+приложения на единый канал.
 
-The Dima Spanish feed contains 300 new words. Missing files are treated as empty feeds.
-
-Cards JSON example:
-
-```json
-{"version":1,"items":[{"id":"dima-300-001","type":"word","spanish":"admitir","meaning":"признавать","category":1}]}
-```
-
-Categories: 1 verbs, 2 nouns, 3 adjectives. Use `type: phrase` for expressions. Every item must have a unique stable ID. Incoming sync adds missing cards without resetting mastery or duplicating Spanish terms; deleted remote items are tracked to prevent repeated reimport.
-
-Stories JSON example:
+Схема входящей записи:
 
 ```json
-{"version":1,"items":[{"id":"dima-story-001","type":"story","title":"Un día","spanish":"Hoy es un día especial.","russian":"Сегодня особенный день."}]}
+{
+  "profile": "papa",
+  "language": "es",
+  "title": "Un día de invierno",
+  "spanish": "Hacía frío. Caminé por el bosque.",
+  "russian": "Было холодно. Я шёл по лесу."
+}
 ```
 
-**Privacy:** The public repository contains only manually published learning content, never device-specific mastery, private progress or automatic backups. The optional legacy private backup mechanism remains separate and requires explicit configuration. This is one-way delivery of published cards and stories, not full cross-device state merging.
+`profile`: строго `papa`, `mama`, `dima`; `language`: строго `es` или `en`.
+Поле `spanish` содержит текст на выбранном языке, включая английский при
+`language=en`. Русский перевод обязателен. Допустим также `id` (стабильный ID).
+Нельзя помещать личный словарь, прогресс и токены в публичный файл.
 
-An updated Android APK must be built and installed before the new public sync code works on a phone. Verify the CI build and phone migration before release.
+Публикация в локальном checkout ветки `live-content`:
+
+```bash
+python3 scripts/story_inbox.py add < /path/to/story.json
+python3 scripts/story_inbox.py check
+git add content/stories.json
+git commit -m "Publish family story"
+git push origin live-content
+```
+
+При работе через GitHub connector меняется **только** `content/stories.json`
+ветки `live-content` через `fetch_file` → добавление элемента → `update_file`
+с полученным SHA → повторное чтение для подтверждения. Перед записью соблюдаются
+те же условия, что в `scripts/story_inbox.py`: обязательные поля, уникальный ID,
+UTF-8, не более 500 историй, не более 1 MiB, выравнивание количества
+предложений/строк текста и перевода по Android `Sentences.split`.
+GitHub Actions `Validate single story feed` выполняет независимую проверку.
+
+Повтор одного запроса по тому же профилю, языку и названию не создаёт дубль.
+Исправление рассказа делается с сохранением прежнего `id` через
+`python3 scripts/story_inbox.py add --replace` или эквивалентную правку
+единого JSON, а не новой публикацией в соседний файл. Сброс базы на телефоне
+может блокировать автоматическое восстановление рассказов — не сбрасывать
+данные ради решения проблемы импорта.
+
+Карточки остаются на прежних отдельных входах
+`content/<profile>/cards-<language>.json`. Это НЕ вход рассказов.
+Личные архивы карточек в приватном GitHub продолжают работать независимо.
