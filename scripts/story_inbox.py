@@ -6,7 +6,7 @@ Usage:
     python3 scripts/story_inbox.py add < submission.json
     python3 scripts/story_inbox.py add --replace < correction.json
     python3 scripts/story_inbox.py check
-Input is one UTF-8 JSON object with profile, language, title, spanish, russian.
+Input is one UTF-8 JSON object with profile, language, title, spanish, russian.\nA correction may add "replace": true; the existing imported ID will be kept.
 Do not write to old per-profile story files or content/live_content.json.
 """
 import argparse
@@ -152,7 +152,12 @@ def main() -> int:
             print(f"VALID {FEED.relative_to(ROOT)}: {len(root['items'])} stories")
         else:
             request = json.load(sys.stdin)
-            print(publish(request, replace=args.replace))
+            if not isinstance(request, dict):
+                raise InvalidStory("Input must be one JSON object")
+            correction = request.pop("replace", False)
+            if not isinstance(correction, bool):
+                raise InvalidStory("replace must be a boolean")
+            print(publish(request, replace=args.replace or correction))
         return 0
     except (InvalidStory, ValueError, UnicodeDecodeError) as exc:
         print(f"INVALID STORY: {exc}", file=sys.stderr)
