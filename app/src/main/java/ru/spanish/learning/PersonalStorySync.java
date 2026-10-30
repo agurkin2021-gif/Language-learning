@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Private per-account story delivery. Never reads the public shared feed. */
+/** Public, profile-isolated story delivery from ONE canonical feed. */
 public final class PersonalStorySync {
     private static final String PREFS = "personal_story_delivery";
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
@@ -39,7 +39,8 @@ public final class PersonalStorySync {
                     Result cards = importCards(store, new JSONObject(cardsJson), "public", language);
                     added += cards.added();
                     rejected += cards.rejected();
-                    String json = download("content/" + profile + "/stories-" + language + ".json");
+                    // Only one canonical story input exists for every profile and language.
+                    String json = download("content/stories.json");
                     Result result = importStories(store, new JSONObject(json), "public", language);
                     added += result.added();
                     rejected += result.rejected();
@@ -127,6 +128,15 @@ public final class PersonalStorySync {
             try {
                 JSONObject item = items.getJSONObject(i);
                 if (!"story".equals(item.optString("type"))) throw new IllegalArgumentException("type");
+                // Unknown profiles must never default to Papa.
+                String itemProfile = item.optString("profile");
+                String itemLanguage = item.optString("language");
+                if (!(StudyProfile.PAPA.equals(itemProfile) || StudyProfile.MAMA.equals(itemProfile)
+                        || StudyProfile.DIMA.equals(itemProfile))
+                        || !("es".equals(itemLanguage) || "en".equals(itemLanguage)))
+                    throw new IllegalArgumentException("profile/language");
+                if (!store.profileId().equals(itemProfile) || !language.equals(itemLanguage))
+                    continue;
                 String id = clean(item.optString("id"), 120);
                 String title = clean(item.optString("title"), 300);
                 String text = clean(item.optString("spanish"), 20000);
