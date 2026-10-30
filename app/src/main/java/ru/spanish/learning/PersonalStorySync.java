@@ -45,7 +45,7 @@ public final class PersonalStorySync {
                     added += result.added();
                     rejected += result.rejected();
                     setStatus(app, store.profileId(), rejected == 0
-                            ? "Личные рассказы проверены (" + language.toUpperCase(Locale.ROOT) + ")"
+                            ? "Рассказы проверены (" + language.toUpperCase(Locale.ROOT) + ")"
                             : "Добавлено: " + added + "; отклонено: " + rejected);
                 }
             } catch (Exception failure) {
