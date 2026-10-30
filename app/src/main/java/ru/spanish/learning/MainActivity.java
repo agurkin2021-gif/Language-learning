@@ -504,13 +504,12 @@ public final class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(22), dp(12), dp(22), dp(6));
         TextView explanation = new TextView(this);
-        explanation.setText("Нужен отдельный приватный репозиторий GitHub и fine-grained token " +
-                "с правом Contents: Read and write только для него. " +
-                "Слова и устойчивые выражения будут выгружаться автоматически при изменениях и запуске приложения. " +
-                "Личные рассказы загружаются из этого же приватного репозитория при открытии. " +
-                "Для Папы: content/stories-es.json; для Мамы: content/mama/stories-es.json; " +
-                "для Димы: content/dima/stories-es.json (для английского — stories-en.json). " +
-                "У профилей отдельные словари и рассказы в одном приватном репозитории. " +
+        explanation.setText("Приватный GitHub и fine-grained token нужны только для резервной " +
+                "синхронизации вашего личного словаря. " +
+                "Слова и устойчивые выражения выгружаются при изменениях и запуске приложения. " +
+                "Рассказы поступают автоматически из общего публичного канала GitHub " +
+                "(единый content/stories.json) и распределяются отдельно по профилю и языку. " +
+                "Для рассказов приватный репозиторий и токен НЕ нужны. " +
                 "Не вставляйте токен в чат.\n\n" +
                 "Словарь: " + PrivateVocabularySync.status(this) + "\n" +
                 "Рассказы: " + PersonalStorySync.status(this));
