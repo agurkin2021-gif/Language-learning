@@ -1,0 +1,44 @@
+name: Validate single story feed
+on:
+  push:
+    branches: [live-content]
+    paths:
+      - 'content/stories.json'
+      - 'scripts/story_inbox.py'
+      - '.github/workflows/story-feed-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate every story and TTS sentence alignment
+        run: python3 scripts/story_inbox.py check
+      - name: Smoke test the one-entrypoint publisher and duplicate protection
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, pathlib, tempfile, shutil, sys
+          with tempfile.TemporaryDirectory() as td:
+              root = pathlib.Path(td)
+              (root / 'scripts').mkdir()
+              (root / 'content').mkdir()
+              shutil.copy('scripts/story_inbox.py', root / 'scripts' / 'story_inbox.py')
+              (root / 'content' / 'stories.json').write_text('{"version":1,"items":[]}', encoding='utf-8')
+              request = {
+                  'profile': 'mama', 'language': 'es', 'title': 'Prueba única',
+                  'spanish': 'Hola. Chau.', 'russian': 'Привет. Пока.'
+              }
+              cmd = [sys.executable, str(root / 'scripts' / 'story_inbox.py'), 'add']
+              one = subprocess.run(cmd, input=json.dumps(request), text=True, capture_output=True)
+              assert one.returncode == 0, one.stderr
+              again = subprocess.run(cmd, input=json.dumps(request), text=True, capture_output=True)
+              assert again.returncode == 0 and 'ALREADY_PUBLISHED' in again.stdout, again.stderr
+              saved = json.loads((root / 'content' / 'stories.json').read_text(encoding='utf-8'))
+              assert len(saved['items']) == 1
+              bad = dict(request, title='Invalid', russian='Привет.')
+              before = (root / 'content' / 'stories.json').read_bytes()
+              rejected = subprocess.run(cmd, input=json.dumps(bad), text=True, capture_output=True)
+              assert rejected.returncode != 0 and before == (root / 'content' / 'stories.json').read_bytes()
+          PY
