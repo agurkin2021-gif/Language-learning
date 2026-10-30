@@ -37,7 +37,7 @@ public final class FamilyStoryTest extends AndroidTestCase {
             assertTrue(story.body().contains("¡Mañana, no este sábado!"));
             assertEquals(story.body(), dima.stories().get(0).body());
             assertEquals(700, mama.vocabulary().size());
-            assertEquals(700, dima.vocabulary().size());
+            assertEquals(1000, dima.vocabulary().size());
         } finally {
             for (String n : new String[]{papaDb,mamaDb,dimaDb,englishDb})
                 getContext().deleteDatabase(n);
