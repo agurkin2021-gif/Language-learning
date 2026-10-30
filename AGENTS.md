@@ -1,42 +1,51 @@
-# STRICT STORY ROUTE — NON-NEGOTIABLE
+# ЕДИНСТВЕННЫЙ ПУТЬ ДЛЯ РАССКАЗОВ — STORY INBOX
 
-For ANY request "add/publish/send a story to the Android app", use ONLY:
-- Repository: `agurkin2021-gif/Language-learning`
-- Branch: `live-content`
-- Single canonical file: `content/stories.json`
-- Intake and validation: `scripts/story_inbox.py` on **the same branch**.
+**При любой команде «добавь/отправь рассказ» создавай ровно ОДНУ заявку GitHub Issue.**
+Репозиторий: `agurkin2021-gif/Language-learning`. В GitHub Connector
+вызывай `create_issue` с названием `STORY: <title>` и телом из **ОДНОГО JSON**,
+без Markdown и без обрамляющих кавычек.
 
-Never guess or use legacy `content/live_content.json`, `content/stories-es.json`,
-`content/papa/stories-es.json`, `content/mama/stories-es.json`,
-`content/dima/stories-es.json`, `main`, or `codex/android-v1` for
-**new story data**. Those are not the story ingress path.
+Обязательные поля JSON:
+```json
+{
+  "profile": "papa",
+  "language": "es",
+  "title": "Un día",
+  "spanish": "Hola. Chau.",
+  "russian": "Привет. Пока."
+}
+```
+`profile` строго `papa|mama|dima`; `language` строго `es|en`.
+При EN английский текст также помещается в поле `spanish`, согласно текущей
+схеме SQLite. Русский перевод обязателен. Можно передать `id`, если известен.
+Не гадать профиль/язык, когда из контекста нельзя однозначно установить их.
+Не класть в публичную заявку приватные данные, токены, словарь, прогресс.
 
-Input record: `profile` = `papa|mama|dima`, `language` = `es|en`,
-`title`, `spanish` (the text in the target language), `russian`,
-optionally stable `id`; `type` must be `story`.
-A missing profile defaults to **papa** only when that target is explicitly
-established by the user; a missing language defaults to **es** only when
-Spanish is established by the request. Never route unknown input by guessing.
+**НЕЛЬЗЯ ПИСАТЬ В STORY FEED НАПРЯМУ.** GitHub Actions
+`.github/workflows/story-inbox.yml` из default-ветки `main` принимает только
+заявки с префиксом `STORY:`, созданные владельцем репозитория; сам вызывает
+`live-content/scripts/story_inbox.py add`, валидирует и пишет ТОЛЬКО
+`live-content/content/stories.json` (единый файл для всех профилей/языков).
+Проверки: schema, лимиты, совпадение количества Android TTS фрагментов с
+переводом, уникальность, идемпотентность. Заявка закрывается после успеха.
+Если Action не запустилась или упала, НЕ утверждать «рассказ добавлен».
 
-Procedure for ChatGPT/GitHub connector:
-1. Read `live-content/scripts/story_inbox.py` (canonical schema/validation).
-2. Fetch `live-content/content/stories.json`; preserve existing items.
-3. Validate target, nonempty fields, Android sentence/line alignment,
-   duplicate ID/title, and total feed limits. For repeated requests, do
-   not duplicate. For edits, keep the existing ID.
-4. Update **only** `live-content/content/stories.json` with the fetched blob
-   SHA; retry conflicts by refetching and merging (never overwrite concurrent stories).
-5. Fetch it again and verify the exact ID and target profile/language.
-6. Confirm the GitHub feed changed; do not assert that the phone imported it.
-   A story should appear after the compatible APK syncs, unless the device
-   disabled imports after a database reset.
+**СТРОГО ЗАПРЕЩЕНО** помещать новые рассказы в
+`content/live_content.json`, `content/papa/stories-es.json`,
+`content/<profile>/stories-<language>.json`, `content/stories-es.json`,
+`main` или `codex/android-v1`. Старые файлы используются только
+старыми версиями APK, но не являются входами новых историй.
 
-For a checked-out `live-content` branch use the exact one-command script:
-`python3 scripts/story_inbox.py add < submission.json`.
-Automated validation: `python3 scripts/story_inbox.py check`.
+Алгоритм агента:
+1. Определить текст, профиль, язык и подготовить ровно один JSON.
+2. Одна заявка GitHub Issue с `STORY:`, body = JSON.
+3. Проверить, что Issue закрыта автоматизацией с комментарием
+   `Story inbox accepted`, и рассказ присутствует по ID в
+   `live-content/content/stories.json`; без этого не говорить «готово».
+4. Сообщить статус публикации отдельно от факта появления на телефоне.
+   Для первого перехода на единый feed нужен соответствующий APK.
+   После сброса базы телефон может запретить повторный импорт.
 
-To change Android behavior work ONLY on `codex/android-v1`, then wait for
-CI, signed `phone-builds`, and separate on-device acceptance.
-Never reset the user's database or delete the app.
-
-**Cards** use separate paths. This policy governs STORY delivery exclusively.
+Код приложения обновлять только в `codex/android-v1`, подписанный APK
+публикуется после CI в `phone-builds`. Не удалять APK и не сбрасывать базу.
+Карточки используют другие пути и НЕ относятся к этому протоколу.
