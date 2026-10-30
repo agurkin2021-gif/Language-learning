@@ -553,9 +553,14 @@ PR #18: https://github.com/agurkin2021-gif/Language-learning/pull/18 (merge `803
 
 **ЭТОТ РАЗДЕЛ ПЕРЕКРЫВАЕТ ВСЕ ИСТОРИЧЕСКИЕ РЕКОМЕНДАЦИИ О ПУТЯХ РАССКАЗОВ В ЭТОМ ДОКУМЕНТЕ.**
 
-Публикация рассказа (ChatGPT → GitHub): только `agurkin2021-gif/Language-learning`,
-ветка `live-content`, файл `content/stories.json`.
-Единственный валидатор/входной скрипт: `live-content/scripts/story_inbox.py`.
+Публикация рассказа (ChatGPT → GitHub): **единственный внешний вход —
+GitHub Issue** в `agurkin2021-gif/Language-learning`, заголовок
+`STORY: <название>`, body = один JSON с полями истории. Workflow
+`main/.github/workflows/story-inbox.yml` принимает только заявки владельца,
+запускает **единственный** валидатор/входной скрипт
+`live-content/scripts/story_inbox.py` и публикует только
+`live-content/content/stories.json`. Текущий API ассистента использует
+`create_issue`, а не прямое редактирование файлов.
 Запись содержит `id`, `type=story`, `profile=papa|mama|dima`,
 `language=es|en`, `title`, `spanish` (сам текст выбранного языка)
 и `russian`. Разные профили и языки в одном документе; телефон фильтрует строго.
@@ -563,8 +568,10 @@ PR #18: https://github.com/agurkin2021-gif/Language-learning/pull/18 (merge `803
 Старые `content/live_content.json` и `content/<profile>/stories-<lang>.json`
 существуют только для обратной совместимости старых APK и НИКОГДА не используются
 для новых публикаций. Разовые правки сразу в несколько файлов запрещены.
-Для редактирования единого feed через подключённый GitHub брать blob SHA и
-перечитывать файл после commit. Запрос другого профиля не может попасть к Папе.
+Прямое редактирование единого feed из чата запрещено: только Issue
+→ проверенный скрипт → единый feed. Проверять закрытие Issue с комментарием
+`Story inbox accepted` и наличие ID в canonical feed. При `replace=true`
+оригинальный ID рассказа сохраняется. Запрос другого профиля не попадает к Папе.
 
 Android `PersonalStorySync` обязан читать `content/stories.json` для всех,
 в отличие от карточек (`content/<profile>/cards-<lang>.json`), которые
