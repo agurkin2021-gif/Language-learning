@@ -222,6 +222,9 @@ public final class PrivateVocabularySync {
                     cloudEntries=VocabularyReconcile.parse(
                             new JSONObject(new String(bytes, StandardCharsets.UTF_8)),profile,language);
                 }
+                // Full reset on this phone must also remove older remote cards,
+                // including entries not yet downloaded when the reset happened.
+                localEntries.addAll(local.resetTombstonesFor(cloudEntries));
                 List<Store.SyncEntry> merged = VocabularyReconcile.merge(localEntries,cloudEntries);
                 String encoded=VocabularyReconcile.serialize(profile,language,merged).toString();
                 boolean same = current != null && encoded.equals(new String(
