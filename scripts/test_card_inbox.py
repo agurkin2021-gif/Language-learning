@@ -19,8 +19,19 @@ class CardInboxTests(unittest.TestCase):
                 path = ci.CONTENT / profile / f"vocabulary-{lang}.json"
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(json.dumps({
-                    "version": 1, "profile": profile, "language": lang, "items": []
+                    "version": 1, "profile": profile, "language": lang,
+                    "items": [self.record("word", "base-" + profile + "-" + lang)]
                 }, ensure_ascii=False), encoding="utf-8")
+
+    @staticmethod
+    def record(kind="phrase", spanish="No lo sabía", deleted=False, mastered=False):
+        item = {
+            "kind": kind, "spanish": spanish, "revision": 1,
+            "origin": "test-device", "deleted": deleted,
+        }
+        if not deleted:
+            item.update({"meaning": "тест", "category": 0, "mastered": mastered})
+        return item
 
     def tearDown(self):
         ci.ROOT, ci.CONTENT = self.original_root, self.original_content
@@ -65,7 +76,7 @@ class CardInboxTests(unittest.TestCase):
     def test_deleted_archive_card_is_never_restored(self):
         path = ci.CONTENT / "mama" / "vocabulary-es.json"
         contents = json.loads(path.read_text(encoding="utf-8"))
-        contents["items"] = [{"type": "phrase", "spanish": "No lo sabía", "deleted": True}]
+        contents["items"] = [self.record(deleted=True)]
         path.write_text(json.dumps(contents, ensure_ascii=False), encoding="utf-8")
         self.assertIn("DELETED_BLOCKED=1", ci.publish(self.request()))
         self.assertEqual(self.items("mama"), [])
@@ -73,7 +84,7 @@ class CardInboxTests(unittest.TestCase):
     def test_mastered_archive_card_is_not_reimported(self):
         path = ci.CONTENT / "mama" / "vocabulary-es.json"
         contents = json.loads(path.read_text(encoding="utf-8"))
-        contents["items"] = [{"type": "phrase", "spanish": "No lo sabía", "mastered": True}]
+        contents["items"] = [self.record(mastered=True)]
         path.write_text(json.dumps(contents, ensure_ascii=False), encoding="utf-8")
         self.assertIn("EXISTING=1", ci.publish(self.request()))
         self.assertEqual(self.items("mama"), [])
@@ -106,6 +117,33 @@ class CardInboxTests(unittest.TestCase):
         request["items"][0]["category"] = 2
         self.assertIn("PUBLISHED=1", ci.publish(request))
         self.assertEqual(self.items("mama")[0]["category"], 2)
+
+    def test_empty_archive_fails_closed_for_unseen_card(self):
+        path = ci.CONTENT / "mama" / "vocabulary-es.json"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["items"] = []
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        with self.assertRaisesRegex(ci.InvalidCard, "ARCHIVE_NOT_READY"):
+            ci.publish(self.request())
+        self.assertEqual(self.items("mama"), [])
+
+    def test_empty_archive_allows_existing_feed_idempotency(self):
+        ci.publish(self.request())
+        path = ci.CONTENT / "mama" / "vocabulary-es.json"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["items"] = []
+        path.write_text(json.dumps(doc), encoding="utf-8")
+        self.assertIn("EXISTING=1", ci.publish(self.request()))
+        self.assertEqual(len(self.items("mama")), 1)
+
+    def test_invalid_archive_never_publishes(self):
+        path = ci.CONTENT / "mama" / "vocabulary-es.json"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["items"] = [{"kind": "phrase", "spanish": "Sin firma", "deleted": False}]
+        path.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        with self.assertRaisesRegex(ci.InvalidCard, "Incomplete canonical"):
+            ci.publish(self.request())
+        self.assertEqual(self.items("mama"), [])
 
     def test_all_six_routes_validate(self):
         ci.publish(self.request())
