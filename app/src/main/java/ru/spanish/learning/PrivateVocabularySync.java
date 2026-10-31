@@ -47,7 +47,8 @@ import javax.crypto.spec.GCMParameterSpec;
  */
 public final class PrivateVocabularySync {
     private static final String API = "https://api.github.com/repos/";
-    private static final String DEFAULT_PRIVATE_REPO = "agurkin2021-gif/Language-learning-private";
+    private static final String PROJECT_REPOSITORY = "agurkin2021-gif/Language-learning";
+    private static final String CONTENT_BRANCH = "live-content";
     private static final String KEY_ALIAS = "SpanishLearningPrivateVocabularyV1";
     private static final String SECRET_FILE = "vocabulary_sync.enc";
     private static final String STATE_PREFS = "vocabulary_sync_state";
@@ -76,9 +77,8 @@ public final class PrivateVocabularySync {
     }
 
     public static String repository(Context context) {
-        if (!isConfigured(context)) return DEFAULT_PRIVATE_REPO;
-        try { return readConfig(context).repo(); }
-        catch (Exception ignored) { return ""; }
+        if (!isConfigured(context)) return PROJECT_REPOSITORY;
+        return PROJECT_REPOSITORY;
     }
 
     public static String status(Context context) {
@@ -89,9 +89,9 @@ public final class PrivateVocabularySync {
     public static synchronized void configure(Context context, String repository, String token) throws Exception {
         String repo = repository == null ? "" : repository.trim();
         String secret = token == null ? "" : token.trim();
-        if (!repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+        if (!PROJECT_REPOSITORY.equalsIgnoreCase(repo)
                 || secret.isEmpty() || secret.length() > 500)
-            throw new IllegalArgumentException("Укажите owner/repo и GitHub token");
+            throw new IllegalArgumentException("Нужен Language-learning и GitHub token с правом записи");
         String deviceId = UUID.randomUUID().toString();
         if (isConfigured(context)) {
             try { deviceId = readConfig(context).deviceId(); }
@@ -166,74 +166,84 @@ public final class PrivateVocabularySync {
         });
     }
 
-    /** Automatic creation is restricted to the dedicated private vocabulary repository.
-     * No generic or public repository may be created by a background job.
+    /** Two-way, per-profile and per-language synchronization in the EXISTING repository.
+     * No new repository and no public credential files are created.
      */
-    static boolean mayCreatePrivateRepository(String repo) {
-        return DEFAULT_PRIVATE_REPO.equalsIgnoreCase(repo);
-    }
-
-    static JSONObject privateRepositoryCreationBody() throws Exception {
-        return new JSONObject()
-                .put("name", "Language-learning-private")
-                .put("private", true)
-                .put("auto_init", true);
-    }
-
-    private static JSONObject ensurePrivateRepository(Config config) throws Exception {
-        JSONObject result = request("GET", API + config.repo(), config.token(), null, true);
-        if (result == null) {
-            if (!mayCreatePrivateRepository(config.repo()))
-                throw new IllegalArgumentException("Приватный репозиторий не найден. Укажите существующий.");
-
-            // Verify that the token belongs to the expected owner before creating anything.
-            JSONObject currentUser = request("GET", "https://api.github.com/user",
-                    config.token(), null, false);
-            String expectedOwner = config.repo().substring(0, config.repo().indexOf('/'));
-            if (!expectedOwner.equalsIgnoreCase(currentUser.optString("login")))
-                throw new IllegalArgumentException("GitHub token принадлежит другому аккаунту");
-
-            // This requires GitHub Repository creation:write in addition to
-            // Contents:read/write. A 403 is reported; no public fallback exists.
-            result = request("POST", "https://api.github.com/user/repos",
-                    config.token(), privateRepositoryCreationBody(), false);
-        }
-        if (!result.optBoolean("private", false)
-                || !config.repo().equalsIgnoreCase(result.optString("full_name")))
-            throw new IllegalArgumentException("Нужен именно указанный приватный репозиторий");
-        return result;
-    }
-
     private static void sync(Context context, int generation) {
         if (generation != GENERATION.get() || !isConfigured(context)) return;
         SharedPreferences state = context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE);
         try {
             Config config = readConfig(context);
-            JSONObject repository = ensurePrivateRepository(config);
-            String branch = repository.getString("default_branch");
-            if (branch.isEmpty()) throw new IllegalArgumentException("У репозитория нет основной ветки");
-            // All six private dictionaries are backed up, not only the last
-            // profile opened on the phone. Separate folders prevent collisions.
+            JSONObject repository = request("GET", API + PROJECT_REPOSITORY, config.token(), null, false);
+            if (!PROJECT_REPOSITORY.equalsIgnoreCase(repository.optString("full_name")))
+                throw new IllegalArgumentException("GitHub repository mismatch");
+            // All three profiles are always synchronized, irrespective of the selected UI tab.
             for (String profile : StudyProfile.IDS) {
-                uploadLanguage(context, config, branch, profile, "es", generation, state);
-                uploadLanguage(context, config, branch, profile, "en", generation, state);
-                uploadStories(context, config, branch, profile, "es", generation);
-                uploadStories(context, config, branch, profile, "en", generation);
+                for (String language : new String[]{"es", "en"}) {
+                    if (generation != GENERATION.get()) return;
+                    syncOne(context, config, profile, language, generation);
+                }
             }
-            if (generation == GENERATION.get()) {
-                state.edit().putString("status", "Словарь синхронизирован с приватным GitHub").apply();
-            }
+            if (generation == GENERATION.get())
+                state.edit().putString("status",
+                        "Двусторонняя синхронизация: Language-learning, 3 профиля").apply();
         } catch (Exception error) {
             if (generation == GENERATION.get()) {
-                // Do not store exception bodies, responses, repository contents or credentials.
-                String message = "GitHub HTTP 403".equals(error.getMessage())
-                        && mayCreatePrivateRepository(readableRepository(context))
-                        ? "GitHub отказал в доступе. Для создания архива разрешите Repository creation:write, а для загрузки Contents:read/write."
-                        : error instanceof IllegalArgumentException ? error.getMessage() :
-                        error.getMessage() != null && error.getMessage().matches("GitHub HTTP [0-9]{3}")
-                        ? error.getMessage() : "Нет соединения или ошибка синхронизации";
+                String message = error.getMessage() != null &&
+                        error.getMessage().matches("GitHub HTTP [0-9]{3}")
+                        ? error.getMessage() : error instanceof IllegalArgumentException
+                        ? error.getMessage() : "Нет связи или ошибка синхронизации";
                 state.edit().putString("status", "Ошибка: " + message).apply();
             }
+        }
+    }
+
+    /** Optimistic SHA compare-and-swap prevents concurrent phones from overwriting changes. */
+    private static void syncOne(Context context, Config config, String profile,
+                                String language, int generation) throws Exception {
+        String path = "content/" + profile + "/vocabulary-" + language + ".json";
+        String api = API + PROJECT_REPOSITORY + "/contents/" + path;
+        for(int attempt = 0; attempt < 5; attempt++) {
+            if (generation != GENERATION.get()) return;
+            Store local = Store.forProfile(context, profile, "en".equals(language));
+            try {
+                List<Store.SyncEntry> localEntries = local.vocabularyForSync();
+                JSONObject current = request("GET", api + "?ref=" + CONTENT_BRANCH,
+                        config.token(), null, true);
+                List<Store.SyncEntry> cloudEntries;
+                if(current == null) cloudEntries = new java.util.ArrayList<>();
+                else {
+                    if(!"file".equals(current.optString("type"))
+                            || !"base64".equals(current.optString("encoding")))
+                        throw new IllegalArgumentException("Invalid cloud vocabulary file");
+                    byte[] bytes=Base64.decode(current.getString("content"), Base64.DEFAULT);
+                    if(bytes.length > 1024*1024)
+                        throw new IllegalArgumentException("Vocabulary archive exceeds 1 MB");
+                    cloudEntries=VocabularyReconcile.parse(
+                            new JSONObject(new String(bytes, StandardCharsets.UTF_8)),profile,language);
+                }
+                List<Store.SyncEntry> merged = VocabularyReconcile.merge(localEntries,cloudEntries);
+                String encoded=VocabularyReconcile.serialize(profile,language,merged).toString();
+                boolean same = current != null && encoded.equals(new String(
+                        Base64.decode(current.getString("content"),Base64.DEFAULT),StandardCharsets.UTF_8));
+                if(!same) {
+                    JSONObject body=new JSONObject();
+                    body.put("branch",CONTENT_BRANCH);
+                    body.put("message","Sync "+profile+" "+language+" complete vocabulary");
+                    body.put("content",Base64.encodeToString(
+                            encoded.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP));
+                    if(current!=null) body.put("sha", current.getString("sha"));
+                    try { request("PUT",api,config.token(),body,false); }
+                    catch(HttpConflict conflict) {
+                        if(attempt==4) throw conflict;
+                        continue; // Read the changed remote SHA and merge again.
+                    }
+                }
+                // Never apply a stale response over a more recent local edit.
+                if(generation != GENERATION.get()) return;
+                local.applySyncedVocabulary(merged);
+                return;
+            } finally { local.close(); }
         }
     }
 
