@@ -54,8 +54,16 @@ def validate(doc, profile, language):
                 not isinstance(card.get("deleted"),bool):
             raise ValueError("Invalid vocabulary record")
         if not card["deleted"] and (
-                not isinstance(card.get("meaning"),str) or not card["meaning"] or
-                not isinstance(card.get("mastered"),bool)):
+                not isinstance(card.get("meaning"),str) or not card["meaning"].strip() or
+                not isinstance(card.get("mastered"),bool) or
+                type(card.get("category")) is not int or
+                card["category"] not in (0,1,2,3) or
+                type(card.get("last_result")) is not int or
+                card["last_result"] not in (0,1,2) or
+                type(card.get("review_count")) is not int or
+                card["review_count"]<0 or
+                type(card.get("next_due")) is not int or
+                card["next_due"]<0):
             raise ValueError("Incomplete vocabulary card")
         if key(card) in seen:
             raise ValueError("Duplicate card in archive")
