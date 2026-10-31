@@ -1,0 +1,30 @@
+name: Detect direct edits to card feeds
+on:
+  push:
+    branches: [live-content]
+    paths:
+      - "content/**/cards-*.json"
+permissions:
+  contents: read
+  issues: write
+jobs:
+  report-bypass:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report card feed edits that bypassed CARD INBOX
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Pushes made with the GITHUB_TOKEN by card-inbox.yml do not
+          # trigger other workflow runs. A triggered push here normally
+          # comes from a direct user/GitHub-App edit and needs review.
+          gh issue create --repo "$GH_REPO" \
+            --title "CARD-GUARD: direct feed change $REVISION" \
+            --body "A direct push to live-content modified a cards-*.json feed outside the expected CARD INBOX Actions route. Actor: $ACTOR. Commit: https://github.com/$GH_REPO/commit/$REVISION. This watchdog detects but cannot reject an already accepted push. Review the diff and use CARD: GitHub Issues for new cards."
+          echo "Unauthorized/direct card feed publication requires review" >&2
+          exit 1
