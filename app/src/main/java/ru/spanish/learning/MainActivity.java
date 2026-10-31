@@ -65,6 +65,7 @@ public final class MainActivity extends Activity {
     private Runnable pendingVoiceRestart;
     private static final int MIC_PERMISSION = 7301;
     private boolean syncingContent;
+    private final AtomicBoolean manualVocabularySyncing = new AtomicBoolean();
     private boolean imageRepairRunning;
     private final AtomicBoolean imageRepairCancel = new AtomicBoolean();
     private String imageRepairMessage = "";
@@ -468,7 +469,7 @@ public final class MainActivity extends Activity {
 
         Button profileButton = rowButton("Профиль: " + StudyProfile.name(activeProfile), null);
         box.addView(profileButton, spaced(10));
-        box.addView(rowButton("Личный словарь и рассказы — GitHub", this::showVocabularySyncSettings), spaced(10));
+        box.addView(rowButton("Синхронизация", this::syncAllFamilyProfiles), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
 
@@ -497,6 +498,37 @@ public final class MainActivity extends Activity {
             recreate();
         });
         dialog.show();
+    }
+
+    /** One tap uses the existing encrypted GitHub authorization for all three profiles. */
+    private void syncAllFamilyProfiles() {
+        if (!PrivateVocabularySync.isConfigured(this)) {
+            showVocabularySyncSettings(); // Initial authorization is unavoidable.
+            return;
+        }
+        if (!manualVocabularySyncing.compareAndSet(false, true)) {
+            Toast.makeText(this, "Синхронизация уже выполняется", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(this, "Синхронизация: Папа, Мама, Дима", Toast.LENGTH_SHORT).show();
+        boolean started = PrivateVocabularySync.syncNow(this, success -> {
+            manualVocabularySyncing.set(false);
+            if (isFinishing() || isDestroyed()) return;
+            if (success) syncContent();
+            new AlertDialog.Builder(this)
+                    .setTitle(success ? "Синхронизация завершена" : "Синхронизация не выполнена")
+                    .setMessage(success
+                            ? "Папа, Мама и Дима: испанский и английский словари синхронизированы отдельно."
+                            : PrivateVocabularySync.status(this))
+                    .setPositiveButton("Закрыть", null)
+                    .setNeutralButton(success ? null : "Настроить GitHub",
+                            success ? null : (dialog, which) -> showVocabularySyncSettings())
+                    .show();
+        });
+        if (!started) {
+            manualVocabularySyncing.set(false);
+            showVocabularySyncSettings();
+        }
     }
 
     private void showVocabularySyncSettings() {

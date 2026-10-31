@@ -27,6 +27,9 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.util.List;
 import java.util.UUID;
+import android.os.Handler;
+import android.os.Looper;
+import java.util.function.Consumer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -154,6 +157,24 @@ public final class PrivateVocabularySync {
         pending = EXECUTOR.schedule(() -> sync(app, generation), 2, TimeUnit.SECONDS);
     }
 
+    /** Explicit user action: synchronizes all profiles and both languages using saved access.
+     * Reports completion on the main thread only after all six remote read/write cycles succeed.
+     */
+    public static synchronized boolean syncNow(Context context, Consumer<Boolean> completed) {
+        if (!isConfigured(context)) return false;
+        ensureBackgroundSync(context);
+        Context app = context.getApplicationContext();
+        int generation = GENERATION.incrementAndGet();
+        if (pending != null) pending.cancel(false);
+        EXECUTOR.execute(() -> {
+            boolean success = sync(app, generation);
+            if (completed != null) {
+                new Handler(Looper.getMainLooper()).post(() -> completed.accept(success));
+            }
+        });
+        return true;
+    }
+
     /** Invoked by a system job, not tied to an Activity or any ChatGPT usage limit. */
     static void runScheduled(Context context, Runnable finished) {
         Context app = context.getApplicationContext();
@@ -169,8 +190,8 @@ public final class PrivateVocabularySync {
     /** Two-way, per-profile and per-language synchronization in the EXISTING repository.
      * No new repository and no public credential files are created.
      */
-    private static void sync(Context context, int generation) {
-        if (generation != GENERATION.get() || !isConfigured(context)) return;
+    private static boolean sync(Context context, int generation) {
+        if (generation != GENERATION.get() || !isConfigured(context)) return false;
         SharedPreferences state = context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE);
         try {
             Config config = readConfig(context);
@@ -180,13 +201,14 @@ public final class PrivateVocabularySync {
             // All three profiles are always synchronized, irrespective of the selected UI tab.
             for (String profile : StudyProfile.IDS) {
                 for (String language : new String[]{"es", "en"}) {
-                    if (generation != GENERATION.get()) return;
+                    if (generation != GENERATION.get()) return false;
                     syncOne(context, config, profile, language, generation);
                 }
             }
-            if (generation == GENERATION.get())
-                state.edit().putString("status",
-                        "Двусторонняя синхронизация: Language-learning, 3 профиля").apply();
+            if (generation != GENERATION.get()) return false;
+            state.edit().putString("status",
+                    "Двусторонняя синхронизация: Language-learning, 3 профиля").apply();
+            return true;
         } catch (Exception error) {
             if (generation == GENERATION.get()) {
                 String message = error.getMessage() != null &&
@@ -195,6 +217,7 @@ public final class PrivateVocabularySync {
                         ? error.getMessage() : "Нет связи или ошибка синхронизации";
                 state.edit().putString("status", "Ошибка: " + message).apply();
             }
+            return false;
         }
     }
 
