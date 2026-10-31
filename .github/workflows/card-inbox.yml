@@ -2,17 +2,30 @@ name: Card inbox (single entrypoint)
 on:
   issues:
     types: [opened, reopened, edited]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Existing CARD issue number to retry'
+        required: true
+        type: number
+  schedule:
+    - cron: '7,37 * * * *'
 permissions:
   contents: write
   issues: write
+  actions: write
 concurrency:
   group: card-single-ingress
   cancel-in-progress: false
 
 jobs:
   ingest:
-    # A public issue written by another GitHub user must never mutate content.
-    if: ${{ startsWith(github.event.issue.title, 'CARD:') && github.event.issue.user.login == github.repository_owner }}
+    # Dispatched issues are re-validated below (owner, title, state).
+    if: >-
+      (github.event_name == 'issues' &&
+       startsWith(github.event.issue.title, 'CARD:') &&
+       github.event.issue.user.login == github.repository_owner) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -21,22 +34,44 @@ jobs:
           fetch-depth: 0
       - name: Guard against routing regressions
         run: python3 scripts/test_card_inbox.py
-      - name: Parse exactly one JSON request
+      - name: Parse and authorize one existing CARD request
+        id: request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          RETRY_NUMBER: ${{ inputs.issue_number }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           python3 - <<'PY'
-          import json, os, pathlib
-          event = json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))
-          request = json.loads(event['issue'].get('body') or '')
+          import json, os, pathlib, subprocess
+          if os.environ['EVENT_NAME'] == 'workflow_dispatch':
+              number = os.environ['RETRY_NUMBER']
+              if not number.isdigit() or int(number) < 1:
+                  raise SystemExit('Valid CARD issue number required')
+              issue = json.loads(subprocess.check_output(
+                  ['gh', 'api', f"repos/{os.environ['GH_REPO']}/issues/{number}"]))
+          else:
+              event = json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))
+              issue = event['issue']
+          if (issue.get('user', {}).get('login') != os.environ['REPO_OWNER']
+                  or not issue.get('title', '').startswith('CARD:')
+                  or issue.get('state') != 'open'
+                  or 'pull_request' in issue):
+              raise SystemExit('Only an open CARD issue authored by repo owner can publish')
+          request = json.loads(issue.get('body') or '')
           if not isinstance(request, dict):
               raise SystemExit('CARD issue body must be a single JSON object')
           pathlib.Path(os.environ['RUNNER_TEMP'], 'card-request.json').write_text(
               json.dumps(request, ensure_ascii=False), encoding='utf-8')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              print('issue_number=' + str(issue['number']), file=out)
           PY
       - name: Publish with SHA-safe retries and remote readback
         id: publish
         shell: bash
         env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.request.outputs.issue_number }}
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
@@ -45,7 +80,8 @@ jobs:
             git fetch origin live-content
             git reset --hard origin/live-content
             result="$(python3 scripts/card_inbox.py add \
-              --paths-out "$RUNNER_TEMP/card-paths.txt" < "$RUNNER_TEMP/card-request.json")"
+              --paths-out "$RUNNER_TEMP/card-paths.txt" < "$RUNNER_TEMP/card-request.json" \
+              2> "$RUNNER_TEMP/card-inbox-error.txt")"
             python3 scripts/card_inbox.py check
             while IFS= read -r dest; do
               if [ -n "$dest" ]; then
@@ -85,7 +121,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.request.outputs.issue_number }}
           RESULT: ${{ steps.publish.outputs.result }}
           VERIFIED: ${{ steps.publish.outputs.verified }}
           REVISION: ${{ steps.publish.outputs.commit }}
@@ -98,7 +134,64 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ steps.request.outputs.issue_number }}
         run: |
-          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
-            --body "Card inbox rejected: not confirmed as published. See validation details in the workflow run. Fix the JSON and re-open or edit the issue."
+          # An empty unsynced phone archive is pending, not malformed input.
+          if grep -q 'ARCHIVE_NOT_READY' "$RUNNER_TEMP/card-inbox-error.txt" 2>/dev/null; then
+            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+              --body "Card inbox pending: Android's full vocabulary archive has not been synchronized. No card was published. This owner-authored CARD request will be retried automatically after the relevant archive is populated; do not submit a duplicate Issue."
+          else
+            cat "$RUNNER_TEMP/card-inbox-error.txt" 2>/dev/null || true
+            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+              --body "Card inbox rejected: not confirmed as published. See validation details in the workflow run. Correct the same Issue and retry."
+          fi
+
+  retry_waiting:
+    # A blank Android archive is a legitimate initial state, not a bad card request.
+    # Retry queued issues only after the phone has exported relevant vocabulary.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: live-content
+      - name: Dispatch ready owner-authored CARD requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue list --repo "$GH_REPO" --state open --limit 500 \
+            --json number,title,body,author > "$RUNNER_TEMP/card-open.json"
+          python3 - <<'PY' > "$RUNNER_TEMP/card-ready-numbers.txt"
+          import json, os, pathlib
+          issues = json.loads(pathlib.Path(os.environ['RUNNER_TEMP'], 'card-open.json').read_text())
+          root = pathlib.Path.cwd()
+          for issue in issues:
+              if issue.get('author', {}).get('login') != os.environ['REPO_OWNER']:
+                  continue
+              if not issue.get('title', '').startswith('CARD:'):
+                  continue
+              try:
+                  body = json.loads(issue.get('body') or '')
+                  profiles = body.get('profiles', body.get('profile'))
+                  profiles = [profiles] if isinstance(profiles, str) else profiles
+                  language = body.get('language')
+                  if (not isinstance(profiles, list) or not profiles or
+                      any(p not in ('papa', 'mama', 'dima') for p in profiles) or
+                      language not in ('es', 'en')):
+                      continue
+                  if all(len(json.loads(
+                      (root/'content'/p/f'vocabulary-{language}.json').read_text()
+                  )['items']) > 0 for p in profiles):
+                      print(issue['number'])
+              except (OSError, KeyError, ValueError, TypeError):
+                  continue
+          PY
+          while IFS= read -r number; do
+            [ -n "$number" ] || continue
+            gh workflow run card-inbox.yml --repo "$GH_REPO" --ref main \
+              -f issue_number="$number"
+          done < "$RUNNER_TEMP/card-ready-numbers.txt"
