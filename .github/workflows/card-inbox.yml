@@ -79,9 +79,17 @@ jobs:
             # revision. Always recompute the payload against that revision.
             git fetch origin live-content
             git reset --hard origin/live-content
-            result="$(python3 scripts/card_inbox.py add \
+            if ! result="$(python3 scripts/card_inbox.py add \
               --paths-out "$RUNNER_TEMP/card-paths.txt" < "$RUNNER_TEMP/card-request.json" \
-              2> "$RUNNER_TEMP/card-inbox-error.txt")"
+              2> "$RUNNER_TEMP/card-inbox-error.txt")"; then
+              if grep -q 'ARCHIVE_NOT_READY' "$RUNNER_TEMP/card-inbox-error.txt"; then
+                echo "pending=true" >> "$GITHUB_OUTPUT"
+                echo "CARD request is queued until Android uploads full vocabulary."
+                exit 0
+              fi
+              cat "$RUNNER_TEMP/card-inbox-error.txt" >&2
+              exit 1
+            fi
             python3 scripts/card_inbox.py check
             while IFS= read -r dest; do
               if [ -n "$dest" ]; then
@@ -117,7 +125,7 @@ jobs:
           echo "Card inbox failed after five concurrent update retries" >&2
           exit 1
       - name: Confirm actual publication and close request
-        if: success()
+        if: ${{ success() && steps.publish.outputs.pending != 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -129,6 +137,15 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
             --body "Card inbox accepted: $RESULT; $VERIFIED; revision=$REVISION. Canonical destination: live-content/content/<profile>/cards-<language>.json. Phone import is separate."
           gh issue close "$ISSUE_NUMBER" --repo "$GH_REPO"
+      - name: Report waiting for first Android archive export
+        if: ${{ steps.publish.outputs.pending == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.request.outputs.issue_number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+            --body "Card inbox pending: Android's full vocabulary archive is not yet synchronized. No cards were published. This request will retry automatically when the archive becomes available. Do not create a duplicate Issue."
       - name: Report rejection without publishing
         if: failure()
         env:
@@ -136,15 +153,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ steps.request.outputs.issue_number }}
         run: |
-          # An empty unsynced phone archive is pending, not malformed input.
-          if grep -q 'ARCHIVE_NOT_READY' "$RUNNER_TEMP/card-inbox-error.txt" 2>/dev/null; then
-            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
-              --body "Card inbox pending: Android's full vocabulary archive has not been synchronized. No card was published. This owner-authored CARD request will be retried automatically after the relevant archive is populated; do not submit a duplicate Issue."
-          else
-            cat "$RUNNER_TEMP/card-inbox-error.txt" 2>/dev/null || true
-            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
-              --body "Card inbox rejected: not confirmed as published. See validation details in the workflow run. Correct the same Issue and retry."
-          fi
+          cat "$RUNNER_TEMP/card-inbox-error.txt" 2>/dev/null || true
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+            --body "Card inbox rejected: not confirmed as published. See validation details in the workflow run. Correct the same Issue and retry."
 
   retry_waiting:
     # A blank Android archive is a legitimate initial state, not a bad card request.
