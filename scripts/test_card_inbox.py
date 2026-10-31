@@ -145,6 +145,32 @@ class CardInboxTests(unittest.TestCase):
             ci.publish(self.request())
         self.assertEqual(self.items("mama"), [])
 
+    def test_failed_multi_profile_request_is_atomic(self):
+        request = self.request()
+        request.pop("profile")
+        request["profiles"] = ["papa", "mama"]
+        path = ci.CONTENT / "mama" / "vocabulary-es.json"
+        document = json.loads(path.read_text(encoding="utf-8"))
+        document["items"] = []
+        path.write_text(json.dumps(document), encoding="utf-8")
+        with self.assertRaisesRegex(ci.InvalidCard, "ARCHIVE_NOT_READY"):
+            ci.publish(request)
+        self.assertEqual(self.items("papa"), [])
+        self.assertEqual(self.items("mama"), [])
+
+    def test_verify_remote_readback(self):
+        request = self.request()
+        with self.assertRaisesRegex(ci.InvalidCard, "READBACK_FAILED"):
+            ci.verify(request)
+        ci.publish(request)
+        self.assertIn("VERIFIED=1", ci.verify(request))
+
+    def test_separate_english_and_spanish(self):
+        ci.publish(self.request(language="en"))
+        self.assertEqual(len(self.items("mama", "en")), 1)
+        self.assertEqual(self.items("mama", "es"), [])
+        self.assertEqual(self.items("papa", "en"), [])
+
     def test_all_six_routes_validate(self):
         ci.publish(self.request())
         self.assertIn("six profile/language routes", ci.check())
