@@ -120,6 +120,126 @@
       "type": "phrase",
       "spanish": "Después lo vemos",
       "meaning": "Потом посмотрим"
+    },
+    {
+      "id": "mama-decir-phrases-20261030-01",
+      "type": "phrase",
+      "spanish": "Te digo algo",
+      "meaning": "Я тебе кое-что скажу"
+    },
+    {
+      "id": "mama-decir-phrases-20261030-02",
+      "type": "phrase",
+      "spanish": "¿Qué decís?",
+      "meaning": "Что ты говоришь?"
+    },
+    {
+      "id": "mama-decir-phrases-20261030-03",
+      "type": "phrase",
+      "spanish": "No me digas",
+      "meaning": "Да ладно! Не может быть!"
+    },
+    {
+      "id": "mama-decir-phrases-20261030-04",
+      "type": "phrase",
+      "spanish": "¿Qué dijiste?",
+      "meaning": "Что ты сказал(а)?"
+    },
+    {
+      "id": "mama-decir-phrases-20261030-05",
+      "type": "phrase",
+      "spanish": "Dijo que sí",
+      "meaning": "Он(а) сказал(а) «да»"
+    },
+    {
+      "id": "mama-saber-phrases-20261030-01",
+      "type": "phrase",
+      "spanish": "No sé",
+      "meaning": "Я не знаю"
+    },
+    {
+      "id": "mama-saber-phrases-20261030-02",
+      "type": "phrase",
+      "spanish": "Ya lo sé",
+      "meaning": "Я уже это знаю"
+    },
+    {
+      "id": "mama-saber-phrases-20261030-03",
+      "type": "phrase",
+      "spanish": "No lo sabía",
+      "meaning": "Я этого не знал(а)"
+    },
+    {
+      "id": "mama-saber-phrases-20261030-04",
+      "type": "phrase",
+      "spanish": "¿Sabés dónde está?",
+      "meaning": "Ты знаешь, где он(а) находится?"
+    },
+    {
+      "id": "mama-saber-phrases-20261030-05",
+      "type": "phrase",
+      "spanish": "No sé qué hacer",
+      "meaning": "Я не знаю, что делать"
+    },
+    {
+      "id": "mama-estar-phrases-20261030-01",
+      "type": "phrase",
+      "spanish": "Estoy bien",
+      "meaning": "Я в порядке"
+    },
+    {
+      "id": "mama-estar-phrases-20261030-02",
+      "type": "phrase",
+      "spanish": "¿Cómo estás?",
+      "meaning": "Как ты?"
+    },
+    {
+      "id": "mama-estar-phrases-20261030-03",
+      "type": "phrase",
+      "spanish": "Estoy en casa",
+      "meaning": "Я дома"
+    },
+    {
+      "id": "mama-estar-phrases-20261030-04",
+      "type": "phrase",
+      "spanish": "No estoy segura",
+      "meaning": "Я не уверена"
+    },
+    {
+      "id": "mama-estar-phrases-20261030-05",
+      "type": "phrase",
+      "spanish": "Ya estoy lista",
+      "meaning": "Я готова"
+    },
+    {
+      "id": "mama-hacer-phrases-20261030-01",
+      "type": "phrase",
+      "spanish": "¿Qué hacés?",
+      "meaning": "Что ты делаешь?"
+    },
+    {
+      "id": "mama-hacer-phrases-20261030-02",
+      "type": "phrase",
+      "spanish": "¿Qué hiciste?",
+      "meaning": "Что ты сделал(а)?"
+    },
+    {
+      "id": "mama-hacer-phrases-20261030-03",
+      "type": "phrase",
+      "spanish": "Hace frío",
+      "meaning": "Холодно"
+    },
+    {
+      "id": "mama-hacer-phrases-20261030-04",
+      "type": "phrase",
+      "spanish": "No hace falta",
+      "meaning": "Не нужно; нет необходимости"
+    },
+    {
+      "id": "mama-hacer-phrases-20261030-05",
+      "type": "phrase",
+      "spanish": "Lo voy a hacer",
+      "meaning": "Я это сделаю"
     }
   ]
 }
