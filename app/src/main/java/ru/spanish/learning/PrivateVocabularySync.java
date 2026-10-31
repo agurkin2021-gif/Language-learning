@@ -175,6 +175,79 @@ public final class PrivateVocabularySync {
         return true;
     }
 
+
+    /**
+     * Without write credentials the public archive can still be downloaded.
+     * This is deliberately NOT a two-way sync: it never publishes phone data
+     * and never overwrites or deletes existing phone vocabulary.
+     */
+    public static synchronized void importPublicNow(Context context, Consumer<Boolean> completed) {
+        Context app = context.getApplicationContext();
+        int generation = GENERATION.incrementAndGet();
+        if (pending != null) pending.cancel(false);
+        EXECUTOR.execute(() -> {
+            boolean success = importPublic(app, generation);
+            if (completed != null)
+                new Handler(Looper.getMainLooper()).post(() -> completed.accept(success));
+        });
+    }
+
+    private static boolean importPublic(Context context, int generation) {
+        SharedPreferences state = context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE);
+        int imported = 0;
+        try {
+            for (String profile : StudyProfile.IDS) {
+                for (String language : new String[]{"es", "en"}) {
+                    if (generation != GENERATION.get()) return false;
+                    String path = "content/" + profile + "/vocabulary-" + language + ".json";
+                    JSONObject file = request("GET", API + PROJECT_REPOSITORY
+                            + "/contents/" + path + "?ref=" + CONTENT_BRANCH, "", null, false);
+                    if (!"file".equals(file.optString("type"))
+                            || !"base64".equals(file.optString("encoding")))
+                        throw new IllegalArgumentException("Неверный формат общего словаря");
+                    byte[] bytes = Base64.decode(file.getString("content"), Base64.DEFAULT);
+                    if (bytes.length > 1024 * 1024)
+                        throw new IllegalArgumentException("Словарь превышает 1 МБ");
+                    List<Store.SyncEntry> remote = VocabularyReconcile.parse(
+                            new JSONObject(new String(bytes, StandardCharsets.UTF_8)),
+                            profile, language);
+                    Store local = Store.forProfile(context, profile, "en".equals(language));
+                    try {
+                        List<Store.SyncEntry> existing = local.vocabularyForSync();
+                        // A phone reset must never revive a previously removed entry.
+                        existing.addAll(local.resetTombstonesFor(remote));
+                        java.util.Set<String> known = new java.util.HashSet<>();
+                        for (Store.SyncEntry entry : existing)
+                            known.add(Store.syncKey(entry.kind(), entry.spanish()));
+                        List<Store.SyncEntry> additional = new java.util.ArrayList<>(existing);
+                        for (Store.SyncEntry entry : remote) {
+                            if (entry.deleted() || !known.add(Store.syncKey(entry.kind(), entry.spanish())))
+                                continue;
+                            additional.add(entry);
+                            imported++;
+                        }
+                        if (generation != GENERATION.get()) return false;
+                        local.applySyncedVocabulary(additional);
+                    } finally {
+                        local.close();
+                    }
+                }
+            }
+            if (generation != GENERATION.get()) return false;
+            state.edit().putString("status", "Импорт из GitHub: " + imported
+                    + " новых карточек. Передача с телефона не настроена.").apply();
+            return true;
+        } catch (Exception error) {
+            if (generation == GENERATION.get()) {
+                String reason = error.getMessage();
+                state.edit().putString("status", "Импорт не выполнен: "
+                        + (reason != null && reason.matches("GitHub HTTP [0-9]{3}")
+                        ? reason : "сбой сети или данных")).apply();
+            }
+            return false;
+        }
+    }
+
     /** Invoked by a system job, not tied to an Activity or any ChatGPT usage limit. */
     static void runScheduled(Context context, Runnable finished) {
         Context app = context.getApplicationContext();
@@ -482,7 +555,8 @@ public final class PrivateVocabularySync {
         connection.setConnectTimeout(7000);
         connection.setReadTimeout(15000);
         connection.setRequestMethod(method);
-        connection.setRequestProperty("Authorization", "Bearer " + token);
+        if (token != null && !token.isEmpty())
+            connection.setRequestProperty("Authorization", "Bearer " + token);
         connection.setRequestProperty("Accept", "application/vnd.github+json");
         connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28");
         connection.setRequestProperty("User-Agent", "SpanishLearning-vocabulary-sync");
