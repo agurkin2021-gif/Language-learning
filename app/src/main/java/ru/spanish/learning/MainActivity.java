@@ -504,13 +504,18 @@ public final class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(22), dp(12), dp(22), dp(6));
         TextView explanation = new TextView(this);
-        explanation.setText("Приватный GitHub и fine-grained token нужны только для резервной " +
-                "синхронизации вашего личного словаря. " +
-                "Слова и устойчивые выражения выгружаются при изменениях и запуске приложения. " +
-                "Рассказы поступают автоматически из общего публичного канала GitHub " +
-                "(единый content/stories.json) и распределяются отдельно по профилю и языку. " +
-                "Для рассказов приватный репозиторий и токен НЕ нужны. " +
+        explanation.setText("Полный архив личного словаря (включая освоенные слова и фразы) " +
+                "синхронизируется ТОЛЬКО в приватный GitHub. Все три профиля и оба языка " +
+                "загружаются при изменениях и при запуске. " +
+                "Публичный репозиторий НЕ содержит полного личного словаря. " +
+                "Пока здесь не указано «Словарь синхронизирован», внешняя проверка дублей " +
+                "и адаптация рассказов к полному словарю не подтверждены. " +
+                "Если стандартный приватный репозиторий отсутствует, приложение попробует " +
+                "создать его (GitHub permission: Repository creation — write). " +
+                "Для записи содержимого нужен Contents — read/write. " +
+                "Внешнему ChatGPT потребуется отдельный GitHub-доступ к созданному приватному репозиторию. " +
                 "Не вставляйте токен в чат.\n\n" +
+                "Архив: " + PrivateVocabularySync.repository(this) + "\n" +
                 "Словарь: " + PrivateVocabularySync.status(this) + "\n" +
                 "Рассказы: " + PersonalStorySync.status(this));
         explanation.setTextColor(primaryText());

@@ -66,6 +66,21 @@ public class PrivateVocabularySyncTest extends AndroidTestCase {
         }
     }
 
+    public void testPrivateRepositoryAutoCreationRequiresDedicatedName() throws Exception {
+        assertTrue(PrivateVocabularySync.mayCreatePrivateRepository(
+                "agurkin2021-gif/Language-learning-private"));
+        assertFalse(PrivateVocabularySync.mayCreatePrivateRepository(
+                "agurkin2021-gif/Language-learning"));
+        assertFalse(PrivateVocabularySync.mayCreatePrivateRepository(
+                "someone/other-private-repo"));
+        assertFalse(PrivateVocabularySync.mayCreatePrivateRepository(""));
+        JSONObject body = PrivateVocabularySync.privateRepositoryCreationBody();
+        assertEquals("Language-learning-private", body.getString("name"));
+        assertTrue(body.getBoolean("private"));
+        assertTrue(body.getBoolean("auto_init"));
+        assertFalse(body.has("public"));
+    }
+
     private static boolean hasKind(JSONArray entries, String kind) throws Exception {
         for (int i = 0; i < entries.length(); i++)
             if (kind.equals(entries.getJSONObject(i).getString("kind"))) return true;
