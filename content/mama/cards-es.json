@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "mama-phrases-20261030-01",
+      "type": "phrase",
+      "spanish": "Pienso que",
+      "meaning": "Я думаю, что"
+    },
+    {
+      "id": "mama-phrases-20261030-02",
+      "type": "phrase",
+      "spanish": "Me parece bien",
+      "meaning": "Меня устраивает; по-моему, хорошо"
+    },
+    {
+      "id": "mama-phrases-20261030-03",
+      "type": "phrase",
+      "spanish": "¿Qué te parece?",
+      "meaning": "Что думаешь?"
+    },
+    {
+      "id": "mama-phrases-20261030-04",
+      "type": "phrase",
+      "spanish": "No sé si",
+      "meaning": "Я не знаю, ... ли"
+    },
+    {
+      "id": "mama-phrases-20261030-05",
+      "type": "phrase",
+      "spanish": "¿Sabés qué?",
+      "meaning": "Знаешь что?"
+    },
+    {
+      "id": "mama-phrases-20261030-06",
+      "type": "phrase",
+      "spanish": "Tenés razón",
+      "meaning": "Ты прав(а)"
+    },
+    {
+      "id": "mama-phrases-20261030-07",
+      "type": "phrase",
+      "spanish": "¿Qué querés decir?",
+      "meaning": "Что ты имеешь в виду?"
+    },
+    {
+      "id": "mama-phrases-20261030-08",
+      "type": "phrase",
+      "spanish": "¿Me das una mano?",
+      "meaning": "Поможешь мне?"
+    },
+    {
+      "id": "mama-phrases-20261030-09",
+      "type": "phrase",
+      "spanish": "No te preocupes",
+      "meaning": "Не переживай"
+    },
+    {
+      "id": "mama-phrases-20261030-10",
+      "type": "phrase",
+      "spanish": "¿Qué pasó?",
+      "meaning": "Что случилось?"
+    },
+    {
+      "id": "mama-phrases-20261030-11",
+      "type": "phrase",
+      "spanish": "¿Cómo te fue?",
+      "meaning": "Как всё прошло?"
+    },
+    {
+      "id": "mama-phrases-20261030-12",
+      "type": "phrase",
+      "spanish": "Ya lo hice",
+      "meaning": "Я уже это сделал(а)"
+    },
+    {
+      "id": "mama-phrases-20261030-13",
+      "type": "phrase",
+      "spanish": "Te lo dije",
+      "meaning": "Я тебе это говорил(а)"
+    },
+    {
+      "id": "mama-phrases-20261030-14",
+      "type": "phrase",
+      "spanish": "Me olvidé",
+      "meaning": "Я забыл(а)"
+    },
+    {
+      "id": "mama-phrases-20261030-15",
+      "type": "phrase",
+      "spanish": "Ella dijo que",
+      "meaning": "Она сказала, что"
+    },
+    {
+      "id": "mama-phrases-20261030-16",
+      "type": "phrase",
+      "spanish": "Él me dijo que",
+      "meaning": "Он мне сказал, что"
+    },
+    {
+      "id": "mama-phrases-20261030-17",
+      "type": "phrase",
+      "spanish": "Voy a salir",
+      "meaning": "Я собираюсь выйти"
+    },
+    {
+      "id": "mama-phrases-20261030-18",
+      "type": "phrase",
+      "spanish": "Te voy a llamar",
+      "meaning": "Я тебе позвоню"
+    },
+    {
+      "id": "mama-phrases-20261030-19",
+      "type": "phrase",
+      "spanish": "Mañana te cuento",
+      "meaning": "Завтра тебе расскажу"
+    },
+    {
+      "id": "mama-phrases-20261030-20",
+      "type": "phrase",
+      "spanish": "Después lo vemos",
+      "meaning": "Потом посмотрим"
+    }
+  ]
+}
