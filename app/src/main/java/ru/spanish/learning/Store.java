@@ -128,7 +128,11 @@ public final class Store extends SQLiteOpenHelper {
             FamilyStory.seed(db);
         }
         if (oldVersion < 10) upgradeDimaCards(db);
-        if (oldVersion < 11) createVocabularySyncTable(db);
+        if (oldVersion < 11) {
+            createVocabularySyncTable(db);
+            if (appFlag(db,"personal_story_reset")) setAppStateTime(db,"vocabulary_sync_reset_ms",
+                    System.currentTimeMillis());
+        }
     }
 
     // Existing Dima profiles receive the pack once. Never reseed after a deliberate reset.
@@ -139,6 +143,18 @@ public final class Store extends SQLiteOpenHelper {
         setAppFlag(db, "dima_extra_300_seeded");
     }
 
+
+    private static void setAppStateTime(SQLiteDatabase db,String key,long value) {
+        ContentValues state=new ContentValues();
+        state.put("key",key);state.put("value",value);
+        db.insertWithOnConflict("app_state",null,state,SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private static long appStateTime(SQLiteDatabase db,String key) {
+        try(Cursor c=db.rawQuery("SELECT value FROM app_state WHERE key=?",new String[]{key})) {
+            return c.moveToFirst()?c.getLong(0):0L;
+        }
+    }
 
     private static void createVocabularySyncTable(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS vocabulary_sync_changes(" +
@@ -217,6 +233,22 @@ public final class Store extends SQLiteOpenHelper {
         return new ArrayList<>(result.values());
     }
 
+    /** A deliberate reset deletes even remote cards which this phone had not yet downloaded. */
+    public List<SyncEntry> resetTombstonesFor(List<SyncEntry> remote) {
+        long resetAt=appStateTime(getReadableDatabase(),"vocabulary_sync_reset_ms");
+        if(resetAt<=0) return new ArrayList<>();
+        Map<String,SyncEntry> local=new HashMap<>();
+        for(SyncEntry e:vocabularyForSync()) local.put(syncKey(e.kind(),e.spanish()),e);
+        List<SyncEntry> tombstones=new ArrayList<>();
+        for(SyncEntry e:remote) {
+            String key=syncKey(e.kind(),e.spanish());
+            if(local.containsKey(key) || e.deleted() || e.revision()>resetAt) continue;
+            tombstones.add(new SyncEntry(e.spanish(),"",e.kind(),0,false,0,0,0,
+                    resetAt,syncOrigin(),true));
+        }
+        return tombstones;
+    }
+
     /**
      * Apply a verified, fully reconciled cloud snapshot without generating local updates.
      * Newer local edits always win in VocabularyReconcile.merge before this is called.
@@ -226,10 +258,6 @@ public final class Store extends SQLiteOpenHelper {
         boolean changedAny = false;
         db.beginTransaction();
         try {
-            if (appFlag(db,"personal_story_reset")) {
-                db.setTransactionSuccessful();
-                return false; // A deliberate full reset must never silently restore data.
-            }
             Map<String, Card> existing = new HashMap<>();
             for (Card c : vocabulary()) existing.put(syncKey(c.kind(),c.spanish()), c);
             Map<String, SyncEntry> metadata = new HashMap<>();
@@ -307,6 +335,8 @@ public final class Store extends SQLiteOpenHelper {
         db.beginTransaction();
         try {
             // A full reset is a durable deletion in both phone and GitHub mirrors.
+            long resetTime=Math.max(System.currentTimeMillis(),currentRevision(db)+1);
+            setAppStateTime(db,"vocabulary_sync_reset_ms",resetTime);
             for(Card card : vocabulary()) trackLocal(db,card.spanish(),card.kind(),true);
             db.delete("cards", null, null);
             db.delete("stories", null, null);
