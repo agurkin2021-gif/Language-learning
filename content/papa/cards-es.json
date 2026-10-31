@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "papa-conversation-20261030-01",
+      "type": "phrase",
+      "spanish": "Pienso que",
+      "meaning": "Я думаю, что"
+    },
+    {
+      "id": "papa-conversation-20261030-02",
+      "type": "phrase",
+      "spanish": "Me parece bien",
+      "meaning": "Меня устраивает; по-моему, хорошо"
+    },
+    {
+      "id": "papa-conversation-20261030-03",
+      "type": "phrase",
+      "spanish": "¿Qué te parece?",
+      "meaning": "Что думаешь?"
+    },
+    {
+      "id": "papa-conversation-20261030-04",
+      "type": "phrase",
+      "spanish": "No sé si",
+      "meaning": "Я не знаю, ... ли"
+    },
+    {
+      "id": "papa-conversation-20261030-05",
+      "type": "phrase",
+      "spanish": "¿Sabés qué?",
+      "meaning": "Знаешь что?"
+    },
+    {
+      "id": "papa-conversation-20261030-06",
+      "type": "phrase",
+      "spanish": "Tenés razón",
+      "meaning": "Ты прав(а)"
+    },
+    {
+      "id": "papa-conversation-20261030-07",
+      "type": "phrase",
+      "spanish": "¿Qué querés decir?",
+      "meaning": "Что ты имеешь в виду?"
+    },
+    {
+      "id": "papa-conversation-20261030-08",
+      "type": "phrase",
+      "spanish": "¿Me das una mano?",
+      "meaning": "Поможешь мне?"
+    },
+    {
+      "id": "papa-conversation-20261030-09",
+      "type": "phrase",
+      "spanish": "No te preocupes",
+      "meaning": "Не переживай"
+    },
+    {
+      "id": "papa-conversation-20261030-10",
+      "type": "phrase",
+      "spanish": "¿Qué pasó?",
+      "meaning": "Что случилось?"
+    },
+    {
+      "id": "papa-conversation-20261030-11",
+      "type": "phrase",
+      "spanish": "¿Cómo te fue?",
+      "meaning": "Как всё прошло?"
+    },
+    {
+      "id": "papa-conversation-20261030-12",
+      "type": "phrase",
+      "spanish": "Ya lo hice",
+      "meaning": "Я уже это сделал(а)"
+    },
+    {
+      "id": "papa-conversation-20261030-13",
+      "type": "phrase",
+      "spanish": "Te lo dije",
+      "meaning": "Я тебе это говорил(а)"
+    },
+    {
+      "id": "papa-conversation-20261030-14",
+      "type": "phrase",
+      "spanish": "Me olvidé",
+      "meaning": "Я забыл(а)"
+    },
+    {
+      "id": "papa-conversation-20261030-15",
+      "type": "phrase",
+      "spanish": "Ella dijo que",
+      "meaning": "Она сказала, что"
+    },
+    {
+      "id": "papa-conversation-20261030-16",
+      "type": "phrase",
+      "spanish": "Él me dijo que",
+      "meaning": "Он мне сказал, что"
+    },
+    {
+      "id": "papa-conversation-20261030-17",
+      "type": "phrase",
+      "spanish": "Voy a salir",
+      "meaning": "Я собираюсь выйти"
+    },
+    {
+      "id": "papa-conversation-20261030-18",
+      "type": "phrase",
+      "spanish": "Te voy a llamar",
+      "meaning": "Я тебе позвоню"
+    },
+    {
+      "id": "papa-conversation-20261030-19",
+      "type": "phrase",
+      "spanish": "Mañana te cuento",
+      "meaning": "Завтра тебе расскажу"
+    },
+    {
+      "id": "papa-conversation-20261030-20",
+      "type": "phrase",
+      "spanish": "Después lo vemos",
+      "meaning": "Потом посмотрим"
+    },
+    {
+      "id": "papa-conversation-20261030-21",
+      "type": "phrase",
+      "spanish": "Te digo algo",
+      "meaning": "Я тебе кое-что скажу"
+    },
+    {
+      "id": "papa-conversation-20261030-22",
+      "type": "phrase",
+      "spanish": "¿Qué decís?",
+      "meaning": "Что ты говоришь?"
+    },
+    {
+      "id": "papa-conversation-20261030-23",
+      "type": "phrase",
+      "spanish": "No me digas",
+      "meaning": "Да ладно! Не может быть!"
+    },
+    {
+      "id": "papa-conversation-20261030-24",
+      "type": "phrase",
+      "spanish": "¿Qué dijiste?",
+      "meaning": "Что ты сказал(а)?"
+    },
+    {
+      "id": "papa-conversation-20261030-25",
+      "type": "phrase",
+      "spanish": "Dijo que sí",
+      "meaning": "Он(а) сказал(а) «да»"
+    },
+    {
+      "id": "papa-conversation-20261030-26",
+      "type": "phrase",
+      "spanish": "No sé",
+      "meaning": "Я не знаю"
+    },
+    {
+      "id": "papa-conversation-20261030-27",
+      "type": "phrase",
+      "spanish": "Ya lo sé",
+      "meaning": "Я уже это знаю"
+    },
+    {
+      "id": "papa-conversation-20261030-28",
+      "type": "phrase",
+      "spanish": "No lo sabía",
+      "meaning": "Я этого не знал(а)"
+    },
+    {
+      "id": "papa-conversation-20261030-29",
+      "type": "phrase",
+      "spanish": "¿Sabés dónde está?",
+      "meaning": "Ты знаешь, где он(а) находится?"
+    },
+    {
+      "id": "papa-conversation-20261030-30",
+      "type": "phrase",
+      "spanish": "No sé qué hacer",
+      "meaning": "Я не знаю, что делать"
+    },
+    {
+      "id": "papa-conversation-20261030-31",
+      "type": "phrase",
+      "spanish": "Estoy bien",
+      "meaning": "Я в порядке"
+    },
+    {
+      "id": "papa-conversation-20261030-32",
+      "type": "phrase",
+      "spanish": "¿Cómo estás?",
+      "meaning": "Как ты?"
+    },
+    {
+      "id": "papa-conversation-20261030-33",
+      "type": "phrase",
+      "spanish": "Estoy en casa",
+      "meaning": "Я дома"
+    },
+    {
+      "id": "papa-conversation-20261030-34",
+      "type": "phrase",
+      "spanish": "No estoy segura",
+      "meaning": "Я не уверена"
+    },
+    {
+      "id": "papa-conversation-20261030-35",
+      "type": "phrase",
+      "spanish": "Ya estoy lista",
+      "meaning": "Я готова"
+    },
+    {
+      "id": "papa-conversation-20261030-36",
+      "type": "phrase",
+      "spanish": "¿Qué hacés?",
+      "meaning": "Что ты делаешь?"
+    },
+    {
+      "id": "papa-conversation-20261030-37",
+      "type": "phrase",
+      "spanish": "¿Qué hiciste?",
+      "meaning": "Что ты сделал(а)?"
+    },
+    {
+      "id": "papa-conversation-20261030-38",
+      "type": "phrase",
+      "spanish": "Hace frío",
+      "meaning": "Холодно"
+    },
+    {
+      "id": "papa-conversation-20261030-39",
+      "type": "phrase",
+      "spanish": "No hace falta",
+      "meaning": "Не нужно; нет необходимости"
+    },
+    {
+      "id": "papa-conversation-20261030-40",
+      "type": "phrase",
+      "spanish": "Lo voy a hacer",
+      "meaning": "Я это сделаю"
+    }
+  ]
+}
