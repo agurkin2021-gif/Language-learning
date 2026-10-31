@@ -512,9 +512,9 @@ public final class MainActivity extends Activity {
                 "фраз и созданием рассказа. ВАЖНО: репозиторий публичный, " +
                 "поэтому словарные карточки и отметки освоения доступны по ссылке. " +
                 "Для выгрузки нужен GitHub token с Contents: read/write на Language-learning; " +
-                "токен в чат не отправлять.\\n\\n" +
-                "Репозиторий: " + PrivateVocabularySync.repository(this) + "\\n" +
-                "Словарь: " + PrivateVocabularySync.status(this) + "\\n" +
+                "токен в чат не отправлять.\n\n" +
+                "Репозиторий: " + PrivateVocabularySync.repository(this) + "\n" +
+                "Словарь: " + PrivateVocabularySync.status(this) + "\n" +
                 "Рассказы: " + PersonalStorySync.status(this));
         explanation.setTextColor(primaryText());
         explanation.setTextSize(14);
