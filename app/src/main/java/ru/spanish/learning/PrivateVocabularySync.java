@@ -38,12 +38,13 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 /**
- * Opt-in, upload-only snapshot of the phone's entire ES and EN dictionaries.
- * Vocabulary never enters the public content repository or the ChatGPT API.
- * Only an authenticated PRIVATE repository is an allowed destination.
+ * Bidirectional sync of all three family profiles (Spanish and English) with
+ * the EXISTING public Language-learning repository, branch live-content.
+ * Phone edits and remote revisions converge with tombstones and SHA retries.
  *
- * The phone stays the source of truth; stories flow separately through
- * RemoteContentSync, and neither path modifies locally saved cards.
+ * Only GitHub credentials stay private in Android Keystore. Vocabulary content
+ * and mastered-state metadata ARE PUBLIC in this repository by user request.
+ * Stories continue to use their independent STORY INBOX feed.
  */
 public final class PrivateVocabularySync {
     private static final String API = "https://api.github.com/repos/";
@@ -56,7 +57,7 @@ public final class PrivateVocabularySync {
     private static final long MIN_SYNC_INTERVAL_MS = 15 * 60 * 1000L;
     private static final ScheduledExecutorService EXECUTOR =
             Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread t = new Thread(r, "vocabulary-upload");
+                Thread t = new Thread(r, "vocabulary-two-way-sync");
                 t.setDaemon(true);
                 return t;
             });
@@ -77,7 +78,6 @@ public final class PrivateVocabularySync {
     }
 
     public static String repository(Context context) {
-        if (!isConfigured(context)) return PROJECT_REPOSITORY;
         return PROJECT_REPOSITORY;
     }
 
