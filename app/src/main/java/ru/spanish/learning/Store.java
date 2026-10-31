@@ -306,6 +306,8 @@ public final class Store extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
+            // A full reset is a durable deletion in both phone and GitHub mirrors.
+            for(Card card : vocabulary()) trackLocal(db,card.spanish(),card.kind(),true);
             db.delete("cards", null, null);
             db.delete("stories", null, null);
             db.delete("remote_items", null, null);
@@ -393,7 +395,13 @@ public final class Store extends SQLiteOpenHelper {
         v.put("meaning", meaning);
         v.put("kind", kind);
         v.put("category", category);
-        getWritableDatabase().insertOrThrow("cards", null, v);
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.insertOrThrow("cards", null, v);
+            trackLocal(db,spanish,kind,false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
     }
 
@@ -416,7 +424,13 @@ public final class Store extends SQLiteOpenHelper {
         values.put("meaning", meaning.trim());
         values.put("kind", 0);
         values.put("category", category); // 0 means not classified; shown under "Все слова".
-        getWritableDatabase().insertOrThrow("cards", null, values);
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.insertOrThrow("cards", null, values);
+            trackLocal(db,printed,0,false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
         return StoryWordSave.ADDED;
     }
@@ -448,10 +462,19 @@ public final class Store extends SQLiteOpenHelper {
      */
     public boolean deleteCard(long id) {
         if (id <= 0) return false;
-        int removed = getWritableDatabase().delete("cards", "id=?",
-                new String[]{Long.toString(id)});
-        if (removed > 0) changed();
-        return removed > 0;
+        SQLiteDatabase db=getWritableDatabase();
+        Card existing=null;
+        for(Card card:vocabulary()) if(card.id()==id) { existing=card; break; }
+        if(existing==null) return false;
+        db.beginTransaction();
+        int removed;
+        try {
+            removed=db.delete("cards","id=?",new String[]{Long.toString(id)});
+            if(removed>0) trackLocal(db,existing.spanish(),existing.kind(),true);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+        if(removed>0) changed();
+        return removed>0;
     }
 
     public void review(long id, int result) {
@@ -461,8 +484,16 @@ public final class Store extends SQLiteOpenHelper {
     public void review(long id, int result, long nextDue) {
         if (result < 0 || result > 2) throw new IllegalArgumentException("result");
         SQLiteDatabase db = getWritableDatabase();
-        db.execSQL("UPDATE cards SET last_result=?, review_count=review_count+1, mastered=?, next_due=? WHERE id=?",
-                new Object[]{result, result == 2 ? 1 : 0, result == 2 ? 0 : Math.max(0, nextDue), id});
+        Card existing=null;
+        for(Card card:vocabulary()) if(card.id()==id) { existing=card; break; }
+        if(existing==null) return;
+        db.beginTransaction();
+        try {
+            db.execSQL("UPDATE cards SET last_result=?, review_count=review_count+1, mastered=?, next_due=? WHERE id=?",
+                    new Object[]{result, result == 2 ? 1 : 0, result == 2 ? 0 : Math.max(0, nextDue), id});
+            trackLocal(db,existing.spanish(),existing.kind(),false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
     }
 
@@ -498,7 +529,16 @@ public final class Store extends SQLiteOpenHelper {
             v.put("last_result", 0);
             v.put("next_due", 0);
         }
-        getWritableDatabase().update("cards", v, "id=?", new String[]{Long.toString(id)});
+        SQLiteDatabase db=getWritableDatabase();
+        Card existing=null;
+        for(Card card:vocabulary()) if(card.id()==id) { existing=card; break; }
+        if(existing==null) return;
+        db.beginTransaction();
+        try {
+            db.update("cards", v, "id=?", new String[]{Long.toString(id)});
+            trackLocal(db,existing.spanish(),existing.kind(),false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
     }
 
@@ -577,6 +617,7 @@ public final class Store extends SQLiteOpenHelper {
             v.put("kind", kind);
             v.put("category", category);
             long localId = db.insertOrThrow("cards", null, v);
+            trackLocal(db,spanish,kind,false);
             markRemoteImported(db, externalId, kind == 0 ? "word" : "phrase", localId);
             db.setTransactionSuccessful();
         } finally {
@@ -609,6 +650,7 @@ public final class Store extends SQLiteOpenHelper {
                 v.put("spanish", spanish.trim()); v.put("meaning", meaning.trim());
                 v.put("kind", kind); v.put("category", kind == 1 ? 0 : category);
                 localId = db.insertOrThrow("cards", null, v);
+                trackLocal(db,spanish,kind,false);
                 inserted = true;
             }
             markRemoteImported(db, externalId, kind == 1 ? "phrase" : "word", localId);
