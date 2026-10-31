@@ -19,6 +19,8 @@ jobs:
         with:
           ref: live-content
           fetch-depth: 0
+      - name: Guard against routing regressions
+        run: python3 scripts/test_card_inbox.py
       - name: Parse exactly one JSON request
         run: |
           python3 - <<'PY'
