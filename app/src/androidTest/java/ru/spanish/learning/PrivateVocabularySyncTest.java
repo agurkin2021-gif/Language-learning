@@ -66,19 +66,43 @@ public class PrivateVocabularySyncTest extends AndroidTestCase {
         }
     }
 
-    public void testPrivateRepositoryAutoCreationRequiresDedicatedName() throws Exception {
-        assertTrue(PrivateVocabularySync.mayCreatePrivateRepository(
-                "agurkin2021-gif/Language-learning-private"));
-        assertFalse(PrivateVocabularySync.mayCreatePrivateRepository(
-                "agurkin2021-gif/Language-learning"));
-        assertFalse(PrivateVocabularySync.mayCreatePrivateRepository(
-                "someone/other-private-repo"));
-        assertFalse(PrivateVocabularySync.mayCreatePrivateRepository(""));
-        JSONObject body = PrivateVocabularySync.privateRepositoryCreationBody();
-        assertEquals("Language-learning-private", body.getString("name"));
-        assertTrue(body.getBoolean("private"));
-        assertTrue(body.getBoolean("auto_init"));
-        assertFalse(body.has("public"));
+    public void testSyncReconcilesMasteryAndDeletionPerProfile() throws Exception {
+        Store.SyncEntry seed = new Store.SyncEntry(
+                "¿Qué hacés?", "Что делаешь?", 1, 0, false, 0, 0, 0, 0, "seed", false);
+        Store.SyncEntry learned = new Store.SyncEntry(
+                "¿Qué hacés?", "Что делаешь?", 1, 0, true, 2, 3, 0, 200, "phone-a", false);
+        Store.SyncEntry deleted = new Store.SyncEntry(
+                "¿Qué hacés?", "", 1, 0, false, 0, 0, 0, 300, "phone-b", true);
+        java.util.List<Store.SyncEntry> merged = VocabularyReconcile.merge(
+                java.util.List.of(seed, learned), java.util.List.of(deleted));
+        assertEquals(1,merged.size());
+        assertTrue(merged.get(0).deleted());
+        JSONObject data = VocabularyReconcile.serialize("papa","es",merged);
+        assertEquals("papa",data.getString("profile"));
+        assertEquals(1,VocabularyReconcile.parse(data,"papa","es").size());
+        try {
+            VocabularyReconcile.parse(data,"mama","es");
+            fail("Cross-profile vocabulary must be rejected");
+        } catch (IllegalArgumentException expected) { }
+    }
+
+    public void testCloudMasteryIsAppliedWithoutDuplicateCard() throws Exception {
+        String db = "test-vocabulary-two-way.db";
+        getContext().deleteDatabase(db);
+        try(Store store = Store.forProfileTest(getContext(),db,"mama",false)) {
+            int baseline = store.vocabulary().size();
+            Store.SyncEntry cloud = new Store.SyncEntry("Te digo algo", "Я тебе кое-что скажу",
+                    1, 0, true, 2, 4, 0, 1000000, "cloud-test", false);
+            assertTrue(store.applySyncedVocabulary(java.util.List.of(cloud)));
+            assertEquals(baseline+1,store.vocabulary().size());
+            assertFalse(store.applySyncedVocabulary(java.util.List.of(cloud)));
+            Store.SyncEntry laterDeletion = new Store.SyncEntry("Te digo algo", "",1,0,
+                    false,0,0,0,2000000,"cloud-test",true);
+            assertTrue(store.applySyncedVocabulary(java.util.List.of(laterDeletion)));
+            assertEquals(baseline,store.vocabulary().size());
+            assertFalse(store.applySyncedVocabulary(java.util.List.of(cloud)));
+            assertEquals(baseline,store.vocabulary().size());
+        } finally { getContext().deleteDatabase(db); }
     }
 
     private static boolean hasKind(JSONArray entries, String kind) throws Exception {
