@@ -140,30 +140,34 @@ def load_feed(path):
 
 
 def archive_keys(profile, language):
+    """Use the Android's actual full sync schema and fail on incomplete records."""
     path = CONTENT / profile / f"vocabulary-{language}.json"
     archive = read_json(path)
     if archive is None:
-        raise InvalidCard("Missing full-archive placeholder: " + str(path.relative_to(ROOT)))
+        raise InvalidCard("Missing full vocabulary archive: " + str(path.relative_to(ROOT)))
     if not isinstance(archive, dict) or archive.get("version") != 1 or archive.get("profile") != profile or archive.get("language") != language or not isinstance(archive.get("items"), list):
-        raise InvalidCard("Malformed personal vocabulary snapshot: " + str(path.relative_to(ROOT)))
-    keys = set()
-    deleted = set()
+        raise InvalidCard("Malformed personal vocabulary archive: " + str(path.relative_to(ROOT)))
+    if len(archive["items"]) > 20000:
+        raise InvalidCard("Full vocabulary archive too large")
+    keys, deleted = set(), set()
     for entry in archive["items"]:
         if not isinstance(entry, dict):
             raise InvalidCard("Malformed vocabulary record")
-        spanish = entry.get("spanish")
-        if not isinstance(spanish, str) or not spanish.strip():
-            raise InvalidCard("Vocabulary entry missing spanish: cannot safely check duplicates")
-        kind = entry.get("type", entry.get("kind"))
-        if kind in (0, "0"):
-            kind = "word"
-        if kind in (1, "1"):
-            kind = "phrase"
-        if kind not in TYPES:
-            raise InvalidCard("Unknown vocabulary card type; cannot safely check duplicates")
+        spanish = nonempty(entry.get("spanish"), "archive spanish", 500)
+        # Android VocabularyReconcile.serialize() writes "kind", never "type".
+        kind = entry.get("kind")
+        revision, origin, removed = entry.get("revision"), entry.get("origin"), entry.get("deleted")
+        if kind not in TYPES or type(revision) is not int or revision < 0 or not isinstance(origin, str) or not 1 <= len(origin) <= 120 or type(removed) is not bool:
+            raise InvalidCard("Incomplete canonical vocabulary record")
+        if not removed:
+            nonempty(entry.get("meaning"), "archive meaning", 1000)
+            if type(entry.get("mastered")) is not bool:
+                raise InvalidCard("Missing mastered flag in vocabulary")
         key = (kind, norm(spanish))
+        if key in keys:
+            raise InvalidCard("Duplicate canonical vocabulary entry")
         keys.add(key)
-        if entry.get("deleted") is True:
+        if removed:
             deleted.add(key)
     return keys, deleted, len(archive["items"]) == 0
 
@@ -197,6 +201,14 @@ def publish(request, paths_out=None):
             if key in existing or key in archive_present:
                 already += 1
                 continue
+            # A blank archive is not proof of absence: stop rather than silently
+            # duplicating cards already learned on the phone.
+            if empty:
+                raise InvalidCard(
+                    "ARCHIVE_NOT_READY: " + profile + "/" + language +
+                    " has zero synchronized records. Connect the phone's full "
+                    "vocabulary sync and retry; do not bypass CARD INBOX."
+                )
             record = {"id": stable_id(profile, language, card), **card}
             if record["id"] in ids:
                 raise InvalidCard("Stable ID collision")
