@@ -1,0 +1,81 @@
+name: Card inbox (single entrypoint)
+on:
+  issues:
+    types: [opened, reopened, edited]
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: card-single-ingress
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    # A public issue written by another GitHub user must never mutate content.
+    if: ${{ startsWith(github.event.issue.title, 'CARD:') && github.event.issue.user.login == github.repository_owner }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: live-content
+          fetch-depth: 0
+      - name: Parse exactly one JSON request
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          event = json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))
+          request = json.loads(event['issue'].get('body') or '')
+          if not isinstance(request, dict):
+              raise SystemExit('CARD issue body must be a single JSON object')
+          pathlib.Path(os.environ['RUNNER_TEMP'], 'card-request.json').write_text(
+              json.dumps(request, ensure_ascii=False), encoding='utf-8')
+          PY
+      - name: Ingest into explicit profile and language feeds
+        id: publish
+        shell: bash
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          result="$(python3 scripts/card_inbox.py add \
+            --paths-out "$RUNNER_TEMP/card-paths.txt" < "$RUNNER_TEMP/card-request.json")"
+          python3 scripts/card_inbox.py check
+          printf '%s\n' "$result"
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+          while IFS= read -r dest; do
+            if [ -n "$dest" ]; then
+              case "$dest" in
+                content/papa/cards-es.json|content/papa/cards-en.json|\
+                content/mama/cards-es.json|content/mama/cards-en.json|\
+                content/dima/cards-es.json|content/dima/cards-en.json)
+                  git add -- "$dest" ;;
+                *) echo "Unsafe destination: $dest" >&2; exit 1 ;;
+              esac
+            fi
+          done < "$RUNNER_TEMP/card-paths.txt"
+          if ! git diff --cached --quiet; then
+            git config user.name "card-inbox[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Card inbox: publish issue #$ISSUE_NUMBER"
+            git push origin HEAD:live-content
+          fi
+      - name: Confirm actual publication and close request
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RESULT: ${{ steps.publish.outputs.result }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+            --body "Card inbox accepted: $RESULT. Published in live-content/content/<profile>/cards-<language>.json. Phone sync is separate; an empty full-vocabulary archive does not prove no prior learned cards."
+          gh issue close "$ISSUE_NUMBER" --repo "$GH_REPO"
+      - name: Report rejection without publishing
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" \
+            --body "Card inbox rejected: not confirmed as published. See validation details in the workflow run. Fix the JSON and re-open or edit the issue."
