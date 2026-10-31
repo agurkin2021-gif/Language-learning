@@ -239,6 +239,27 @@ def publish(request, paths_out=None):
     return result
 
 
+def verify(request):
+    """Verify the requested cards by rereading the currently published feed."""
+    profiles, language, requested = validate_request(request)
+    count = 0
+    for profile in profiles:
+        feed = load_feed(canonical_card_path(profile, language))
+        existing = {(x["type"], norm(x["spanish"])) for x in feed["items"]}
+        archived, deleted, _ = archive_keys(profile, language)
+        for card in requested:
+            key = (card["type"], norm(card["spanish"]))
+            # Both an existing published card and a previously mastered/deleted
+            # archive record count as correctly handled, not necessarily newly added.
+            if key not in existing and key not in archived and key not in deleted:
+                raise InvalidCard(
+                    "READBACK_FAILED: " + profile + "/" + language +
+                    " missing " + card["spanish"]
+                )
+            count += 1
+    return f"VERIFIED={count} TARGETS={','.join(profiles)}/{language}"
+
+
 def check():
     count = 0
     for profile in sorted(PROFILES):
@@ -252,12 +273,14 @@ def check():
 
 def main():
     parser = argparse.ArgumentParser(description="Canonical card inbox")
-    parser.add_argument("command", choices=["add", "check"])
+    parser.add_argument("command", choices=["add", "check", "verify"])
     parser.add_argument("--paths-out")
     args = parser.parse_args()
     try:
         if args.command == "check":
             print(check())
+        elif args.command == "verify":
+            print(verify(json.load(sys.stdin)))
         else:
             print(publish(json.load(sys.stdin), paths_out=args.paths_out))
         return 0
