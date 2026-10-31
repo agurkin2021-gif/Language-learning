@@ -8,12 +8,21 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Locale;
+import java.util.UUID;
+import java.text.Normalizer;
 
 public final class Store extends SQLiteOpenHelper {
     private final Context context;
     private final boolean english;
     private final String profileId;
     public record Card(long id, String spanish, String meaning, int kind, int category, boolean mastered, int lastResult, int reviewCount, long nextDue) {}
+    /** Full vocabulary mirror: versioned cards and deletion tombstones. */
+    public record SyncEntry(String spanish, String meaning, int kind, int category, boolean mastered,
+                            int lastResult, int reviewCount, long nextDue, long revision,
+                            String origin, boolean deleted) {}
     public record Story(long id, String title, String body, String translation, String source, int position) {}
     public enum StoryWordSave { ADDED, ALREADY_STUDYING, RESTORED }
 
@@ -31,7 +40,7 @@ public final class Store extends SQLiteOpenHelper {
         return new Store(context, dbName, english, StudyProfile.normalized(id));
     }
     private Store(Context context, String databaseName, boolean english, String profileId) {
-        super(context, databaseName, null, 10);
+        super(context, databaseName, null, 11);
         this.context = context.getApplicationContext();
         this.english = english;
         this.profileId = profileId;
@@ -41,7 +50,7 @@ public final class Store extends SQLiteOpenHelper {
 
     private void changed() {
         new BackupManager(context).dataChanged();
-        // Sync only a private, explicitly configured snapshot; never modify SQLite from the cloud.
+        // Sync profile-scoped vocabulary in the existing GitHub repository.
         PrivateVocabularySync.schedule(context);
     }
 
@@ -50,6 +59,7 @@ public final class Store extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE stories(id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, translation TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)");
         db.execSQL("CREATE TABLE remote_items(external_id TEXT PRIMARY KEY NOT NULL, item_type TEXT NOT NULL, local_id INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE app_state(key TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)");
+        createVocabularySyncTable(db);
         if (english || !StudyProfile.isPapa(profileId)) {
             // Mother and Dima start completely empty in both languages.
             // Papa's existing SQLite databases and seed are never migrated or overwritten.
@@ -118,6 +128,11 @@ public final class Store extends SQLiteOpenHelper {
             FamilyStory.seed(db);
         }
         if (oldVersion < 10) upgradeDimaCards(db);
+        if (oldVersion < 11) {
+            createVocabularySyncTable(db);
+            if (appFlag(db,"personal_story_reset")) setAppStateTime(db,"vocabulary_sync_reset_ms",
+                    System.currentTimeMillis());
+        }
     }
 
     // Existing Dima profiles receive the pack once. Never reseed after a deliberate reset.
@@ -126,6 +141,167 @@ public final class Store extends SQLiteOpenHelper {
         if (!appFlag(db, "dima_extra_300_seeded") && !appFlag(db, "personal_story_reset"))
             DimaExtraCards.seed(db);
         setAppFlag(db, "dima_extra_300_seeded");
+    }
+
+
+    private static void setAppStateTime(SQLiteDatabase db,String key,long value) {
+        ContentValues state=new ContentValues();
+        state.put("key",key);state.put("value",value);
+        db.insertWithOnConflict("app_state",null,state,SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private static long appStateTime(SQLiteDatabase db,String key) {
+        try(Cursor c=db.rawQuery("SELECT value FROM app_state WHERE key=?",new String[]{key})) {
+            return c.moveToFirst()?c.getLong(0):0L;
+        }
+    }
+
+    private static void createVocabularySyncTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS vocabulary_sync_changes(" +
+                "key TEXT PRIMARY KEY NOT NULL, spanish TEXT NOT NULL, kind INTEGER NOT NULL, " +
+                "revision INTEGER NOT NULL, origin TEXT NOT NULL, deleted INTEGER NOT NULL)");
+    }
+
+    static String syncKey(int kind, String text) {
+        return kind + ":" + Normalizer.normalize(text.trim(), Normalizer.Form.NFC)
+                .replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private String syncOrigin() {
+        android.content.SharedPreferences prefs = context.getSharedPreferences("vocabulary_device", Context.MODE_PRIVATE);
+        String existing = prefs.getString("id", "");
+        if (!existing.isEmpty()) return existing;
+        String created = UUID.randomUUID().toString();
+        prefs.edit().putString("id", created).commit();
+        return created;
+    }
+
+    private static long currentRevision(SQLiteDatabase db) {
+        try (Cursor c = db.rawQuery("SELECT COALESCE(MAX(revision),0) FROM vocabulary_sync_changes", null)) {
+            return c.moveToFirst() ? c.getLong(0) : 0L;
+        }
+    }
+
+    private void trackLocal(SQLiteDatabase db, String spanish, int kind, boolean deleted) {
+        long revision = Math.max(System.currentTimeMillis(), currentRevision(db) + 1L);
+        putSyncMeta(db, spanish, kind, revision, syncOrigin(), deleted);
+    }
+
+    private static void putSyncMeta(SQLiteDatabase db, String spanish, int kind,
+                                    long revision, String origin, boolean deleted) {
+        ContentValues values = new ContentValues();
+        values.put("key", syncKey(kind, spanish));
+        values.put("spanish", spanish);
+        values.put("kind", kind);
+        values.put("revision", revision);
+        values.put("origin", origin);
+        values.put("deleted", deleted ? 1 : 0);
+        db.insertWithOnConflict("vocabulary_sync_changes", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private static SyncEntry syncEntry(Card card, long revision, String origin) {
+        return new SyncEntry(card.spanish(), card.meaning(), card.kind(), card.category(),
+                card.mastered(), card.lastResult(), card.reviewCount(), card.nextDue(),
+                revision, origin, false);
+    }
+
+    /** Includes mastered cards and deletion tombstones: never export just the current study queue. */
+    public List<SyncEntry> vocabularyForSync() {
+        SQLiteDatabase db = getReadableDatabase();
+        Map<String, SyncEntry> result = new HashMap<>();
+        Map<String, SyncEntry> tombstones = new HashMap<>();
+        try (Cursor c = db.query("vocabulary_sync_changes",
+                new String[]{"spanish","kind","revision","origin","deleted"}, null,null,null,null,null)) {
+            while(c.moveToNext()) {
+                String spanish = c.getString(0);
+                int kind = c.getInt(1);
+                long revision = c.getLong(2);
+                String origin = c.getString(3);
+                if(c.getInt(4)!=0) tombstones.put(syncKey(kind,spanish),new SyncEntry(
+                        spanish,"",kind,0,false,0,0,0,revision,origin,true));
+                else result.put(syncKey(kind,spanish),new SyncEntry(
+                        spanish,"",kind,0,false,0,0,0,revision,origin,false));
+            }
+        }
+        for(Card card : vocabulary()) {
+            String key = syncKey(card.kind(),card.spanish());
+            SyncEntry meta = result.get(key);
+            result.put(key, syncEntry(card,meta==null?0:meta.revision(),meta==null?"seed":meta.origin()));
+            tombstones.remove(key);
+        }
+        result.putAll(tombstones);
+        return new ArrayList<>(result.values());
+    }
+
+    /** A deliberate reset deletes even remote cards which this phone had not yet downloaded. */
+    public List<SyncEntry> resetTombstonesFor(List<SyncEntry> remote) {
+        long resetAt=appStateTime(getReadableDatabase(),"vocabulary_sync_reset_ms");
+        if(resetAt<=0) return new ArrayList<>();
+        Map<String,SyncEntry> local=new HashMap<>();
+        for(SyncEntry e:vocabularyForSync()) local.put(syncKey(e.kind(),e.spanish()),e);
+        List<SyncEntry> tombstones=new ArrayList<>();
+        for(SyncEntry e:remote) {
+            String key=syncKey(e.kind(),e.spanish());
+            if(local.containsKey(key) || e.deleted() || e.revision()>resetAt) continue;
+            tombstones.add(new SyncEntry(e.spanish(),"",e.kind(),0,false,0,0,0,
+                    resetAt,syncOrigin(),true));
+        }
+        return tombstones;
+    }
+
+    /**
+     * Apply a verified, fully reconciled cloud snapshot without generating local updates.
+     * Newer local edits always win in VocabularyReconcile.merge before this is called.
+     */
+    public boolean applySyncedVocabulary(List<SyncEntry> merged) {
+        SQLiteDatabase db = getWritableDatabase();
+        boolean changedAny = false;
+        db.beginTransaction();
+        try {
+            Map<String, Card> existing = new HashMap<>();
+            for (Card c : vocabulary()) existing.put(syncKey(c.kind(),c.spanish()), c);
+            Map<String, SyncEntry> metadata = new HashMap<>();
+            for (SyncEntry e : vocabularyForSync()) metadata.put(syncKey(e.kind(), e.spanish()),e);
+            for(SyncEntry e : merged) {
+                String key = syncKey(e.kind(),e.spanish());
+                SyncEntry local = metadata.get(key);
+                if(local != null && VocabularyReconcile.compare(e,local) < 0) continue;
+                Card card = existing.get(key);
+                if (e.deleted()) {
+                    if (card != null) {
+                        db.delete("cards","id=?",new String[]{Long.toString(card.id())});
+                        changedAny = true;
+                    }
+                    putSyncMeta(db,e.spanish(),e.kind(),e.revision(),e.origin(),true);
+                } else {
+                    if(card == null) {
+                        ContentValues v = new ContentValues();
+                        v.put("spanish",e.spanish()); v.put("meaning",e.meaning());
+                        v.put("kind",e.kind()); v.put("category",e.category());
+                        v.put("mastered",e.mastered()?1:0); v.put("last_result",e.lastResult());
+                        v.put("review_count",e.reviewCount());v.put("next_due",e.nextDue());
+                        db.insertOrThrow("cards",null,v);
+                        changedAny = true;
+                    } else if (!card.meaning().equals(e.meaning())
+                            || card.mastered()!=e.mastered()
+                            || card.lastResult()!=e.lastResult()
+                            || card.reviewCount()!=e.reviewCount()
+                            || card.nextDue()!=e.nextDue()
+                            || card.category()!=e.category()) {
+                        ContentValues v = new ContentValues();
+                        v.put("meaning",e.meaning()); v.put("mastered",e.mastered()?1:0);
+                        v.put("last_result",e.lastResult());v.put("review_count",e.reviewCount());
+                        v.put("next_due",e.nextDue());v.put("category",e.category());
+                        db.update("cards",v,"id=?",new String[]{Long.toString(card.id())});
+                        changedAny = true;
+                    }
+                    putSyncMeta(db,e.spanish(),e.kind(),e.revision(),e.origin(),false);
+                }
+            }
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+        if(changedAny) new BackupManager(context).dataChanged();
+        return changedAny;
     }
 
     private static boolean appFlag(SQLiteDatabase db, String key) {
@@ -158,6 +334,10 @@ public final class Store extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
+            // A full reset is a durable deletion in both phone and GitHub mirrors.
+            long resetTime=Math.max(System.currentTimeMillis(),currentRevision(db)+1);
+            setAppStateTime(db,"vocabulary_sync_reset_ms",resetTime);
+            for(Card card : vocabulary()) trackLocal(db,card.spanish(),card.kind(),true);
             db.delete("cards", null, null);
             db.delete("stories", null, null);
             db.delete("remote_items", null, null);
@@ -245,7 +425,13 @@ public final class Store extends SQLiteOpenHelper {
         v.put("meaning", meaning);
         v.put("kind", kind);
         v.put("category", category);
-        getWritableDatabase().insertOrThrow("cards", null, v);
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.insertOrThrow("cards", null, v);
+            trackLocal(db,spanish,kind,false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
     }
 
@@ -268,7 +454,13 @@ public final class Store extends SQLiteOpenHelper {
         values.put("meaning", meaning.trim());
         values.put("kind", 0);
         values.put("category", category); // 0 means not classified; shown under "Все слова".
-        getWritableDatabase().insertOrThrow("cards", null, values);
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.insertOrThrow("cards", null, values);
+            trackLocal(db,printed,0,false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
         return StoryWordSave.ADDED;
     }
@@ -300,10 +492,19 @@ public final class Store extends SQLiteOpenHelper {
      */
     public boolean deleteCard(long id) {
         if (id <= 0) return false;
-        int removed = getWritableDatabase().delete("cards", "id=?",
-                new String[]{Long.toString(id)});
-        if (removed > 0) changed();
-        return removed > 0;
+        SQLiteDatabase db=getWritableDatabase();
+        Card existing=null;
+        for(Card card:vocabulary()) if(card.id()==id) { existing=card; break; }
+        if(existing==null) return false;
+        db.beginTransaction();
+        int removed;
+        try {
+            removed=db.delete("cards","id=?",new String[]{Long.toString(id)});
+            if(removed>0) trackLocal(db,existing.spanish(),existing.kind(),true);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+        if(removed>0) changed();
+        return removed>0;
     }
 
     public void review(long id, int result) {
@@ -313,8 +514,16 @@ public final class Store extends SQLiteOpenHelper {
     public void review(long id, int result, long nextDue) {
         if (result < 0 || result > 2) throw new IllegalArgumentException("result");
         SQLiteDatabase db = getWritableDatabase();
-        db.execSQL("UPDATE cards SET last_result=?, review_count=review_count+1, mastered=?, next_due=? WHERE id=?",
-                new Object[]{result, result == 2 ? 1 : 0, result == 2 ? 0 : Math.max(0, nextDue), id});
+        Card existing=null;
+        for(Card card:vocabulary()) if(card.id()==id) { existing=card; break; }
+        if(existing==null) return;
+        db.beginTransaction();
+        try {
+            db.execSQL("UPDATE cards SET last_result=?, review_count=review_count+1, mastered=?, next_due=? WHERE id=?",
+                    new Object[]{result, result == 2 ? 1 : 0, result == 2 ? 0 : Math.max(0, nextDue), id});
+            trackLocal(db,existing.spanish(),existing.kind(),false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
     }
 
@@ -350,7 +559,16 @@ public final class Store extends SQLiteOpenHelper {
             v.put("last_result", 0);
             v.put("next_due", 0);
         }
-        getWritableDatabase().update("cards", v, "id=?", new String[]{Long.toString(id)});
+        SQLiteDatabase db=getWritableDatabase();
+        Card existing=null;
+        for(Card card:vocabulary()) if(card.id()==id) { existing=card; break; }
+        if(existing==null) return;
+        db.beginTransaction();
+        try {
+            db.update("cards", v, "id=?", new String[]{Long.toString(id)});
+            trackLocal(db,existing.spanish(),existing.kind(),false);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
         changed();
     }
 
@@ -429,6 +647,7 @@ public final class Store extends SQLiteOpenHelper {
             v.put("kind", kind);
             v.put("category", category);
             long localId = db.insertOrThrow("cards", null, v);
+            trackLocal(db,spanish,kind,false);
             markRemoteImported(db, externalId, kind == 0 ? "word" : "phrase", localId);
             db.setTransactionSuccessful();
         } finally {
@@ -461,6 +680,7 @@ public final class Store extends SQLiteOpenHelper {
                 v.put("spanish", spanish.trim()); v.put("meaning", meaning.trim());
                 v.put("kind", kind); v.put("category", kind == 1 ? 0 : category);
                 localId = db.insertOrThrow("cards", null, v);
+                trackLocal(db,spanish,kind,false);
                 inserted = true;
             }
             markRemoteImported(db, externalId, kind == 1 ? "phrase" : "word", localId);
