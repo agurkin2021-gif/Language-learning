@@ -504,19 +504,17 @@ public final class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(22), dp(12), dp(22), dp(6));
         TextView explanation = new TextView(this);
-        explanation.setText("Полный архив личного словаря (включая освоенные слова и фразы) " +
-                "синхронизируется ТОЛЬКО в приватный GitHub. Все три профиля и оба языка " +
-                "загружаются при изменениях и при запуске. " +
-                "Публичный репозиторий НЕ содержит полного личного словаря. " +
-                "Пока здесь не указано «Словарь синхронизирован», внешняя проверка дублей " +
-                "и адаптация рассказов к полному словарю не подтверждены. " +
-                "Если стандартный приватный репозиторий отсутствует, приложение попробует " +
-                "создать его (GitHub permission: Repository creation — write). " +
-                "Для записи содержимого нужен Contents — read/write. " +
-                "Внешнему ChatGPT потребуется отдельный GitHub-доступ к созданному приватному репозиторию. " +
-                "Не вставляйте токен в чат.\n\n" +
-                "Архив: " + PrivateVocabularySync.repository(this) + "\n" +
-                "Словарь: " + PrivateVocabularySync.status(this) + "\n" +
+        explanation.setText("Единый репозиторий Language-learning: отдельные полные словари " +
+                "Папа / Мама / Дима, слова и устойчивые выражения, освоенные карточки. " +
+                "Синхронизация в ОБЕ стороны выполняется после изменения слов и " +
+                "периодически при наличии сети. Удалённые карточки не восстанавливаются. " +
+                "Внешний ChatGPT должен проверять словарь профиля перед добавлением новых " +
+                "фраз и созданием рассказа. ВАЖНО: репозиторий публичный, " +
+                "поэтому словарные карточки и отметки освоения доступны по ссылке. " +
+                "Для выгрузки нужен GitHub token с Contents: read/write на Language-learning; " +
+                "токен в чат не отправлять.\\n\\n" +
+                "Репозиторий: " + PrivateVocabularySync.repository(this) + "\\n" +
+                "Словарь: " + PrivateVocabularySync.status(this) + "\\n" +
                 "Рассказы: " + PersonalStorySync.status(this));
         explanation.setTextColor(primaryText());
         explanation.setTextSize(14);
@@ -524,7 +522,7 @@ public final class MainActivity extends Activity {
 
         EditText repo = new EditText(this);
         repo.setSingleLine(true);
-        repo.setHint("owner/private-repository");
+        repo.setHint("agurkin2021-gif/Language-learning");
         repo.setText(PrivateVocabularySync.repository(this));
         ui.styleInput(repo);
         box.addView(repo, spaced(12));
@@ -540,7 +538,7 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(box);
         new AlertDialog.Builder(this)
-                .setTitle("Личный словарь — приватный GitHub")
+                .setTitle("Синхронизация словаря — Language-learning")
                 .setView(scroll)
                 .setNegativeButton("Отмена", null)
                 .setNeutralButton("Отключить", (dialog, which) -> {
@@ -557,7 +555,7 @@ public final class MainActivity extends Activity {
                     } catch (Exception error) {
                         new AlertDialog.Builder(this)
                                 .setTitle("Не удалось сохранить")
-                                .setMessage("Проверьте название приватного репозитория и токен. " +
+                                .setMessage("Проверьте название Language-learning и права токена. " +
                                         "Существующие слова не изменены.")
                                 .setPositiveButton("Закрыть", null).show();
                     }
