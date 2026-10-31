@@ -500,34 +500,49 @@ public final class MainActivity extends Activity {
         dialog.show();
     }
 
-    /** One tap uses the existing encrypted GitHub authorization for all three profiles. */
+    /** One tap imports public vocabularies or performs full bidirectional sync when authorized. */
     private void syncAllFamilyProfiles() {
-        if (!PrivateVocabularySync.isConfigured(this)) {
-            showVocabularySyncSettings(); // Initial authorization is unavoidable.
-            return;
-        }
         if (!manualVocabularySyncing.compareAndSet(false, true)) {
             Toast.makeText(this, "Синхронизация уже выполняется", Toast.LENGTH_SHORT).show();
             return;
         }
-        Toast.makeText(this, "Синхронизация: Папа, Мама, Дима", Toast.LENGTH_SHORT).show();
-        boolean started = PrivateVocabularySync.syncNow(this, success -> {
+        boolean twoWay = PrivateVocabularySync.isConfigured(this);
+        Toast.makeText(this, twoWay
+                ? "Синхронизация: Папа, Мама, Дима"
+                : "Загрузка словарей из GitHub: Папа, Мама, Дима", Toast.LENGTH_SHORT).show();
+        java.util.function.Consumer<Boolean> completed = success -> {
             manualVocabularySyncing.set(false);
             if (isFinishing() || isDestroyed()) return;
-            if (success) syncContent();
+            if (success) {
+                syncContent();
+                if ("cards".equals(screen) && (cardDialog == null || !cardDialog.isShowing()))
+                    render();
+            }
             new AlertDialog.Builder(this)
-                    .setTitle(success ? "Синхронизация завершена" : "Синхронизация не выполнена")
+                    .setTitle(success
+                            ? twoWay ? "Синхронизация завершена" : "Импорт завершён"
+                            : "Синхронизация не выполнена")
                     .setMessage(success
-                            ? "Папа, Мама и Дима: испанский и английский словари синхронизированы отдельно."
+                            ? twoWay
+                              ? "Папа, Мама, Дима: оба языка синхронизированы с GitHub."
+                              : PrivateVocabularySync.status(this)
+                                + "\n\nЧтобы изменения с телефона тоже сохранялись в GitHub, "
+                                + "необходимо один раз предоставить разрешение на запись."
                             : PrivateVocabularySync.status(this))
                     .setPositiveButton("Закрыть", null)
-                    .setNeutralButton(success ? null : "Настроить GitHub",
-                            success ? null : (dialog, which) -> showVocabularySyncSettings())
+                    .setNeutralButton(twoWay ? (success ? null : "Настроить GitHub")
+                            : "Подключить запись",
+                            twoWay && success ? null
+                            : (dialog, which) -> showVocabularySyncSettings())
                     .show();
-        });
-        if (!started) {
-            manualVocabularySyncing.set(false);
-            showVocabularySyncSettings();
+        };
+        if (twoWay) {
+            if (!PrivateVocabularySync.syncNow(this, completed)) {
+                manualVocabularySyncing.set(false);
+                showVocabularySyncSettings();
+            }
+        } else {
+            PrivateVocabularySync.importPublicNow(this, completed);
         }
     }
 
@@ -569,7 +584,7 @@ public final class MainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(box);
-        new AlertDialog.Builder(this)
+        AlertDialog connectionDialog = new AlertDialog.Builder(this)
                 .setTitle("Синхронизация словаря — Language-learning")
                 .setView(scroll)
                 .setNegativeButton("Отмена", null)
@@ -577,22 +592,29 @@ public final class MainActivity extends Activity {
                     PrivateVocabularySync.disable(this);
                     Toast.makeText(this, "Синхронизация словаря отключена", Toast.LENGTH_LONG).show();
                 })
-                .setPositiveButton("Подключить", (dialog, which) -> {
+                .setPositiveButton("Подключить", null)
+                .create();
+        connectionDialog.setOnShowListener(dialog ->
+                connectionDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+                    String authorization = token.getText().toString().trim();
+                    if (authorization.isEmpty()) {
+                        token.setError("Нужно разрешение GitHub на запись в Language-learning");
+                        token.requestFocus();
+                        return;
+                    }
                     try {
                         PrivateVocabularySync.configure(this,
-                                repo.getText().toString(), token.getText().toString());
-                        syncContent();
-                        Toast.makeText(this, "Сохранено. Синхронизация выполняется в фоне.",
+                                repo.getText().toString(), authorization);
+                        connectionDialog.dismiss();
+                        Toast.makeText(this, "Подключено. Выгружаю все словари...",
                                 Toast.LENGTH_LONG).show();
+                        syncAllFamilyProfiles();
                     } catch (Exception error) {
-                        new AlertDialog.Builder(this)
-                                .setTitle("Не удалось сохранить")
-                                .setMessage("Проверьте название Language-learning и права токена. " +
-                                        "Существующие слова не изменены.")
-                                .setPositiveButton("Закрыть", null).show();
+                        token.setError("Не удалось сохранить подключение GitHub");
+                        token.requestFocus();
                     }
-                })
-                .show();
+                }));
+        connectionDialog.show();
     }
 
     private void confirmResetDatabase(AlertDialog settingsDialog) {
