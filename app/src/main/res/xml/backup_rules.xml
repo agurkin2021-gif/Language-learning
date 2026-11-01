@@ -7,4 +7,6 @@
     <include domain="file" path="card-images-en-mama/" />
     <include domain="file" path="card-images-dima/" />
     <include domain="file" path="card-images-en-dima/" />
+    <include domain="file" path="card-images-pimen/" />
+    <include domain="file" path="card-images-en-pimen/" />
 </full-backup-content>

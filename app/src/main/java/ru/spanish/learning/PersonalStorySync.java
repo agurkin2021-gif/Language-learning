@@ -132,7 +132,7 @@ public final class PersonalStorySync {
                 String itemProfile = item.optString("profile");
                 String itemLanguage = item.optString("language");
                 if (!(StudyProfile.PAPA.equals(itemProfile) || StudyProfile.MAMA.equals(itemProfile)
-                        || StudyProfile.DIMA.equals(itemProfile))
+                        || StudyProfile.DIMA.equals(itemProfile) || StudyProfile.PIMEN.equals(itemProfile))
                         || !("es".equals(itemLanguage) || "en".equals(itemLanguage)))
                     throw new IllegalArgumentException("profile/language");
                 if (!store.profileId().equals(itemProfile) || !language.equals(itemLanguage))

@@ -41,7 +41,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 /**
- * Bidirectional sync of all three family profiles (Spanish and English) with
+ * Bidirectional sync of all four family profiles (Spanish and English) with
  * the EXISTING public Language-learning repository, branch live-content.
  * Phone edits and remote revisions converge with tombstones and SHA retries.
  *
@@ -158,7 +158,7 @@ public final class PrivateVocabularySync {
     }
 
     /** Explicit user action: synchronizes all profiles and both languages using saved access.
-     * Reports completion on the main thread only after all six remote read/write cycles succeed.
+     * Reports completion on the main thread only after all eight remote read/write cycles succeed.
      */
     public static synchronized boolean syncNow(Context context, Consumer<Boolean> completed) {
         if (!isConfigured(context)) return false;
@@ -271,7 +271,7 @@ public final class PrivateVocabularySync {
             JSONObject repository = request("GET", API + PROJECT_REPOSITORY, config.token(), null, false);
             if (!PROJECT_REPOSITORY.equalsIgnoreCase(repository.optString("full_name")))
                 throw new IllegalArgumentException("GitHub repository mismatch");
-            // All three profiles are always synchronized, irrespective of the selected UI tab.
+            // All four profiles are always synchronized, irrespective of the selected UI tab.
             for (String profile : StudyProfile.IDS) {
                 for (String language : new String[]{"es", "en"}) {
                     if (generation != GENERATION.get()) return false;

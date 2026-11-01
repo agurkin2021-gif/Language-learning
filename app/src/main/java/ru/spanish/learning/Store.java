@@ -61,13 +61,13 @@ public final class Store extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE app_state(key TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)");
         createVocabularySyncTable(db);
         if (english || !StudyProfile.isPapa(profileId)) {
-            // Mother and Dima start completely empty in both languages.
+            // New non-Papa profiles start without remote-only cards in both languages.
             // Papa's existing SQLite databases and seed are never migrated or overwritten.
             ContentValues state = new ContentValues();
             state.put("key", "shared_content_disabled");
             state.put("value", 1);
             db.insertOrThrow("app_state", null, state);
-            // A0-A1 starter words are seeded ONLY for a new Mama/Dima Spanish DB.
+            // A0-A1 starter words are seeded ONLY for a new non-Papa Spanish DB.
             // Their English DBs remain empty; Papa keeps the old exact data.
             if (!english) {
                 BeginnerCards.seed(db);
@@ -123,7 +123,7 @@ public final class Store extends SQLiteOpenHelper {
             setAppFlag(db, "beginner_700_seeded");
         }
         if (oldVersion < 9 && !english && !StudyProfile.isPapa(profileId)) {
-            // Install the family story on existing Mama/Dima profiles once,
+            // Install the family story on existing non-Papa profiles once,
             // without overwriting user stories or restoring a deleted story.
             FamilyStory.seed(db);
         }

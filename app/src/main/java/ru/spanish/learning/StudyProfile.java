@@ -7,13 +7,14 @@ public final class StudyProfile {
     public static final String PAPA = "papa";
     public static final String MAMA = "mama";
     public static final String DIMA = "dima";
-    public static final String[] IDS = {PAPA, MAMA, DIMA};
-    public static final String[] LABELS = {"Папа", "Мама", "Дима"};
+    public static final String PIMEN = "pimen";
+    public static final String[] IDS = {PAPA, MAMA, DIMA, PIMEN};
+    public static final String[] LABELS = {"Папа", "Мама", "Дима", "Пимен"};
 
     private StudyProfile() {}
 
     public static String normalized(String value) {
-        return MAMA.equals(value) ? MAMA : DIMA.equals(value) ? DIMA : PAPA;
+        return MAMA.equals(value) ? MAMA : DIMA.equals(value) ? DIMA : PIMEN.equals(value) ? PIMEN : PAPA;
     }
 
     public static String active(Context context) {
@@ -27,6 +28,7 @@ public final class StudyProfile {
         return switch (normalized(id)) {
             case MAMA -> "Мама";
             case DIMA -> "Дима";
+            case PIMEN -> "Пимен";
             default -> "Папа";
         };
     }

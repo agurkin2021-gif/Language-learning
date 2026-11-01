@@ -519,8 +519,8 @@ public final class MainActivity extends Activity {
         }
         boolean twoWay = PrivateVocabularySync.isConfigured(this);
         Toast.makeText(this, twoWay
-                ? "Синхронизация: Папа, Мама, Дима"
-                : "Загрузка словарей из GitHub: Папа, Мама, Дима", Toast.LENGTH_SHORT).show();
+                ? "Синхронизация: Папа, Мама, Дима, Пимен"
+                : "Загрузка словарей из GitHub: Папа, Мама, Дима, Пимен", Toast.LENGTH_SHORT).show();
         java.util.function.Consumer<Boolean> completed = success -> {
             manualVocabularySyncing.set(false);
             if (isFinishing() || isDestroyed()) return;
@@ -535,7 +535,7 @@ public final class MainActivity extends Activity {
                             : "Синхронизация не выполнена")
                     .setMessage(success
                             ? twoWay
-                              ? "Папа, Мама, Дима: оба языка синхронизированы с GitHub."
+                              ? "Папа, Мама, Дима, Пимен: оба языка синхронизированы с GitHub."
                               : PrivateVocabularySync.status(this)
                                 + "\n\nЧтобы изменения с телефона тоже сохранялись в GitHub, "
                                 + "необходимо один раз предоставить разрешение на запись."
@@ -563,7 +563,7 @@ public final class MainActivity extends Activity {
         box.setPadding(dp(22), dp(12), dp(22), dp(6));
         TextView explanation = new TextView(this);
         explanation.setText("Единый репозиторий Language-learning: отдельные полные словари " +
-                "Папа / Мама / Дима, слова и устойчивые выражения, освоенные карточки. " +
+                "Папа / Мама / Дима / Пимен, слова и устойчивые выражения, освоенные карточки. " +
                 "Синхронизация в ОБЕ стороны выполняется после изменения слов и " +
                 "периодически при наличии сети. Удалённые карточки не восстанавливаются. " +
                 "Внешний ChatGPT должен проверять словарь профиля перед добавлением новых " +
