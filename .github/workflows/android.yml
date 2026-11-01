@@ -1,0 +1,460 @@
+name: Android APK
+run-name: "Android · сборка ${{ github.run_number }} · ${{ github.head_ref || github.ref_name }}"
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  BUILD_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build and verify numbered APK
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+      - name: Verify model and native engine are removed from APK
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          apk = Path("app/build/outputs/apk/release/app-release-unsigned.apk")
+          with ZipFile(apk) as archive:
+              forbidden = [
+                  name for name in archive.namelist()
+                  if any(term in name.lower() for term in (
+                      "embedded-daniela", "sherpa-onnx", "espeak-ng-data",
+                      "libonnxruntime", "daniela.onnx",
+                  ))
+              ]
+          assert not forbidden, f"Obsolete voice assets present: {forbidden[:10]}"
+          assert apk.stat().st_size < 32 * 1024 * 1024, (
+              f"Lite APK exceeds 32 MiB: {apk.stat().st_size}"
+          )
+          print(f"Compact APK: {apk.stat().st_size / 1024 / 1024:.2f} MiB; no bundled voice model")
+          PY
+      - name: Verify installable APK signature and record digest
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        id: apk
+        with:
+          name: SpanishLearning-test-build-${{ github.run_number }}
+          overwrite: true
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/SHA256SUMS.txt
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpanishLearning-unsigned-build-${{ github.run_number }}
+          overwrite: true
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpanishLearningUpdater-unsigned-build-${{ github.run_number }}
+          overwrite: true
+          path: updater/build/outputs/apk/release/updater-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Visible build summary
+        if: always()
+        env:
+          APK_URL: ${{ steps.apk.outputs.artifact-url }}
+          BUILD_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Изучение испанского · сборка $GITHUB_RUN_NUMBER"
+            echo "Версия: 0.1.$GITHUB_RUN_NUMBER-test. Результат сборки: $BUILD_RESULT."
+            echo ""
+            echo "Код: [$BUILD_REVISION](https://github.com/$GITHUB_REPOSITORY/commit/$BUILD_REVISION)"
+            echo ""
+            if [ -n "$APK_URL" ]; then
+              echo "[Скачать тестовый APK в ZIP]($APK_URL)"
+            else
+              echo "APK не создан. Откройте неуспешный шаг выше."
+            fi
+            echo ""
+            echo "Второе задание device-test проверяет запуск и сохраняет снимки экранов в build-preview."
+            echo ""
+            echo "Этот debug APK предназначен для проверки. Подписанный APK для телефона публикует отдельное задание phone-publish после всех успешных проверок."
+            echo "Самообновление отдельно проверяется на Android 14. На телефоне требуется версия с обновлятелем и разовое разрешение Android. Генерация сказок помощником пока не подключена."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-reports
+          overwrite: true
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.html
+  device-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          disable-animations: true
+          script: bash scripts/device_test_with_logcat.sh
+      - uses: actions/upload-artifact@v4
+        id: preview
+        if: always()
+        with:
+          name: build-preview-${{ github.run_number }}
+          overwrite: true
+          path: build-preview/
+          retention-days: 30
+      - name: Preview summary
+        if: always()
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.artifact-url }}
+          TEST_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Проверка на эмуляторе · $TEST_RESULT"
+            if [ -n "$PREVIEW_URL" ]; then
+              echo "[Снимки экранов приложения (ZIP)]($PREVIEW_URL)"
+            else
+              echo "Снимки не созданы: проверьте результат тестов."
+            fi
+            echo "Снимки Android 10 показывают интерфейс этой сборки. Реальный голос на телефоне здесь не проверяется."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-test-reports
+          overwrite: true
+          path: |
+            app/build/reports/androidTests/
+            android-test-logcat.txt
+  self-update-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build two versions with one test signing key
+        run: |
+          mkdir -p self-update-fixtures
+          ./gradlew --no-daemon assembleDebug assembleDebugAndroidTest -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk self-update-fixtures/base.apk
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk self-update-fixtures/tests.apk
+          ./gradlew --no-daemon assembleDebug -PbuildNumber="$((GITHUB_RUN_NUMBER + 1))" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk self-update-fixtures/next.apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash scripts/test_self_update.sh self-update-fixtures/base.apk self-update-fixtures/next.apk self-update-fixtures/tests.apk self-update-reports
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: self-update-reports-${{ github.run_number }}
+          overwrite: true
+          path: self-update-reports/
+          retention-days: 30
+      - name: Self-update result summary
+        if: always()
+        env:
+          TEST_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Самообновление Android 14 · $TEST_RESULT"
+            echo "Проверяется установка следующей версии самим приложением без подтверждения каждой установки, после разового разрешения Android."
+            echo "Успех требует нового versionCode, callback STATUS_SUCCESS и сохранения SQLite/настроек в новом процессе."
+            echo "Это проверка эмулятора Android 14; поведение конкретного телефона проверяется отдельно."
+          } >> "$GITHUB_STEP_SUMMARY"
+  updater-installer-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build updater handoff fixtures
+        run: |
+          mkdir -p updater-test-fixtures
+          base=$((GITHUB_RUN_NUMBER + 10000))
+          ./gradlew --no-daemon :app:assembleDebug -PbuildNumber="$base" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk updater-test-fixtures/base.apk
+          ./gradlew --no-daemon :app:assembleDebug -PbuildNumber="$((base + 1))" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk updater-test-fixtures/first.apk
+          ./gradlew --no-daemon :app:assembleDebug -PbuildNumber="$((base + 2))" -PsourceRevision="$BUILD_REVISION" -PbuildRunId="$GITHUB_RUN_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk updater-test-fixtures/second.apk
+          ./gradlew --no-daemon :updater:assembleDebug -PbuildNumber="$GITHUB_RUN_NUMBER" -PsourceRevision="$BUILD_REVISION"
+          cp updater/build/outputs/apk/debug/updater-debug.apk updater-test-fixtures/updater.apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: timeout 300s bash scripts/test_updater_installer_record.sh updater-test-fixtures/base.apk updater-test-fixtures/first.apk updater-test-fixtures/second.apk updater-test-fixtures/updater.apk updater-installer-test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: updater-installer-test-${{ github.run_number }}
+          path: updater-installer-test/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Updater handoff summary
+        if: always()
+        env:
+          TEST_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "## Отдельный Updater · Android 14 · $TEST_RESULT"
+            echo "Проверка: первая смена установщика подтверждается один раз; после неё ru.spanish.learning.updater становится installer of record."
+            echo "Затем следующий APK ставится тем же Updater без второго системного подтверждения."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  phone-publish:
+    needs: [build, device-test, self-update-test, updater-installer-test]
+    if: >-
+      needs.build.result == 'success' && needs.device-test.result == 'success' && needs.self-update-test.result == 'success' && needs.updater-installer-test.result == 'success' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.head.ref == 'codex/android-v1'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: phone-publish-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Check permanent signing secret
+        id: signing
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+        run: |
+          if [ -z "$ANDROID_SIGNING_CONFIG" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "## APK для телефона: ожидает добавления секрета" >> "$GITHUB_STEP_SUMMARY"
+            echo "Добавьте ANDROID_SIGNING_CONFIG в Actions secrets. Новый ключ и APK для телефона не создаются; проверки исходного кода выполнены отдельно." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: steps.signing.outputs.available == 'true'
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install signing tools
+        if: steps.signing.outputs.available == 'true'
+        run: sdkmanager 'build-tools;35.0.0'
+      - uses: actions/download-artifact@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          name: SpanishLearning-unsigned-build-${{ github.run_number }}
+          path: phone-unsigned
+      - name: Snapshot previous published phone build
+        id: previous
+        if: steps.signing.outputs.available == 'true'
+        env:
+          CURRENT_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          mkdir -p previous-phone-build
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.error, urllib.request
+          base = "https://raw.githubusercontent.com/" + os.environ["GITHUB_REPOSITORY"] + "/refs/heads/phone-builds/"
+          out = pathlib.Path("previous-phone-build")
+          try:
+              for name in ("SpanishLearning.apk", "build-info.json"):
+                  with urllib.request.urlopen(base + name, timeout=30) as response:
+                      (out / name).write_bytes(response.read())
+          except urllib.error.HTTPError as error:
+              if error.code == 404:
+                  with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                      output.write("available=false\n")
+                  raise SystemExit(0)
+              raise
+          metadata = json.loads((out / "build-info.json").read_text(encoding="utf-8"))
+          current = int(os.environ["CURRENT_RUN_NUMBER"])
+          if metadata.get("application_id") != "ru.spanish.learning":
+              raise SystemExit("Previous phone build has unexpected application_id")
+          if metadata.get("repository") != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("Previous phone build belongs to another repository")
+          if not isinstance(metadata.get("version_code"), int) or metadata["version_code"] >= 100 + current:
+              raise SystemExit("Previous phone build is not older than candidate")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("available=true\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: steps.previous.outputs.available == 'true'
+        with:
+          name: SpanishLearning-previous-phone-build-${{ github.run_number }}
+          path: previous-phone-build/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Sign, verify and publish APK for phone
+        id: publish
+        if: steps.signing.outputs.available == 'true'
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/phone_publish.py --unsigned-apk phone-unsigned/app-release-unsigned.apk --output-dir phone-package
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.publish.outputs.artifact_ready == 'true'
+        with:
+          name: SpanishLearning-phone-build-${{ github.run_number }}-attempt-${{ github.run_attempt }}
+          path: |
+            phone-package/SpanishLearning.apk
+            phone-package/SHA256SUMS.txt
+            phone-package/build-info.json
+          if-no-files-found: error
+          retention-days: 30
+
+
+  updater-publish:
+    needs: [build, updater-installer-test]
+    if: >-
+      needs.build.result == 'success' && needs.updater-installer-test.result == 'success' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.head.ref == 'codex/android-v1'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: updater-publish-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Check permanent signing secret
+        id: signing
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+        run: |
+          if [ -z "$ANDROID_SIGNING_CONFIG" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Updater ждёт ANDROID_SIGNING_CONFIG." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: steps.signing.outputs.available == 'true'
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install signing tools
+        if: steps.signing.outputs.available == 'true'
+        run: sdkmanager 'build-tools;35.0.0'
+      - uses: actions/download-artifact@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          name: SpanishLearningUpdater-unsigned-build-${{ github.run_number }}
+          path: updater-unsigned
+      - name: Sign, verify and publish Updater APK
+        id: publish
+        if: steps.signing.outputs.available == 'true'
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/updater_publish.py --unsigned-apk updater-unsigned/updater-release-unsigned.apk --output-dir updater-package
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.publish.outputs.artifact_ready == 'true'
+        with:
+          name: SpanishLearningUpdater-phone-build-${{ github.run_number }}
+          path: |
+            updater-package/SpanishLearningUpdater.apk
+            updater-package/SHA256SUMS.txt
+            updater-package/build-info.json
+          if-no-files-found: error
+          retention-days: 30
