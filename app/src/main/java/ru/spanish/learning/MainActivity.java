@@ -121,6 +121,7 @@ public final class MainActivity extends Activity {
         spanishStore = profileStore(activeProfile, false);
         if ("en".equals(studyLanguage)) englishStore = profileStore(activeProfile, true);
         store = "en".equals(studyLanguage) ? englishStore : spanishStore;
+        copyPapaPhrasesToPimenOnUpgrade();
         contentSync = new RemoteContentSync();
         personalStorySync = new PersonalStorySync();
         assistant = new ChatGptAssistant(this);
@@ -150,6 +151,37 @@ public final class MainActivity extends Activity {
     }
     private String prefKey(String key) {
         return StudyProfile.preferenceKey(activeProfile, studyLanguage, key);
+    }
+
+    private int copyPapaPhrasesToPimen() {
+        int copied = 0;
+        for (boolean english : new boolean[]{false, true}) {
+            Store source = profileStore(StudyProfile.PAPA, english);
+            Store target = profileStore(StudyProfile.PIMEN, english);
+            copied += target.copyPhrasesFrom(source);
+        }
+        return copied;
+    }
+
+    /** One-time migration on the next APK launch, including Papa's mastered phrases. */
+    private void copyPapaPhrasesToPimenOnUpgrade() {
+        final String key = "pimen_papa_phrases_copied_v1";
+        if (prefs.getBoolean(key, false)) return;
+        // A deliberate local reset must not be undone by the upgrade.
+        if (profileStore(StudyProfile.PIMEN, false).personalStoriesDisabled()
+                || profileStore(StudyProfile.PIMEN, true).personalStoriesDisabled()) return;
+        try {
+            int count = copyPapaPhrasesToPimen();
+            int available = 0;
+            for (boolean english : new boolean[]{false, true}) {
+                for (Store.Card card : profileStore(StudyProfile.PAPA, english).vocabulary())
+                    if (card.kind() == 1) available++;
+            }
+            // If Papa has no phrases yet, retry after they arrive on this phone.
+            if (available > 0) prefs.edit().putBoolean(key, true).apply();
+        } catch (RuntimeException ignored) {
+            // Never block launch. The Settings copy button permits a retry.
+        }
     }
 
     /** The only profile selector is inside Settings; no extra top-bar control. */
@@ -478,6 +510,22 @@ public final class MainActivity extends Activity {
 
         Button profileButton = rowButton("Профиль: " + StudyProfile.name(activeProfile), null);
         box.addView(profileButton, spaced(10));
+        box.addView(rowButton("Скопировать все устойчивые выражения Папы → Пимен", () -> {
+            try {
+                int copied = copyPapaPhrasesToPimen();
+                if ("pimen".equals(activeProfile) && copied > 0) render();
+                new AlertDialog.Builder(this)
+                        .setTitle("Устойчивые выражения: Папа → Пимен")
+                        .setMessage("Добавлено: " + copied + ".\\n" +
+                                "Уже существующие и удалённые карточки не восстановлены. " +
+                                "Прогресс Папы сохранён. Копируются испанские и английские выражения " +
+                                "из словарей на этом телефоне.")
+                        .setPositiveButton("Закрыть", null).show();
+            } catch (Exception error) {
+                Toast.makeText(this, "Не удалось скопировать выражения",
+                        Toast.LENGTH_LONG).show();
+            }
+        }), spaced(10));
         box.addView(rowButton("Синхронизация", this::syncAllFamilyProfiles), spaced(10));
         box.addView(rowButton("Google — сохранить озвучку всех рассказов",
                 this::startGoogleStoryRecording), spaced(10));

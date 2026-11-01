@@ -412,6 +412,55 @@ public final class Store extends SQLiteOpenHelper {
         return result;
     }
 
+    /**
+     * Copy the full local expression vocabulary from another profile.
+     * Includes mastered source phrases, but creates fresh unmastered target cards.
+     * Never replaces existing target cards or resurrects deletion tombstones.
+     * The two stores must belong to different profile databases and one language.
+     */
+    int copyPhrasesFrom(Store source) {
+        if (source == null || source == this || this.english != source.english
+                || this.profileId.equals(source.profileId)
+                || !StudyProfile.PIMEN.equals(this.profileId)
+                || !StudyProfile.PAPA.equals(source.profileId))
+            throw new IllegalArgumentException("Only Papa to Pimen, same language");
+        java.util.Set<String> known = new java.util.HashSet<>();
+        // Includes hidden mastered cards AND explicit deletions from local sync metadata.
+        for (SyncEntry entry : vocabularyForSync())
+            known.add(syncKey(entry.kind(), entry.spanish()));
+        java.util.List<Card> original = source.vocabulary();
+        SQLiteDatabase db = getWritableDatabase();
+        int added = 0;
+        db.beginTransaction();
+        try {
+            for (Card card : original) {
+                if (card.kind() != 1 || card.spanish() == null || card.spanish().isBlank()
+                        || card.meaning() == null || card.meaning().isBlank())
+                    continue;
+                String key = syncKey(1, card.spanish());
+                if (known.contains(key)) continue;
+                ContentValues values = new ContentValues();
+                values.put("spanish", card.spanish());
+                values.put("meaning", card.meaning());
+                values.put("kind", 1);
+                values.put("category", 0);
+                values.put("mastered", 0);
+                values.put("last_result", 0);
+                values.put("review_count", 0);
+                values.put("next_due", 0);
+                db.insertOrThrow("cards", null, values);
+                trackLocal(db, card.spanish(), 1, false);
+                known.add(key);
+                added++;
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        if (added > 0) changed();
+        return added;
+    }
+
     public void addCard(String spanish, String meaning, int kind) {
         addCard(spanish, meaning, kind, kind == 0 ? 1 : 0);
     }
