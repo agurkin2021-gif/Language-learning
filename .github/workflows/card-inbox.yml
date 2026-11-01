@@ -96,7 +96,8 @@ jobs:
                 case "$dest" in
                   content/papa/cards-es.json|content/papa/cards-en.json|\
                   content/mama/cards-es.json|content/mama/cards-en.json|\
-                  content/dima/cards-es.json|content/dima/cards-en.json)
+                  content/dima/cards-es.json|content/dima/cards-en.json|\
+                  content/pimen/cards-es.json|content/pimen/cards-en.json)
                     git add -- "$dest" ;;
                   *) echo "Unsafe destination: $dest" >&2; exit 1 ;;
                 esac
@@ -191,7 +192,7 @@ jobs:
                   profiles = [profiles] if isinstance(profiles, str) else profiles
                   language = body.get('language')
                   if (not isinstance(profiles, list) or not profiles or
-                      any(p not in ('papa', 'mama', 'dima') for p in profiles) or
+                      any(p not in ('papa', 'mama', 'dima', 'pimen') for p in profiles) or
                       language not in ('es', 'en')):
                       continue
                   if all(len(json.loads(

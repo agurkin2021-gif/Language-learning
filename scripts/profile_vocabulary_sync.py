@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Two-way, fail-closed vocabulary sync for one of the three profiles.
+"""Two-way, fail-closed vocabulary sync for one of the four profiles.
 
 Phone <-> GitHub sync runs inside Android; these commands let another client
 pull/push the same canonical files without introducing a second repository.
@@ -23,7 +23,7 @@ import urllib.request
 
 REPO = "agurkin2021-gif/Language-learning"
 BRANCH = "live-content"
-PROFILES = ("papa", "mama", "dima")
+PROFILES = ("papa", "mama", "dima", "pimen")
 
 
 def key(card):
@@ -166,4 +166,4 @@ def run(profile,argv=None):
 
 
 if __name__=="__main__":
-    raise SystemExit("Use sync_papa.py, sync_mama.py or sync_dima.py")
+    raise SystemExit("Use sync_papa.py, sync_mama.py, sync_dima.py or sync_pimen.py")
