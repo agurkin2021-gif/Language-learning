@@ -65,6 +65,8 @@ public final class MainActivity extends Activity {
     private Runnable pendingVoiceRestart;
     private static final int MIC_PERMISSION = 7301;
     private static final int STORY_RECORD_PERMISSION = 7302;
+    private GoogleStoryBatch googleBatch;
+    private AlertDialog googleBatchDialog;
     private HumanStoryAudio humanRecording;
     private AlertDialog humanRecordDialog;
     private TextView humanRecordText, humanRecordStatus;
@@ -477,6 +479,8 @@ public final class MainActivity extends Activity {
         Button profileButton = rowButton("Профиль: " + StudyProfile.name(activeProfile), null);
         box.addView(profileButton, spaced(10));
         box.addView(rowButton("Синхронизация", this::syncAllFamilyProfiles), spaced(10));
+        box.addView(rowButton("Google — сохранить озвучку всех рассказов",
+                this::startGoogleStoryRecording), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
         box.addView(rowButton("Версия / сборка", this::showBuild), spaced(10));
 
@@ -655,6 +659,7 @@ public final class MainActivity extends Activity {
             store.resetLearningData();
             assistant.clearHistory(store);
             HumanStoryAudio.deleteLanguage(this, activeProfile, studyLanguage);
+            GoogleStoryAudio.deleteLanguage(this, activeProfile, studyLanguage);
         } catch (RuntimeException e) {
             new AlertDialog.Builder(this)
                     .setTitle("База не сброшена")
@@ -1564,6 +1569,8 @@ public final class MainActivity extends Activity {
     private void showCardTools() {
         Button chat = button("ChatGPT — голос / текст", this::showAssistant);
         ui.style(chat, UiStyle.Tone.PRIMARY);
+        Button googleRecord = button("Google — озвучить все рассказы", this::startGoogleStoryRecording);
+        ui.style(googleRecord, UiStyle.Tone.OUTLINE);
         LinearLayout addActions = new LinearLayout(this);
         addActions.setOrientation(LinearLayout.HORIZONTAL);
         addActions.setBaselineAligned(false); // Two-line label must not shift the second button vertically.
@@ -1798,6 +1805,7 @@ public final class MainActivity extends Activity {
                         Toast.makeText(this, "Рассказ уже удалён", Toast.LENGTH_SHORT).show();
                     } else {
                         new HumanStoryAudio(this, activeProfile, studyLanguage, story.id(), story.body()).deleteAll();
+                        new GoogleStoryAudio(this, activeProfile, studyLanguage, story.id(), story.body()).deleteAll();
                     }
                     render();
                 })
@@ -1811,7 +1819,12 @@ public final class MainActivity extends Activity {
         screen = "player";
         HumanStoryAudio recorded = new HumanStoryAudio(this, activeProfile, studyLanguage,
                 story.id(), story.body());
-        player.attachHumanStory(recorded, prefs.getBoolean(prefKey("humanVoice"), false));
+        GoogleStoryAudio google = new GoogleStoryAudio(this, activeProfile, studyLanguage,
+                story.id(), story.body());
+        String source = prefs.getString(prefKey("narrationSource"),
+                prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
+        player.attachHumanStory(recorded, "human".equals(source));
+        player.attachGoogleStory(google, "google".equals(source));
         player.load(story.body(), story.position());
         render();
     }
@@ -1855,18 +1868,10 @@ public final class MainActivity extends Activity {
         playbackStatus.setPadding(dp(14), dp(10), dp(14), dp(10));
         playbackStatus.setLayoutParams(spaced(12));
 
-        humanVoiceButton = button(player.humanSelected()
-                ? "Голос: живой человек" : "Голос: ИИ", () -> {
-            if (!player.humanAvailable()) {
-                Toast.makeText(this, "Сначала запишите все предложения рассказа",
-                        Toast.LENGTH_LONG).show();
-                return;
-            }
-            player.useHumanVoice(!player.humanSelected());
-            prefs.edit().putBoolean(prefKey("humanVoice"), player.humanSelected()).apply();
-            updatePlayer();
-        });
+        humanVoiceButton = button("Источник: " + narrationLabel(), this::chooseNarrationSource);
         ui.style(humanVoiceButton, UiStyle.Tone.OUTLINE);
+        Button googleAudio = button("Google — озвучить все рассказы", this::startGoogleStoryRecording);
+        ui.style(googleAudio, UiStyle.Tone.OUTLINE);
         Button recordHuman = button("Записать живой голос", this::openHumanRecorder);
         ui.style(recordHuman, UiStyle.Tone.OUTLINE);
 
@@ -1888,6 +1893,124 @@ public final class MainActivity extends Activity {
         Button back = button("← Библиотека", () -> navigate("stories"));
         ui.style(back, UiStyle.Tone.OUTLINE);
     }
+    private String narrationLabel() {
+        return player.googleSelected() ? "Google (сохранённая запись)"
+                : player.humanSelected() ? "Живой голос" : "Системный голос";
+    }
+
+    private void chooseNarrationSource() {
+        new AlertDialog.Builder(this)
+                .setTitle("Источник озвучки")
+                .setItems(new String[]{"Системный голос", "Google (сохранённая запись)",
+                        "Живой голос"}, (dialog, option) -> {
+                    if (option == 1 && !player.googleAvailable()) {
+                        Toast.makeText(this, "Сначала сохраните Google-озвучку этого рассказа",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if (option == 2 && !player.humanAvailable()) {
+                        Toast.makeText(this, "Сначала запишите все предложения живым голосом",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    String source = option == 1 ? "google" : option == 2 ? "human" : "tts";
+                    if (option == 1) player.useGoogleVoice(true);
+                    else if (option == 2) player.useHumanVoice(true);
+                    else {
+                        player.useHumanVoice(false);
+                        player.useGoogleVoice(false);
+                    }
+                    prefs.edit().putString(prefKey("narrationSource"), source)
+                            .putBoolean(prefKey("humanVoice"), option == 2).apply();
+                    updatePlayer();
+                }).setNegativeButton("Отмена", null).show();
+    }
+
+    /**
+     * Google Android TextToSpeech, not the private Google Translate web voice.
+     * Generate all phone-local stories per sentence without ChatGPT calls.
+     */
+    private void startGoogleStoryRecording() {
+        if (googleBatch != null) {
+            Toast.makeText(this, "Google уже озвучивает рассказы", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        player.pause();
+        final TextView status = new TextView(this);
+        status.setText("Проверка голосового движка Google…");
+        status.setTextColor(primaryText());
+        status.setTextSize(16);
+        status.setPadding(dp(22), dp(20), dp(22), dp(20));
+        googleBatchDialog = new AlertDialog.Builder(this)
+                .setTitle("Google — запись всех рассказов")
+                .setMessage(null)
+                .setView(status)
+                .setNegativeButton("Остановить", (d, w) -> {
+                    if (googleBatch != null) googleBatch.cancel();
+                    googleBatch = null;
+                    googleBatchDialog = null;
+                })
+                .setCancelable(false)
+                .create();
+        try {
+            googleBatch = new GoogleStoryBatch(this, new GoogleStoryBatch.Listener() {
+                @Override public void progress(int completed, int total, String title) {
+                    if (googleBatchDialog != null && googleBatchDialog.isShowing()) {
+                        status.setText("Предложения: " + completed + " / " + total +
+                                (title.isEmpty() ? "" : "\\n" + title));
+                    }
+                }
+                @Override public void finished(int total) {
+                    googleBatch = null;
+                    if (googleBatchDialog != null) googleBatchDialog.dismiss();
+                    googleBatchDialog = null;
+                    if (isFinishing() || isDestroyed()) return;
+                    if ("player".equals(screen)) {
+                        for (Store.Story story : store.stories()) {
+                            if (story.id() != storyId) continue;
+                            GoogleStoryAudio archived = new GoogleStoryAudio(MainActivity.this,
+                                    activeProfile, studyLanguage, story.id(), story.body());
+                            if (archived.complete()) {
+                                player.attachGoogleStory(archived, true);
+                                prefs.edit().putString(prefKey("narrationSource"), "google")
+                                        .putBoolean(prefKey("humanVoice"), false).apply();
+                            }
+                            break;
+                        }
+                    }
+                    render();
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Google: озвучивание завершено")
+                            .setMessage("Сохранено или ранее уже было записано " + total +
+                                    " предложений во всех профилях на этом телефоне.")
+                            .setPositiveButton("Закрыть", null).show();
+                }
+                @Override public void failed(String reason) {
+                    googleBatch = null;
+                    if (googleBatchDialog != null) googleBatchDialog.dismiss();
+                    googleBatchDialog = null;
+                    if (isFinishing() || isDestroyed()) return;
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Google: озвучивание не завершено")
+                            .setMessage(reason + "\\n\\nУже готовые предложения сохранены. " +
+                                    "Повторный запуск продолжит с незаписанных.")
+                            .setPositiveButton("Закрыть", null).show();
+                }
+            });
+            googleBatchDialog.show();
+            googleBatch.start();
+        } catch (RuntimeException error) {
+            if (googleBatch != null) googleBatch.cancel();
+            googleBatch = null;
+            if (googleBatchDialog != null) googleBatchDialog.dismiss();
+            googleBatchDialog = null;
+            new AlertDialog.Builder(this)
+                    .setTitle("Google: ошибка подготовки")
+                    .setMessage("Не удалось получить список локальных рассказов.")
+                    .setPositiveButton("Закрыть", null).show();
+        }
+    }
+
     /** The recorder works locally and does not use ChatGPT, tokens or network requests. */
     private void openHumanRecorder() {
         if (humanRecordDialog != null && humanRecordDialog.isShowing()) return;
@@ -1929,7 +2052,8 @@ public final class MainActivity extends Activity {
                 humanRecording.deleteSentence(humanRecordIndex);
                 if (player.humanSelected()) {
                     player.useHumanVoice(false);
-                    prefs.edit().putBoolean(prefKey("humanVoice"), false).apply();
+                    prefs.edit().putString(prefKey("narrationSource"), "tts")
+                            .putBoolean(prefKey("humanVoice"), false).apply();
                 }
                 refreshHumanRecorder();
             } catch (Exception error) {
@@ -1951,7 +2075,8 @@ public final class MainActivity extends Activity {
             if (humanRecording == session) {
                 if (session.complete()) {
                     player.useHumanVoice(true);
-                    prefs.edit().putBoolean(prefKey("humanVoice"), true).apply();
+                    prefs.edit().putString(prefKey("narrationSource"), "human")
+                            .putBoolean(prefKey("humanVoice"), true).apply();
                 } else if (player.humanSelected()) {
                     player.useHumanVoice(false);
                 }
@@ -2259,9 +2384,8 @@ public final class MainActivity extends Activity {
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
         toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
-        if (humanVoiceButton != null) humanVoiceButton.setText(
-                player.humanSelected() ? "Голос: живой человек"
-                        : player.humanAvailable() ? "Голос: ИИ (есть живая запись)" : "Голос: ИИ");
+        if (humanVoiceButton != null)
+            humanVoiceButton.setText("Источник: " + narrationLabel());
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
     }
@@ -2306,6 +2430,7 @@ public final class MainActivity extends Activity {
         if (contentSync != null) contentSync.close();
         if (personalStorySync != null) personalStorySync.close();
         if (audioExporter != null) { audioExporter.cancel(); audioExporter = null; }
+        if (googleBatch != null) { googleBatch.cancel(); googleBatch = null; }
         if (humanRecording != null && humanRecording.isRecording()) {
             try { humanRecording.stop(false); } catch (Exception ignored) {}
         }

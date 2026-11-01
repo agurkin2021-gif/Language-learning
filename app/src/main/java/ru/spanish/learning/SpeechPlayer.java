@@ -28,6 +28,8 @@ public final class SpeechPlayer {
     private final SharedPreferences voicePrefs;
     private List<String> sentences = new ArrayList<>();
     private HumanStoryAudio humanAudio;
+    private GoogleStoryAudio googleAudio;
+    private boolean googleSelected;
     private boolean humanSelected;
     private MediaPlayer humanPlayer;
     private int humanResumeMs;
@@ -235,18 +237,43 @@ public final class SpeechPlayer {
         pause();
         humanAudio = recordings;
         humanSelected = preferHuman && recordings != null && recordings.complete();
+        if (humanSelected) googleSelected = false;
         humanResumeMs = 0;
         humanResumeIndex = -1;
         listener.changed();
     }
 
+    public void attachGoogleStory(GoogleStoryAudio recordings, boolean preferGoogle) {
+        pause();
+        googleAudio = recordings;
+        googleSelected = preferGoogle && recordings != null && recordings.complete();
+        if (googleSelected) humanSelected = false;
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
+        listener.changed();
+    }
+
+    public boolean googleAvailable() { return googleAudio != null && googleAudio.complete(); }
+    public boolean googleSelected() { return googleSelected && googleAvailable(); }
+
+    public void useGoogleVoice(boolean enabled) {
+        pause();
+        googleSelected = enabled && googleAvailable();
+        if (googleSelected) humanSelected = false;
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
+        resumeOffset = 0;
+        listener.changed();
+    }
+
     public boolean humanAvailable() { return humanAudio != null && humanAudio.complete(); }
     public boolean humanSelected() { return humanSelected && humanAvailable(); }
-    public boolean canPlay() { return humanSelected() || ready; }
+    public boolean canPlay() { return humanSelected() || googleSelected() || ready; }
 
     public void useHumanVoice(boolean enabled) {
         pause();
         humanSelected = enabled && humanAvailable();
+        if (humanSelected) googleSelected = false;
         humanResumeMs = 0;
         humanResumeIndex = -1;
         resumeOffset = 0;
@@ -281,8 +308,8 @@ public final class SpeechPlayer {
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { error = "Звук занят другим приложением"; listener.changed(); return; }
         String token = state.play();
         if (token == null) return;
-        if (humanSelected()) {
-            playHuman(token);
+        if (humanSelected() || googleSelected()) {
+            playRecording(token);
             listener.changed();
             return;
         }
@@ -308,8 +335,12 @@ public final class SpeechPlayer {
         }
     }
 
-    private void playHuman(String token) {
-        if (humanAudio == null || !humanAudio.recorded(state.index)) {
+    private void playRecording(String token) {
+        java.io.File file = humanSelected() && humanAudio != null && humanAudio.recorded(state.index)
+                ? humanAudio.segment(state.index)
+                : googleSelected() && googleAudio != null && googleAudio.recorded(state.index)
+                ? googleAudio.segment(state.index) : null;
+        if (file == null) {
             failed(token);
             return;
         }
@@ -324,7 +355,7 @@ public final class SpeechPlayer {
             mp.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
-            mp.setDataSource(humanAudio.segment(index).getAbsolutePath());
+            mp.setDataSource(file.getAbsolutePath());
             mp.setOnPreparedListener(prepared -> {
                 if (closed || prepared != humanPlayer
                         || !token.equals(activeToken)
@@ -385,7 +416,10 @@ public final class SpeechPlayer {
         if (closed || !state.complete(token)) return;
         // Completion advances; restore the failed sentence so retry cannot skip it.
         if (state.phase == PlaybackState.Phase.WAITING) state.index--;
-        state.pause(); state.phase = PlaybackState.Phase.PAUSED; error = "Не удалось озвучить. Проверьте установленный офлайн-голос.";
+        state.pause(); state.phase = PlaybackState.Phase.PAUSED;
+        error = (humanSelected() || googleSelected()) ?
+                "Не удалось воспроизвести сохранённое аудио." :
+                "Не удалось озвучить. Проверьте установленный офлайн-голос.";
         audio.abandonAudioFocusRequest(focus); listener.changed();
     }
     public void pause() {
