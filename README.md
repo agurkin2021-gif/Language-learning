@@ -152,3 +152,7 @@ API поведения TTS: [TextToSpeech](https://developer.android.com/referen
 файлы. Пока нет облачной резервной копии WAV-записей. Рассказы из SQLite,
 которые никогда не отправлялись в GitHub, нельзя предварительно обработать
 только через репозиторий — приложение синтезирует их после запуска на телефоне.
+
+
+CI Android: workflow `android.yml` is registered in `main`; each PR update validates
+and, after all required checks pass, publishes a correctly signed phone APK.
