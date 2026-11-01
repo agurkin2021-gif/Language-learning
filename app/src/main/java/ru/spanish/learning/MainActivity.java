@@ -64,6 +64,13 @@ public final class MainActivity extends Activity {
     private final Handler assistantVoiceHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingVoiceRestart;
     private static final int MIC_PERMISSION = 7301;
+    private static final int STORY_RECORD_PERMISSION = 7302;
+    private HumanStoryAudio humanRecording;
+    private AlertDialog humanRecordDialog;
+    private TextView humanRecordText, humanRecordStatus;
+    private Button humanRecordToggle, humanRecordPrevious, humanRecordNext, humanRecordDelete;
+    private Button humanVoiceButton;
+    private int humanRecordIndex;
     private boolean syncingContent;
     private final AtomicBoolean manualVocabularySyncing = new AtomicBoolean();
     private boolean imageRepairRunning;
@@ -333,7 +340,7 @@ public final class MainActivity extends Activity {
         cancelCardSpeech();
         rendering = true; sentence = null; sentenceRu = null; playbackStatus = null;
         cardVoiceStatus = null; imageRepairStatus = null; imageRepairButton = null;
-        toggle = null; repeat = null;
+        toggle = null; repeat = null; humanVoiceButton = null;
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
@@ -647,6 +654,7 @@ public final class MainActivity extends Activity {
         try {
             store.resetLearningData();
             assistant.clearHistory(store);
+            HumanStoryAudio.deleteLanguage(this, activeProfile, studyLanguage);
         } catch (RuntimeException e) {
             new AlertDialog.Builder(this)
                     .setTitle("База не сброшена")
@@ -1249,6 +1257,11 @@ public final class MainActivity extends Activity {
                 stopAssistantVoice();
                 if (assistantStatus != null) assistantStatus.setText("Разрешите доступ к микрофону для голосового разговора.");
             }
+        } else if (requestCode == STORY_RECORD_PERMISSION) {
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED)
+                beginHumanRecording();
+            else Toast.makeText(this, "Для записи голоса нужен доступ к микрофону",
+                    Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1783,6 +1796,8 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("Удалить", (dialog, which) -> {
                     if (!store.deleteStory(story.id())) {
                         Toast.makeText(this, "Рассказ уже удалён", Toast.LENGTH_SHORT).show();
+                    } else {
+                        new HumanStoryAudio(this, activeProfile, studyLanguage, story.id(), story.body()).deleteAll();
                     }
                     render();
                 })
@@ -1790,7 +1805,15 @@ public final class MainActivity extends Activity {
     }
 
     private void openStory(Store.Story story) {
-        player.pause(); remember(); storyId = story.id(); screen = "player"; player.load(story.body(), story.position()); render();
+        player.pause();
+        remember();
+        storyId = story.id();
+        screen = "player";
+        HumanStoryAudio recorded = new HumanStoryAudio(this, activeProfile, studyLanguage,
+                story.id(), story.body());
+        player.attachHumanStory(recorded, prefs.getBoolean(prefKey("humanVoice"), false));
+        player.load(story.body(), story.position());
+        render();
     }
     private void storyPlayer() {
         Store.Story selected = null; for(Store.Story story : store.stories()) if(story.id() == storyId) selected = story;
@@ -1832,6 +1855,21 @@ public final class MainActivity extends Activity {
         playbackStatus.setPadding(dp(14), dp(10), dp(14), dp(10));
         playbackStatus.setLayoutParams(spaced(12));
 
+        humanVoiceButton = button(player.humanSelected()
+                ? "Голос: живой человек" : "Голос: ИИ", () -> {
+            if (!player.humanAvailable()) {
+                Toast.makeText(this, "Сначала запишите все предложения рассказа",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            player.useHumanVoice(!player.humanSelected());
+            prefs.edit().putBoolean(prefKey("humanVoice"), player.humanSelected()).apply();
+            updatePlayer();
+        });
+        ui.style(humanVoiceButton, UiStyle.Tone.OUTLINE);
+        Button recordHuman = button("Записать живой голос", this::openHumanRecorder);
+        ui.style(recordHuman, UiStyle.Tone.OUTLINE);
+
         toggle = button("Слушать", () -> {
             if (player.state.phase == PlaybackState.Phase.SPEAKING ||
                     (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
@@ -1850,6 +1888,142 @@ public final class MainActivity extends Activity {
         Button back = button("← Библиотека", () -> navigate("stories"));
         ui.style(back, UiStyle.Tone.OUTLINE);
     }
+    /** The recorder works locally and does not use ChatGPT, tokens or network requests. */
+    private void openHumanRecorder() {
+        if (humanRecordDialog != null && humanRecordDialog.isShowing()) return;
+        Store.Story story = null;
+        for (Store.Story item : store.stories()) if (item.id() == storyId) { story = item; break; }
+        if (story == null) return;
+        player.pause();
+        stopAssistantVoice();
+        humanRecording = new HumanStoryAudio(this, activeProfile, studyLanguage, story.id(), story.body());
+        if (humanRecording.count() == 0) {
+            humanRecording = null;
+            Toast.makeText(this, "В рассказе нет предложений", Toast.LENGTH_LONG).show();
+            return;
+        }
+        humanRecordIndex = Math.min(player.state.index, humanRecording.count() - 1);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(18), dp(12), dp(18), dp(12));
+        humanRecordText = textInto(panel, "", 22);
+        humanRecordStatus = textInto(panel, "", 15);
+        humanRecordStatus.setTextColor(secondaryText());
+        humanRecordToggle = rowButton("Записать предложение", this::toggleHumanRecording);
+        ui.style(humanRecordToggle, UiStyle.Tone.PRIMARY);
+        panel.addView(humanRecordToggle, spaced(10));
+        humanRecordPrevious = rowButton("← Предыдущее предложение", () -> {
+            if (humanRecording.isRecording()) return;
+            humanRecordIndex = Math.max(0, humanRecordIndex - 1);
+            refreshHumanRecorder();
+        });
+        panel.addView(humanRecordPrevious, spaced(6));
+        humanRecordNext = rowButton("Следующее предложение →", () -> {
+            if (humanRecording.isRecording()) return;
+            humanRecordIndex = Math.min(humanRecording.count() - 1, humanRecordIndex + 1);
+            refreshHumanRecorder();
+        });
+        panel.addView(humanRecordNext, spaced(6));
+        humanRecordDelete = rowButton("Удалить запись этого предложения", () -> {
+            try {
+                humanRecording.deleteSentence(humanRecordIndex);
+                if (player.humanSelected()) {
+                    player.useHumanVoice(false);
+                    prefs.edit().putBoolean(prefKey("humanVoice"), false).apply();
+                }
+                refreshHumanRecorder();
+            } catch (Exception error) {
+                Toast.makeText(this, "Не удалось удалить запись", Toast.LENGTH_LONG).show();
+            }
+        });
+        ui.style(humanRecordDelete, UiStyle.Tone.OUTLINE);
+        panel.addView(humanRecordDelete, spaced(8));
+        HumanStoryAudio session = humanRecording;
+        humanRecordDialog = new AlertDialog.Builder(this)
+                .setTitle("Запись живого голоса")
+                .setView(panel)
+                .setPositiveButton("Закрыть", null)
+                .create();
+        humanRecordDialog.setOnDismissListener(dialog -> {
+            if (session.isRecording()) {
+                try { session.stop(false); } catch (Exception ignored) {}
+            }
+            if (humanRecording == session) {
+                if (session.complete()) {
+                    player.useHumanVoice(true);
+                    prefs.edit().putBoolean(prefKey("humanVoice"), true).apply();
+                } else if (player.humanSelected()) {
+                    player.useHumanVoice(false);
+                }
+                humanRecording = null;
+                humanRecordDialog = null;
+                humanRecordText = null;
+                humanRecordStatus = null;
+                humanRecordToggle = null;
+                humanRecordPrevious = null;
+                humanRecordNext = null;
+                humanRecordDelete = null;
+                if (!isFinishing() && !isDestroyed() && "player".equals(screen)) render();
+            }
+        });
+        humanRecordDialog.show();
+        refreshHumanRecorder();
+    }
+
+    private void refreshHumanRecorder() {
+        if (humanRecording == null || humanRecordText == null) return;
+        boolean recording = humanRecording.isRecording();
+        humanRecordText.setText(humanRecording.sentence(humanRecordIndex));
+        humanRecordStatus.setText("Предложение " + (humanRecordIndex + 1) + " / "
+                + humanRecording.count() + " • Записано " + humanRecording.recordedCount()
+                + " / " + humanRecording.count()
+                + (recording ? "\nИдёт запись с микрофона…"
+                : humanRecording.recorded(humanRecordIndex) ? "\nЭто предложение уже записано"
+                : "\nНажмите кнопку записи и произнесите предложение"));
+        humanRecordToggle.setText(recording ? "Стоп — сохранить запись"
+                : humanRecording.recorded(humanRecordIndex) ? "Перезаписать предложение"
+                : "Записать предложение");
+        humanRecordPrevious.setEnabled(!recording && humanRecordIndex > 0);
+        humanRecordNext.setEnabled(!recording && humanRecordIndex + 1 < humanRecording.count());
+        humanRecordDelete.setEnabled(!recording && humanRecording.recorded(humanRecordIndex));
+    }
+
+    private void toggleHumanRecording() {
+        if (humanRecording == null) return;
+        if (humanRecording.isRecording()) {
+            try {
+                humanRecording.stop(true);
+                if (humanRecordIndex + 1 < humanRecording.count()) humanRecordIndex++;
+                refreshHumanRecorder();
+            } catch (Exception error) {
+                Toast.makeText(this, "Запись не сохранена: " + error.getMessage(),
+                        Toast.LENGTH_LONG).show();
+                refreshHumanRecorder();
+            }
+        } else {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, STORY_RECORD_PERMISSION);
+                return;
+            }
+            beginHumanRecording();
+        }
+    }
+
+    private void beginHumanRecording() {
+        if (humanRecording == null || humanRecordDialog == null
+                || !humanRecordDialog.isShowing()) return;
+        player.pause();
+        stopAssistantVoice();
+        try {
+            humanRecording.start(humanRecordIndex);
+            refreshHumanRecorder();
+        } catch (Exception error) {
+            Toast.makeText(this, "Не удалось начать запись: " + error.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
     private StoryAudioExporter audioExporter;
     private AlertDialog audioExportDialog;
 
@@ -2084,7 +2258,10 @@ public final class MainActivity extends Activity {
         sentence.setText(player.current()); if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
         toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
-        toggle.setEnabled(player.ready()); repeat.setEnabled(player.ready());
+        toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
+        if (humanVoiceButton != null) humanVoiceButton.setText(
+                player.humanSelected() ? "Голос: живой человек"
+                        : player.humanAvailable() ? "Голос: ИИ (есть живая запись)" : "Голос: ИИ");
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
     }
@@ -2111,13 +2288,27 @@ public final class MainActivity extends Activity {
         syncContent();
         PrivateVocabularySync.schedule(this);
     }
-    @Override protected void onPause() { stopAssistantVoice(); cancelCardSpeech(); player.pause(); remember(); rememberCardDraft(); super.onPause(); }
+    @Override protected void onPause() {
+        if (humanRecording != null && humanRecording.isRecording()) {
+            try { humanRecording.stop(false); } catch (Exception ignored) {}
+            refreshHumanRecorder();
+        }
+        stopAssistantVoice();
+        cancelCardSpeech();
+        player.pause();
+        remember();
+        rememberCardDraft();
+        super.onPause();
+    }
     @Override protected void onDestroy() {
         imageRepairCancel.set(true);
         cancelCardSpeech();
         if (contentSync != null) contentSync.close();
         if (personalStorySync != null) personalStorySync.close();
         if (audioExporter != null) { audioExporter.cancel(); audioExporter = null; }
+        if (humanRecording != null && humanRecording.isRecording()) {
+            try { humanRecording.stop(false); } catch (Exception ignored) {}
+        }
         if (assistant != null) assistant.close();
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (assistantVoiceOutput != null) assistantVoiceOutput.close();

@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.PlaybackParams;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
@@ -25,6 +27,11 @@ public final class SpeechPlayer {
     private TextToSpeech tts;
     private final SharedPreferences voicePrefs;
     private List<String> sentences = new ArrayList<>();
+    private HumanStoryAudio humanAudio;
+    private boolean humanSelected;
+    private MediaPlayer humanPlayer;
+    private int humanResumeMs;
+    private int humanResumeIndex = -1;
     private boolean ready, closed, ttsInitialized;
     private String learningLanguage = "es";
     private int resumeOffset;
@@ -209,6 +216,7 @@ public final class SpeechPlayer {
 
     public void speakCard(String spanish) {
         if (closed || !ready || spanish == null || spanish.trim().isEmpty()) return;
+        pause();
         handler.removeCallbacks(autoPlay);
         if (tts != null) tts.stop();
         audio.abandonAudioFocusRequest(focus);
@@ -222,7 +230,39 @@ public final class SpeechPlayer {
     private void finishCardSpeech() {
         audio.abandonAudioFocusRequest(focus);
     }
-    public void load(String body, int position) { pause(); resumeOffset = 0; activeToken = ""; sentences = Sentences.split(body); state.load(sentences.size(), position); listener.changed(); }
+    /** Select recordings for exactly this story and no other family profile. */
+    public void attachHumanStory(HumanStoryAudio recordings, boolean preferHuman) {
+        pause();
+        humanAudio = recordings;
+        humanSelected = preferHuman && recordings != null && recordings.complete();
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
+        listener.changed();
+    }
+
+    public boolean humanAvailable() { return humanAudio != null && humanAudio.complete(); }
+    public boolean humanSelected() { return humanSelected && humanAvailable(); }
+    public boolean canPlay() { return humanSelected() || ready; }
+
+    public void useHumanVoice(boolean enabled) {
+        pause();
+        humanSelected = enabled && humanAvailable();
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
+        resumeOffset = 0;
+        listener.changed();
+    }
+
+    public void load(String body, int position) {
+        pause();
+        resumeOffset = 0;
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
+        activeToken = "";
+        sentences = Sentences.split(body);
+        state.load(sentences.size(), position);
+        listener.changed();
+    }
     public String current() { return sentences.isEmpty() ? "" : sentences.get(state.index); }
     public void playAllFromStart() {
         pause();
@@ -234,13 +274,18 @@ public final class SpeechPlayer {
         play();
     }
     public void play() {
-        if (closed || !ready || state.phase == PlaybackState.Phase.SPEAKING) return;
+        if (closed || !canPlay() || state.phase == PlaybackState.Phase.SPEAKING) return;
         handler.removeCallbacks(autoPlay);
         boolean restart = state.phase == PlaybackState.Phase.FINISHED;
-        if (restart) resumeOffset = 0;
+        if (restart) { resumeOffset = 0; humanResumeMs = 0; humanResumeIndex = -1; }
         if (audio.requestAudioFocus(focus) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { error = "Звук занят другим приложением"; listener.changed(); return; }
         String token = state.play();
         if (token == null) return;
+        if (humanSelected()) {
+            playHuman(token);
+            listener.changed();
+            return;
+        }
         String full = current();
         if (resumeOffset < 0 || resumeOffset >= full.length()) resumeOffset = 0;
         utteranceBaseOffset = resumeOffset;
@@ -252,6 +297,75 @@ public final class SpeechPlayer {
         if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
         listener.changed();
     }
+    private void releaseHumanPlayer() {
+        MediaPlayer old = humanPlayer;
+        humanPlayer = null;
+        if (old != null) {
+            old.setOnCompletionListener(null);
+            old.setOnErrorListener(null);
+            old.setOnPreparedListener(null);
+            try { old.release(); } catch (RuntimeException ignored) {}
+        }
+    }
+
+    private void playHuman(String token) {
+        if (humanAudio == null || !humanAudio.recorded(state.index)) {
+            failed(token);
+            return;
+        }
+        final int index = state.index;
+        final int startMs = humanResumeIndex == index ? humanResumeMs : 0;
+        activeToken = token;
+        error = "";
+        releaseHumanPlayer();
+        MediaPlayer mp = new MediaPlayer();
+        humanPlayer = mp;
+        try {
+            mp.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            mp.setDataSource(humanAudio.segment(index).getAbsolutePath());
+            mp.setOnPreparedListener(prepared -> {
+                if (closed || prepared != humanPlayer
+                        || !token.equals(activeToken)
+                        || state.phase != PlaybackState.Phase.SPEAKING) return;
+                try {
+                    if (startMs > 0) prepared.seekTo(startMs);
+                    try {
+                        prepared.setPlaybackParams(new PlaybackParams().setSpeed(speed));
+                    } catch (RuntimeException unsupported) {
+                        // Some devices cannot apply the lowest playback rates.
+                        prepared.setPlaybackParams(new PlaybackParams().setSpeed(1.0f));
+                        error = "Устройство не поддерживает выбранную скорость записи";
+                    }
+                    prepared.start();
+                } catch (RuntimeException playbackError) {
+                    releaseHumanPlayer();
+                    failed(token);
+                }
+                listener.changed();
+            });
+            mp.setOnCompletionListener(donePlayer -> {
+                if (donePlayer != humanPlayer || !token.equals(activeToken)) return;
+                releaseHumanPlayer();
+                humanResumeMs = 0;
+                humanResumeIndex = -1;
+                done(token);
+            });
+            mp.setOnErrorListener((badPlayer, what, extra) -> {
+                if (badPlayer == humanPlayer) {
+                    releaseHumanPlayer();
+                    failed(token);
+                }
+                return true;
+            });
+            mp.prepareAsync();
+        } catch (Exception playbackError) {
+            releaseHumanPlayer();
+            failed(token);
+        }
+    }
+
     private void rememberRange(String token, int start) {
         if (closed || !token.equals(activeToken) || state.phase != PlaybackState.Phase.SPEAKING) return;
         String full = current();
@@ -260,6 +374,8 @@ public final class SpeechPlayer {
     private void done(String token) {
         if (closed || !state.complete(token)) return;
         resumeOffset = 0;
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
         activeToken = "";
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
@@ -275,7 +391,17 @@ public final class SpeechPlayer {
     public void pause() {
         handler.removeCallbacks(autoPlay);
         PlaybackState.Phase previous = state.phase;
+        if (humanPlayer != null && previous == PlaybackState.Phase.SPEAKING) {
+            try {
+                humanResumeMs = humanPlayer.getCurrentPosition();
+                humanResumeIndex = state.index;
+            } catch (RuntimeException ignored) {
+                humanResumeMs = 0;
+                humanResumeIndex = -1;
+            }
+        }
         state.pause();
+        releaseHumanPlayer();
         if (previous != PlaybackState.Phase.SPEAKING) {
             resumeOffset = 0;
             activeToken = "";
@@ -288,6 +414,8 @@ public final class SpeechPlayer {
         boolean previous = state.phase == PlaybackState.Phase.WAITING;
         pause();
         resumeOffset = 0;
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
         activeToken = "";
         if (previous && state.index > 0) state.index--;
         state.repeat(); play();
