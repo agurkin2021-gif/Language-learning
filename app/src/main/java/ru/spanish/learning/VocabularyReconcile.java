@@ -86,7 +86,7 @@ public final class VocabularyReconcile {
     }
 
     private static boolean validProfile(String p) {
-        return "papa".equals(p) || "mama".equals(p) || "dima".equals(p);
+        return "papa".equals(p) || "mama".equals(p) || "dima".equals(p) || "pimen".equals(p);
     }
     private static boolean validLanguage(String l) {
         return "es".equals(l) || "en".equals(l);
