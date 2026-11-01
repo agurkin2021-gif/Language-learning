@@ -173,7 +173,7 @@ class CardInboxTests(unittest.TestCase):
 
     def test_all_six_routes_validate(self):
         ci.publish(self.request())
-        self.assertIn("six profile/language routes", ci.check())
+        self.assertIn("eight profile/language routes", ci.check())
 
 
 if __name__ == "__main__":

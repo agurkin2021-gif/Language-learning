@@ -19,7 +19,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 FEED = ROOT / "content" / "stories.json"
-PROFILES = {"papa", "mama", "dima"}
+PROFILES = {"papa", "mama", "dima", "pimen"}
 LANGUAGES = {"es", "en"}
 MAX_ITEMS = 500
 MAX_BYTES = 1024 * 1024
@@ -53,7 +53,7 @@ def validated(value: dict, *, make_id: bool = False) -> dict:
     profile = value.get("profile")
     language = value.get("language")
     if profile not in PROFILES or language not in LANGUAGES:
-        raise InvalidStory("profile must be papa/mama/dima, language must be es/en")
+        raise InvalidStory("profile must be papa/mama/dima/pimen, language must be es/en")
     fields = {"title": 300, "spanish": 20000, "russian": 20000}
     data = {}
     for key, limit in fields.items():

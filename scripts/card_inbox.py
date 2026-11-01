@@ -15,7 +15,7 @@ import unicodedata
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTENT = ROOT / "content"
-PROFILES = {"papa", "mama", "dima"}
+PROFILES = {"papa", "mama", "dima", "pimen"}
 LANGUAGES = {"es", "en"}
 TYPES = {"word", "phrase"}
 MAX_REQUEST_ITEMS = 100
@@ -46,7 +46,7 @@ def profiles_for(request):
     if not isinstance(targets, list) or not targets or len(targets) > 3:
         raise InvalidCard("An explicit profile or profiles array is required")
     if len(set(targets)) != len(targets) or any(p not in PROFILES for p in targets):
-        raise InvalidCard("profiles must be unique, chosen from papa/mama/dima")
+        raise InvalidCard("profiles must be unique, chosen from papa/mama/dima/pimen")
     return targets
 
 
@@ -268,7 +268,7 @@ def check():
             if path.exists():
                 count += len(load_feed(path)["items"])
             archive_keys(profile, language)
-    return f"VALID: six profile/language routes, {count} published cards"
+    return f"VALID: eight profile/language routes, {count} published cards"
 
 
 def main():
