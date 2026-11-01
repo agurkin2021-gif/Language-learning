@@ -24,7 +24,7 @@ public final class PimenProfileTest extends AndroidTestCase {
              Store en = Store.forProfileTest(getContext(), enName, "pimen", true)) {
             assertEquals(700, es.vocabulary().size());
             assertEquals(0, en.vocabulary().size());
-            es.addCard("hacer caso", "слушаться", 1, 0);
+            es.addCard("hago caso", "слушаюсь", 1, 0);
             assertEquals(701, es.vocabulary().size());
             assertEquals(0, en.vocabulary().size());
             JSONObject story = new JSONObject().put("type", "story")
