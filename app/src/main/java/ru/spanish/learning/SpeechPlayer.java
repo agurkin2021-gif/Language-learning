@@ -85,7 +85,7 @@ public final class SpeechPlayer {
      * its BCP-47 locale. Let learners audition and choose the exact voice.
      */
     void setLearningLanguage(String code) {
-        String normalized = "en".equals(code) ? "en" : "es";
+        String normalized = "ru".equals(code) ? "ru" : "en".equals(code) ? "en" : "es";
         if (learningLanguage.equals(normalized) && ttsInitialized) return;
         pause();
         learningLanguage = normalized;
@@ -114,7 +114,7 @@ public final class SpeechPlayer {
                 continue;
             if ("es".equals(learningLanguage)) {
                 if (SpanishVoicePreference.regionRank(voice.getLocale()) < 0) continue;
-            } else if (voice.isNetworkConnectionRequired()) {
+            } else if ("en".equals(learningLanguage) && voice.isNetworkConnectionRequired()) {
                 // Retain the existing offline-only English behavior.
                 continue;
             }
@@ -124,7 +124,8 @@ public final class SpeechPlayer {
             if ("en".equals(learningLanguage))
                 return "US".equals(voice.getLocale().getCountry()) ? 0
                         : "GB".equals(voice.getLocale().getCountry()) ? 1 : 2;
-            return SpanishVoicePreference.regionRank(voice.getLocale());
+            return "ru".equals(learningLanguage) ? 0
+                    : SpanishVoicePreference.regionRank(voice.getLocale());
         }).thenComparingInt(voice -> voice.isNetworkConnectionRequired() ? 1 : 0)
           .thenComparing((Voice voice) -> -voice.getQuality())
           .thenComparing(Voice::getName));
@@ -140,7 +141,9 @@ public final class SpeechPlayer {
         ready = true;
         String locale = voice.getLocale().toLanguageTag();
         String connection = voice.isNetworkConnectionRequired() ? "через интернет" : "офлайн";
-        if ("en".equals(learningLanguage))
+        if ("ru".equals(learningLanguage))
+            voiceDescription = "Русский голос: " + locale + " • " + connection;
+        else if ("en".equals(learningLanguage))
             voiceDescription = "Английский голос: " + locale + " • " + connection;
         else if ("AR".equals(voice.getLocale().getCountry()))
             voiceDescription = "Голос Аргентины: " + locale + " • " + connection;
@@ -170,7 +173,9 @@ public final class SpeechPlayer {
             if (activateVoice(voice)) return;
         }
         voiceDescription = "Нет доступного "
-                + ("en".equals(learningLanguage)
+                + ("ru".equals(learningLanguage)
+                    ? "русского голоса. Установите русский голос в настройках синтеза речи Android."
+                    : "en".equals(learningLanguage)
                     ? "английского офлайн-голоса."
                     : "голоса Аргентины или Латинской Америки. Установите es-AR либо es-MX в настройках синтеза Android.");
         listener.changed();
