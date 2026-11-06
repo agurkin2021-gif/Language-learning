@@ -15,26 +15,19 @@ final class FamilyVocabularyTransfer {
 
     private FamilyVocabularyTransfer() {}
 
-    static Result copyFromPapa(Context context) throws IOException {
-        int mamaCards = 0;
-        int dimaCards = 0;
-        int mamaPictures = 0;
-        int dimaPictures = 0;
-        for (boolean english : new boolean[]{false, true}) {
-            try (Store papa = Store.forProfile(context, StudyProfile.PAPA, english);
-                 Store mama = Store.forProfile(context, StudyProfile.MAMA, english);
-                 Store dima = Store.forProfile(context, StudyProfile.DIMA, english)) {
-                // Complete local vocabulary, including the mastered archive and all translations.
-                List<Store.Card> cards = papa.vocabulary();
-                mamaCards += mama.copyTranslatedVocabularyFrom(papa);
-                dimaCards += dima.copyTranslatedVocabularyFrom(papa);
-                // Pictures are stored outside SQLite and outside the GitHub vocabulary JSON.
-                // Copy them even for already-present target cards, but preserve existing art.
-                mamaPictures += copyPictures(context, cards, StudyProfile.MAMA, english);
-                dimaPictures += copyPictures(context, cards, StudyProfile.DIMA, english);
-            }
+    /** maxWords is PER target profile, for the selected study language only. */
+    static Result copyFromPapa(Context context, int maxWords, boolean english) throws IOException {
+        if (maxWords < 1) throw new IllegalArgumentException("maxWords");
+        try (Store papa = Store.forProfile(context, StudyProfile.PAPA, english);
+             Store mama = Store.forProfile(context, StudyProfile.MAMA, english);
+             Store dima = Store.forProfile(context, StudyProfile.DIMA, english)) {
+            List<Store.Card> mamaAdded = mama.copyMissingWordsFrom(papa, maxWords);
+            List<Store.Card> dimaAdded = dima.copyMissingWordsFrom(papa, maxWords);
+            // Copy only the selected words' existing art, not the entire gallery.
+            int mamaPictures = copyPictures(context, mamaAdded, StudyProfile.MAMA, english);
+            int dimaPictures = copyPictures(context, dimaAdded, StudyProfile.DIMA, english);
+            return new Result(mamaAdded.size(), dimaAdded.size(), mamaPictures, dimaPictures);
         }
-        return new Result(mamaCards, dimaCards, mamaPictures, dimaPictures);
     }
 
     static int copyPictures(Context context, List<Store.Card> cards,
