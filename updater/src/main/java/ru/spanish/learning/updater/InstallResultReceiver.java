@@ -1,4 +1,4 @@
-package ru.spanish.learning.updater;
+package ru.spanish.learning.familyupdater;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
