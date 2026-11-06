@@ -13,7 +13,7 @@ public final class GoogleStoryAudioTest extends AndroidTestCase {
         try {
             assertEquals(2, audio.count());
             assertEquals("sentence-00000.wav", audio.segment(0).getName());
-            assertEquals("sentence-00001-bible-normalized-v3.wav",
+            assertEquals("sentence-00001-speech-normalized-v4.wav",
                     audio.segment(1).getName());
 
             File oldClip = new File(audio.segment(1).getParentFile(),
@@ -34,6 +34,14 @@ public final class GoogleStoryAudioTest extends AndroidTestCase {
             audio.publish(1, corrected);
             assertTrue(audio.recorded(1));
             assertTrue(oldClip.exists());
+            GoogleStoryAudio historicAccent = new GoogleStoryAudio(getContext(), "papa",
+                    "es", 123456790L, "Jeremías. Antes que pára el decreto.");
+            try {
+                assertTrue("Wrong Spanish tilde must invalidate an existing recording",
+                        historicAccent.segment(1).getName().contains("-speech-normalized-v4"));
+            } finally {
+                historicAccent.deleteAll();
+            }
             assertEquals("Jeremías veintidós catorce treinta.",
                     StoryAudioExporter.chunks("Jeremías 22:14-30.", "es").get(0));
             assertEquals("Иеремия двадцать два четырнадцать тридцать.",
