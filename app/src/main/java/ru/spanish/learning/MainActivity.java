@@ -1495,10 +1495,78 @@ public final class MainActivity extends Activity {
         }
         content.addView(filters, spaced(10));
 
-        // All unmastered words remain available for bidirectional swiping.
-        // Marking a card known changes its status but never deletes it from the AI vocabulary.
-        List<Store.Card> cards = store.cards(false, kind, kind == 0 ? category : 0);
-        TextView count = text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
+        // The active set is per profile + language + word category. Unlearned
+        // words outside the selected window remain in SQLite and automatically
+        // become visible after the ✓ action archives a card.
+        int studyLimit = kind == 0
+                ? Math.max(0, prefs.getInt(prefKey(StudyBatch.preferenceKey(category)), 0))
+                : 0;
+        if (kind == 0) {
+            TextView studyTitle = text("Взять для изучения — количество слов:", 15);
+            studyTitle.setTextColor(secondaryText());
+            LinearLayout studyRow = new LinearLayout(this);
+            studyRow.setOrientation(LinearLayout.HORIZONTAL);
+            studyRow.setGravity(Gravity.CENTER_VERTICAL);
+
+            EditText amount = new EditText(this);
+            amount.setTag("study-batch-amount");
+            amount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            amount.setSingleLine(true);
+            amount.setText(Integer.toString(studyLimit > 0 ? studyLimit : 10));
+            amount.setSelectAllOnFocus(true);
+            amount.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
+            amount.setContentDescription("Сколько слов одновременно изучать");
+            ui.styleInput(amount);
+            studyRow.addView(amount, new LinearLayout.LayoutParams(0, dp(52), 1));
+
+            Button take = rowButton("Взять", () -> {
+                int requested;
+                try {
+                    requested = Integer.parseInt(amount.getText().toString().trim());
+                } catch (NumberFormatException ignored) {
+                    amount.setError("Введите число от 1 до 100000");
+                    return;
+                }
+                if (requested < 1 || requested > 100000) {
+                    amount.setError("Введите число от 1 до 100000");
+                    return;
+                }
+                prefs.edit().putInt(prefKey(StudyBatch.preferenceKey(category)), requested).apply();
+                reviewIndex = 0;
+                cardRevealed = false;
+                render();
+            });
+            take.setTag("study-batch-apply");
+            LinearLayout.LayoutParams takeParams = new LinearLayout.LayoutParams(dp(110), dp(52));
+            takeParams.setMarginStart(dp(8));
+            studyRow.addView(take, takeParams);
+
+            if (studyLimit > 0) {
+                Button allWords = rowButton("Все", () -> {
+                    prefs.edit().remove(prefKey(StudyBatch.preferenceKey(category))).apply();
+                    reviewIndex = 0;
+                    cardRevealed = false;
+                    render();
+                });
+                allWords.setTag("study-batch-all");
+                LinearLayout.LayoutParams allParams = new LinearLayout.LayoutParams(dp(87), dp(52));
+                allParams.setMarginStart(dp(7));
+                studyRow.addView(allWords, allParams);
+            }
+            content.addView(studyRow, spaced(8));
+        }
+
+        // Query the ENTIRE unmastered pool, then show only the selected window.
+        // As soon as ✓ archives one of the window's words, the next waiting
+        // word joins automatically on render without resetting any other data.
+        List<Store.Card> unmastered = store.cards(false, kind, kind == 0 ? category : 0);
+        List<Store.Card> cards = StudyBatch.active(unmastered, studyLimit);
+        String countLabel = cards.isEmpty() ? "Здесь пока нет карточек"
+                : studyLimit > 0 && kind == 0
+                    ? "В изучении: " + cards.size() + " / " + studyLimit
+                      + " · В резерве: " + (unmastered.size() - cards.size())
+                    : "Карточек: " + cards.size();
+        TextView count = text(countLabel, 16);
         count.setTextColor(secondaryText());
         count.setPadding(0, dp(2), 0, dp(10));
         if (cards.isEmpty()) {
