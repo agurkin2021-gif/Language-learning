@@ -1687,8 +1687,9 @@ public final class MainActivity extends Activity {
             menu.show();
         });
         FrameLayout.LayoutParams editParams =
-                new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        editParams.topMargin = dp(9);
+                new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.BOTTOM | Gravity.END);
+        editParams.bottomMargin = dp(10);
+        editParams.rightMargin = dp(10);
         cardFrame.addView(more, editParams);
 
         FrameLayout.LayoutParams deleteParams =
