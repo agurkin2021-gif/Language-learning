@@ -5,7 +5,7 @@ def buildNumber = buildNumberText.toInteger()
 def revision = providers.gradleProperty('sourceRevision').orElse('local').get()
 if (!(revision ==~ /local|[a-f0-9]{7,40}/)) throw new GradleException('sourceRevision must be a Git SHA or local')
 android {
-    namespace 'ru.spanish.learning.updater'
+    namespace 'ru.spanish.learning.familyupdater'
     compileSdk 35
     buildToolsVersion "35.0.0"
     defaultConfig {
