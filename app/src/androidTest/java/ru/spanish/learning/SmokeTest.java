@@ -81,10 +81,27 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNull(find(root, "Обновление"));
             assertNotNull(find(root, "⚙"));
         });
-        // The full-story view is a separate Dialog window, not Activity.getWindow().
-        // Its individually touchable words are exercised by StoryWordPickerTest and StoreTest.
-        tap("Читать весь рассказ");
-        getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
+        // The full-story button restarts audio from sentence one without a text dialog.
+        getInstrumentation().runOnMainSync(() -> {
+            MainActivity activity = getActivity();
+            View button = find(activity.getWindow().getDecorView(), "Читать весь рассказ заново");
+            assertNotNull("Full story audio button", button);
+            try {
+                java.lang.reflect.Field field = MainActivity.class.getDeclaredField("player");
+                field.setAccessible(true);
+                SpeechPlayer player = (SpeechPlayer) field.get(activity);
+                assertTrue("Sample has multiple sentences", player.state.count > 2);
+                player.pause();
+                player.state.load(player.state.count, 2);
+                player.sentenceMode = true;
+                button.performClick();
+                assertEquals("Restart reading at the first sentence", 0, player.state.index);
+                assertFalse("Whole-story narration must continue automatically", player.sentenceMode);
+                assertEquals("Lucía vive en una casa pequeña.", player.current());
+            } catch (ReflectiveOperationException error) {
+                throw new AssertionError(error);
+            }
+        });
         getInstrumentation().waitForIdleSync();
         tap("⚙");
         getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
