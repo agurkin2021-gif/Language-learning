@@ -75,6 +75,7 @@ public final class MainActivity extends Activity {
     private int humanRecordIndex;
     private boolean syncingContent;
     private final AtomicBoolean manualVocabularySyncing = new AtomicBoolean();
+    private final AtomicBoolean familyTransferRunning = new AtomicBoolean();
     private boolean imageRepairRunning;
     private final AtomicBoolean imageRepairCancel = new AtomicBoolean();
     private String imageRepairMessage = "";
@@ -161,7 +162,7 @@ public final class MainActivity extends Activity {
                     dialog.dismiss();
                     String next = StudyProfile.IDS[which];
                     if (next.equals(activeProfile)) return;
-                    if (imageRepairRunning || assistantRequestInFlight || storyWordRequestInFlight
+                    if (imageRepairRunning || familyTransferRunning.get() || assistantRequestInFlight || storyWordRequestInFlight
                             || assistantVoiceProcessing) {
                         Toast.makeText(this, "Завершите текущую операцию перед сменой профиля",
                                 Toast.LENGTH_LONG).show();
@@ -479,6 +480,8 @@ public final class MainActivity extends Activity {
         Button profileButton = rowButton("Профиль: " + StudyProfile.name(activeProfile), null);
         box.addView(profileButton, spaced(10));
         box.addView(rowButton("Синхронизация", this::syncAllFamilyProfiles), spaced(10));
+        box.addView(rowButton("Скопировать слова и картинки Папы → Маме и Диме",
+                this::confirmFamilyTransfer), spaced(10));
         box.addView(rowButton("Google — сохранить озвучку всех рассказов",
                 this::startGoogleStoryRecording), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
@@ -509,6 +512,59 @@ public final class MainActivity extends Activity {
             recreate();
         });
         dialog.show();
+    }
+
+    /** Explicit local transfer from Papa's SQLite and private picture folders. */
+    private void confirmFamilyTransfer() {
+        if (familyTransferRunning.get() || manualVocabularySyncing.get() || imageRepairRunning
+                || assistantRequestInFlight || storyWordRequestInFlight) {
+            Toast.makeText(this, "Завершите текущую операцию", Toast.LENGTH_LONG).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Слова и картинки Папы")
+                .setMessage("Скопировать все карточки с переводами и созданные картинки в профили Мама и Дима? "
+                        + "Новые карточки будут для изучения. Уже существующие слова, "
+                        + "их прогресс, свои картинки и ранее удалённые карточки не изменятся. "
+                        + "Профиль Папа останется без изменений.")
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Копировать", (dialog, which) -> runFamilyTransfer())
+                .show();
+    }
+
+    private void runFamilyTransfer() {
+        if (!familyTransferRunning.compareAndSet(false, true)) return;
+        new Thread(() -> {
+            FamilyVocabularyTransfer.Result result = null;
+            Exception failure = null;
+            try {
+                result = FamilyVocabularyTransfer.copyFromPapa(getApplicationContext());
+            } catch (Exception error) {
+                failure = error;
+            } finally {
+                familyTransferRunning.set(false);
+            }
+            final FamilyVocabularyTransfer.Result done = result;
+            final Exception error = failure;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (done == null) {
+                    new AlertDialog.Builder(this).setTitle("Копирование не завершено")
+                            .setMessage("Перенос остановлен: " + (error == null ? "неизвестная ошибка" : error.getMessage())
+                                    + ". Уже перенесённые данные сохранены; повторный запуск не создаст дублей.")
+                            .setPositiveButton("Закрыть", null).show();
+                } else {
+                    render();
+                    new AlertDialog.Builder(this).setTitle("Копирование завершено")
+                            .setMessage("Мама: добавлено карточек " + done.mamaCards()
+                                    + ", картинок " + done.mamaPictures() + ".\\n"
+                                    + "Дима: добавлено карточек " + done.dimaCards()
+                                    + ", картинок " + done.dimaPictures() + ".\\n"
+                                    + "Существующие карточки и прогресс сохранены.")
+                            .setPositiveButton("Закрыть", null).show();
+                }
+            });
+        }, "family-vocabulary-transfer").start();
     }
 
     /** One tap imports public vocabularies or performs full bidirectional sync when authorized. */
