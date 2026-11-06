@@ -11,22 +11,25 @@ import java.util.List;
 
 /** Explicit, local Papa -> Mama/Dima transfer. Never overwrites either target profile. */
 final class FamilyVocabularyTransfer {
-    record Result(int mamaCards, int dimaCards, int mamaPictures, int dimaPictures) {}
+    record Result(String targetProfile, int cards, int pictures) {}
 
     private FamilyVocabularyTransfer() {}
 
-    /** maxWords is PER target profile, for the selected study language only. */
-    static Result copyFromPapa(Context context, int maxWords, boolean english) throws IOException {
-        if (maxWords < 1) throw new IllegalArgumentException("maxWords");
+    /**
+     * Only the explicitly selected current profile is modified.
+     * Integer.MAX_VALUE means all missing words; a smaller positive number is the limit.
+     */
+    static Result copyFromPapa(Context context, String targetProfile,
+                               int maxWords, boolean english) throws IOException {
+        if (!StudyProfile.MAMA.equals(targetProfile) && !StudyProfile.DIMA.equals(targetProfile))
+            throw new IllegalArgumentException("Target must be Mama or Dima");
+        if (maxWords < 1) throw new IllegalArgumentException("maxWords must be positive");
+
         try (Store papa = Store.forProfile(context, StudyProfile.PAPA, english);
-             Store mama = Store.forProfile(context, StudyProfile.MAMA, english);
-             Store dima = Store.forProfile(context, StudyProfile.DIMA, english)) {
-            List<Store.Card> mamaAdded = mama.copyMissingWordsFrom(papa, maxWords);
-            List<Store.Card> dimaAdded = dima.copyMissingWordsFrom(papa, maxWords);
-            // Copy only the selected words' existing art, not the entire gallery.
-            int mamaPictures = copyPictures(context, mamaAdded, StudyProfile.MAMA, english);
-            int dimaPictures = copyPictures(context, dimaAdded, StudyProfile.DIMA, english);
-            return new Result(mamaAdded.size(), dimaAdded.size(), mamaPictures, dimaPictures);
+             Store target = Store.forProfile(context, targetProfile, english)) {
+            List<Store.Card> added = target.copyMissingWordsFrom(papa, maxWords);
+            int pictures = copyPictures(context, added, targetProfile, english);
+            return new Result(targetProfile, added.size(), pictures);
         }
     }
 
