@@ -18,3 +18,7 @@ CI is triggered by a PR from family-android-v2 to the conflict-free family-relea
 **Compatibility:** Family APK keeps the same Android package and signing certificate as existing installs. Install a newer signed family APK over the current app, never uninstall or clear app storage.
 
 **Not yet migrated:** live-content and public vocab/story synchronization remain shared. Their access isolation requires separate work before declaring the external install completely offline.
+
+## Family-only profile selector
+
+From family build 371 onward the visible profiles are **Papa, Mama, Dima**. Pimen remains mapped as a legacy profile for backwards-compatible database naming and isolated storage, but is not listed in family UI, not copied from Papa at startup, and not iterated by family vocabulary synchronization. The old version 369 and its local SQLite data on Pimen's device are not modified.
