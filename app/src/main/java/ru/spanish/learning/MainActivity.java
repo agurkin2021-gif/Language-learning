@@ -521,24 +521,55 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Завершите текущую операцию", Toast.LENGTH_LONG).show();
             return;
         }
-        new AlertDialog.Builder(this)
-                .setTitle("Слова и картинки Папы")
-                .setMessage("Скопировать все карточки с переводами и созданные картинки в профили Мама и Дима? "
-                        + "Новые карточки будут для изучения. Уже существующие слова, "
-                        + "их прогресс, свои картинки и ранее удалённые карточки не изменятся. "
-                        + "Профиль Папа останется без изменений.")
+        final boolean selectedEnglish = studyingEnglish();
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(20), dp(8), dp(20), dp(8));
+        textInto(form, "Сколько НОВЫХ слов Папы добавить отдельно Маме и Диме? "
+                + "Уже изучаемые, выученные и ранее удалённые слова пропускаются. "
+                + "Переносится только " + (selectedEnglish ? "английский" : "испанский")
+                + " словарь, с переводами и готовыми картинками. "
+                + "Прогресс и картинки других профилей сохраняются.", 16);
+        EditText amount = new EditText(this);
+        amount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        amount.setSingleLine(true);
+        amount.setHint("Количество слов, например 20");
+        amount.setText("20");
+        amount.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
+        ui.styleInput(amount);
+        form.addView(amount, spaced(8));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Добавить слова Папы → Маме и Диме")
+                .setView(form)
                 .setNegativeButton("Отмена", null)
-                .setPositiveButton("Копировать", (dialog, which) -> runFamilyTransfer())
-                .show();
+                .setPositiveButton("Добавить", null)
+                .create();
+        dialog.setOnShowListener(d ->
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    int count;
+                    try {
+                        count = Integer.parseInt(amount.getText().toString().trim());
+                    } catch (NumberFormatException error) {
+                        amount.setError("Введите количество от 1 до 100000");
+                        return;
+                    }
+                    if (count < 1 || count > 100000) {
+                        amount.setError("Введите количество от 1 до 100000");
+                        return;
+                    }
+                    dialog.dismiss();
+                    runFamilyTransfer(count, selectedEnglish);
+                }));
+        dialog.show();
     }
 
-    private void runFamilyTransfer() {
+    private void runFamilyTransfer(int maxWords, boolean english) {
         if (!familyTransferRunning.compareAndSet(false, true)) return;
         new Thread(() -> {
             FamilyVocabularyTransfer.Result result = null;
             Exception failure = null;
             try {
-                result = FamilyVocabularyTransfer.copyFromPapa(getApplicationContext());
+                result = FamilyVocabularyTransfer.copyFromPapa(getApplicationContext(), maxWords, english);
             } catch (Exception error) {
                 failure = error;
             } finally {
@@ -555,7 +586,7 @@ public final class MainActivity extends Activity {
                             .setPositiveButton("Закрыть", null).show();
                 } else {
                     render();
-                    new AlertDialog.Builder(this).setTitle("Копирование завершено")
+                    new AlertDialog.Builder(this).setTitle("Копирование завершено · " + (english ? "EN" : "ES"))
                             .setMessage("Мама: добавлено карточек " + done.mamaCards()
                                     + ", картинок " + done.mamaPictures() + ".\n"
                                     + "Дима: добавлено карточек " + done.dimaCards()
