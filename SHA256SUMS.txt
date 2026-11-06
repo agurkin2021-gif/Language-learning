@@ -1,1 +1,1 @@
-2ace248d57b9bfc75cf50f4fa492a636a336d595466826ad2c46a275d3ee4082  SpanishLearningUpdater.apk
+644bb01dfff1f68ab29499e8c3a7111f22b22b722a1291acfc9c05fa2bb76bfd  SpanishLearningUpdater.apk
