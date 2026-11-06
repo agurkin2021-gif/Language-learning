@@ -126,6 +126,30 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNotNull("Original story sentence", original);
             assertNotNull("Narration selector", language);
             assertNotNull("Source in footer", attribution);
+            try {
+                java.lang.reflect.Field toggleField = MainActivity.class.getDeclaredField("toggle");
+                java.lang.reflect.Field statusField = MainActivity.class.getDeclaredField("playbackStatus");
+                toggleField.setAccessible(true);
+                statusField.setAccessible(true);
+                View primary = (View) toggleField.get(activity);
+                View status = (View) statusField.get(activity);
+                View panel = (View) original.getParent();
+                assertNotNull("Main Continue/Pause button", primary);
+                assertNotNull("Playback status", status);
+                ViewGroup container = (ViewGroup) panel.getParent();
+                assertSame("Main player button shares the story content layout", container, primary.getParent());
+                assertEquals("Continue/Pause must be directly below the reading panel",
+                        container.indexOfChild(panel) + 1, container.indexOfChild(primary));
+                assertTrue("Status follows the primary button",
+                        container.indexOfChild(status) > container.indexOfChild(primary));
+                assertTrue("Footer language follows the primary button",
+                        container.indexOfChild(language) > container.indexOfChild(primary));
+                assertTrue("Main audio control remains a large tap target",
+                        primary.getMinimumHeight() >= Math.round(70 *
+                                activity.getResources().getDisplayMetrics().density));
+            } catch (ReflectiveOperationException reflection) {
+                throw new AssertionError(reflection);
+            }
             assertNull("Old repeat button is removed", find(root, "Повторить предложение"));
             assertNull("Word-holding hint is removed",
                     find(root, "Удерживайте незнакомое испанское слово, чтобы добавить его в карточки."));
