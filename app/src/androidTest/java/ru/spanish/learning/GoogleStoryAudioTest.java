@@ -7,6 +7,42 @@ import java.nio.charset.StandardCharsets;
 
 /** Google cached audio stays isolated and only valid complete WAV takes are playable. */
 public final class GoogleStoryAudioTest extends AndroidTestCase {
+    public void testOnlyAffectedGoogleBibleClipsAreInvalidated() throws Exception {
+        GoogleStoryAudio audio = new GoogleStoryAudio(getContext(), "papa", "es",
+                123456789L, "Hola. Jeremías 22:14-30.");
+        try {
+            assertEquals(2, audio.count());
+            assertEquals("sentence-00000.wav", audio.segment(0).getName());
+            assertEquals("sentence-00001-bible-normalized-v3.wav",
+                    audio.segment(1).getName());
+
+            File oldClip = new File(audio.segment(1).getParentFile(),
+                    "sentence-00001.wav");
+            assertTrue(oldClip.getParentFile().isDirectory() || oldClip.getParentFile().mkdirs());
+            try (FileOutputStream out = new FileOutputStream(oldClip)) {
+                out.write("RIFF".getBytes(StandardCharsets.US_ASCII));
+                out.write(new byte[128]);
+            }
+            assertFalse("Outdated Google recording cannot replay its old dash reading",
+                    audio.recorded(1));
+
+            File corrected = audio.staging(1);
+            try (FileOutputStream out = new FileOutputStream(corrected)) {
+                out.write("RIFF".getBytes(StandardCharsets.US_ASCII));
+                out.write(new byte[128]);
+            }
+            audio.publish(1, corrected);
+            assertTrue(audio.recorded(1));
+            assertTrue(oldClip.exists());
+            assertEquals("Jeremías veintidós catorce treinta.",
+                    StoryAudioExporter.chunks("Jeremías 22:14-30.", "es").get(0));
+            assertEquals("Иеремия двадцать два четырнадцать тридцать.",
+                    StoryAudioExporter.chunks("Иеремия 22:14-30.", "ru").get(0));
+        } finally {
+            audio.deleteAll();
+        }
+    }
+
     public void testCachePerProfileLanguageStoryAndText() throws Exception {
         GoogleStoryAudio a = new GoogleStoryAudio(getContext(), "papa", "es", 44444444L, "Hola. Chau.");
         GoogleStoryAudio b = new GoogleStoryAudio(getContext(), "mama", "es", 44444444L, "Hola. Chau.");
