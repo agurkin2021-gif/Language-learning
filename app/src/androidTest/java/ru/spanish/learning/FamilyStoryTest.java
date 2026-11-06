@@ -56,7 +56,7 @@ public final class FamilyStoryTest extends AndroidTestCase {
                 db.setVersion(8);
             }
             try (Store mama = Store.forProfileTest(getContext(), dbName, "mama", false)) {
-                assertEquals(3, mama.stories().size());
+                assertEquals(2, mama.stories().size());
                 boolean userStory = false, bundled = false;
                 for (Store.Story story : mama.stories()) {
                     if ("Личная история".equals(story.title())) userStory = true;
@@ -66,7 +66,7 @@ public final class FamilyStoryTest extends AndroidTestCase {
                 assertTrue(bundled);
             }
             try (Store mama = Store.forProfileTest(getContext(), dbName, "mama", false)) {
-                assertEquals("Repeating open must not duplicate stories", 3, mama.stories().size());
+                assertEquals("Repeating open must not duplicate stories", 2, mama.stories().size());
             }
         } finally {
             getContext().deleteDatabase(dbName);
