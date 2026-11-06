@@ -699,40 +699,31 @@ public final class MainActivity extends Activity {
                 }).show();
     }
     /**
-     * Family release: never ask a legacy updater (versionCode <= 1369) to check
-     * the frozen phone-builds feed. It cannot discover family-builds releases.
-     * A current family updater retains the established silent-install flow;
-     * otherwise use the signed and SHA-256-verified in-app family updater.
+     * Use only the built-in signed family channel for production updates.
+     * A separately installed updater may still be the legacy phone-builds client,
+     * so its version is not a reliable indication of its configured channel.
+     * The dedicated updater remains available solely for the Android emulator
+     * installer-of-record integration fixture.
      */
     private void startUpdateNow() {
         cancelCardSpeech();
         player.pause();
         remember();
-        Intent updateIntent = new Intent("ru.spanish.learning.updater.UPDATE")
-                .setPackage("ru.spanish.learning.updater");
+
+        // The existing emulator regression test injects a verified local fixture.
+        // This test-only branch never runs in a published production APK.
         if (BuildConfig.DEBUG) {
             String testPath = getIntent().getStringExtra("updater_test_path");
-            if (testPath != null && !testPath.isEmpty())
-                updateIntent.putExtra("test_apk_path", testPath);
-        }
-
-        boolean familyUpdater = false;
-        try {
-            android.content.pm.PackageInfo installedUpdater =
-                    getPackageManager().getPackageInfo("ru.spanish.learning.updater", 0);
-            long updaterVersion = Build.VERSION.SDK_INT >= 28
-                    ? installedUpdater.getLongVersionCode() : installedUpdater.versionCode;
-            // 1.0.370 is the first updater built for the family channel.
-            familyUpdater = updaterVersion >= 1370L;
-        } catch (PackageManager.NameNotFoundException ignored) {
-            // No dedicated updater is installed; the in-app update path is available.
-        }
-        if (familyUpdater) {
-            try {
-                startActivity(updateIntent);
+            if (testPath != null && !testPath.isEmpty()) {
+                Intent testIntent = new Intent("ru.spanish.learning.updater.UPDATE")
+                        .setPackage("ru.spanish.learning.updater")
+                        .putExtra("test_apk_path", testPath);
+                try {
+                    startActivity(testIntent);
+                } catch (ActivityNotFoundException ignored) {
+                    Toast.makeText(this, "Тестовый обновлятор недоступен", Toast.LENGTH_LONG).show();
+                }
                 return;
-            } catch (ActivityNotFoundException ignored) {
-                // A broken or disabled updater must not block family updates.
             }
         }
 
@@ -740,25 +731,26 @@ public final class MainActivity extends Activity {
                 && !getPackageManager().canRequestPackageInstalls()) {
             new AlertDialog.Builder(this)
                     .setTitle("Разрешение на обновление")
-                    .setMessage("Старый обновлятор не поддерживает семейную версию. " +
-                            "Разрешите приложению «Изучение испанского» устанавливать обновления, " +
-                            "затем снова нажмите «Обновление».")
+                    .setMessage("Разрешите приложению «Изучение испанского» устанавливать обновления. " +
+                            "После возвращения нажмите «Обновление» ещё раз.")
                     .setPositiveButton("Открыть настройки", (dialog, which) -> {
                         try {
                             startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                     Uri.parse("package:" + getPackageName())));
                         } catch (ActivityNotFoundException e) {
-                            Toast.makeText(this, "Разрешите установку из этого приложения в настройках Android",
+                            Toast.makeText(this, "Разрешите установку из приложения в настройках Android",
                                     Toast.LENGTH_LONG).show();
                         }
                     })
-                    .setNegativeButton("Отмена", null)
-                    .show();
+                    .setNegativeButton("Отмена", null).show();
             return;
         }
 
+        // Never dispatch the production update button to the separate Updater APK:
+        // this app checks family-builds, validates SHA-256 and signing certificate,
+        // then uses Android PackageInstaller on the same app package.
         AppUpdater.updateNow(this);
-        Toast.makeText(this, "Проверяю семейное обновление…", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Проверяю обновления семейной версии…", Toast.LENGTH_LONG).show();
     }
     private void openBrowser(String url) {
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
