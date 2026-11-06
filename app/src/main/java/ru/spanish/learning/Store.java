@@ -512,6 +512,58 @@ public final class Store extends SQLiteOpenHelper {
         return added;
     }
 
+    /**
+     * Import up to maxWords NEW Papa words, not expressions, into one target profile.
+     * All existing target cards count as present (studying AND mastered). Deletion
+     * tombstones also count as present, so a manual removal stays permanent.
+     * Newly copied cards begin unmastered; target progress and translations stay intact.
+     * Returns the actual source cards copied, for matching picture transfer.
+     */
+    List<Card> copyMissingWordsFrom(Store source, int maxWords) {
+        if (source == null || source == this || this.english != source.english
+                || !StudyProfile.PAPA.equals(source.profileId)
+                || (!StudyProfile.MAMA.equals(this.profileId)
+                    && !StudyProfile.DIMA.equals(this.profileId)))
+            throw new IllegalArgumentException("Only Papa to Mama/Dima, same language");
+        if (maxWords < 1) throw new IllegalArgumentException("maxWords must be positive");
+
+        java.util.Set<String> known = new java.util.HashSet<>();
+        // Includes studied, mastered and previously deleted cards.
+        for (SyncEntry entry : vocabularyForSync())
+            known.add(syncKey(entry.kind(), entry.spanish()));
+
+        List<Card> copied = new ArrayList<>();
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (Card card : source.vocabulary()) {
+                if (copied.size() >= maxWords) break;
+                if (card.kind() != 0 || card.spanish() == null || card.spanish().isBlank()
+                        || card.meaning() == null || card.meaning().isBlank()) continue;
+                String key = syncKey(0, card.spanish());
+                if (known.contains(key)) continue;
+                ContentValues values = new ContentValues();
+                values.put("spanish", card.spanish());
+                values.put("meaning", card.meaning());
+                values.put("kind", 0);
+                values.put("category", card.category());
+                values.put("mastered", 0);
+                values.put("last_result", 0);
+                values.put("review_count", 0);
+                values.put("next_due", 0);
+                db.insertOrThrow("cards", null, values);
+                trackLocal(db, card.spanish(), 0, false);
+                known.add(key);
+                copied.add(card);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        if (!copied.isEmpty()) changed();
+        return copied;
+    }
+
     public void addCard(String spanish, String meaning, int kind) {
         addCard(spanish, meaning, kind, kind == 0 ? 1 : 0);
     }
