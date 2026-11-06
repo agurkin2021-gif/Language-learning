@@ -1975,11 +1975,20 @@ public final class MainActivity extends Activity {
                             Toast.makeText(this, "Карточка не найдена", Toast.LENGTH_LONG).show();
                             return;
                         }
-                        if (!card.spanish().equals(newText))
-                            CardImageMigration.copyOnEdit(this, card.spanish(), newText, studyingEnglish());
+                        boolean artCopied = true;
+                        if (!card.spanish().equals(newText)) {
+                            try {
+                                CardImageMigration.copyOnEdit(this, card.spanish(), newText, studyingEnglish());
+                            } catch (java.io.IOException pictureError) {
+                                artCopied = false;
+                            }
+                        }
                         editDialog.dismiss();
                         cardRevealed = false;
                         render();
+                        if (!artCopied)
+                            Toast.makeText(this, "Карточка сохранена, но рисунок не удалось скопировать",
+                                    Toast.LENGTH_LONG).show();
                     } catch (IllegalArgumentException invalid) {
                         original.setError(invalid.getMessage());
                     } catch (Exception error) {
