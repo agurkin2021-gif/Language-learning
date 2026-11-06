@@ -1,5 +1,7 @@
 package ru.spanish.learning;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -22,7 +24,7 @@ final class RioplatensePronunciation {
     // or "одиннадцать — двенадцать". Do not read the hyphen aloud there either.
     private static final Pattern WORD_RANGE = Pattern.compile(
             "([\\p{L}]+)\\s*[-–—−]\\s*([\\p{L}]+)");
-    private static final Set<String> NUMBER_WORDS = Set.of(
+    private static final Set<String> NUMBER_WORDS = new HashSet<>(Arrays.asList(
             "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete",
             "ocho", "nueve", "diez", "once", "doce", "trece", "catorce",
             "quince", "dieciséis", "dieciseis", "diecisiete", "dieciocho",
@@ -37,7 +39,7 @@ final class RioplatensePronunciation {
             "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать",
             "девятнадцать", "двадцать", "тридцать", "сорок",
             "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят",
-            "девяносто", "сто");
+            "девяносто", "сто"));
 
     private static final String[] RU_UNITS = {"ноль", "один", "два", "три",
             "четыре", "пять", "шесть", "семь", "восемь", "девять"};
