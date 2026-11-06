@@ -71,6 +71,78 @@ public final class FamilyVocabularyTransferTest extends AndroidTestCase {
         }
     }
 
+    public void testLimitedTransferSkipsStudyingMasteredDeletedAndPhrasesIndependently() {
+        String[] dbNames = {
+                "test-limited-papa-en.db", "test-limited-mama-en.db",
+                "test-limited-dima-en.db"
+        };
+        for (String db : dbNames) getContext().deleteDatabase(db);
+        try (Store papa = Store.forProfileTest(getContext(), dbNames[0], StudyProfile.PAPA, true);
+             Store mama = Store.forProfileTest(getContext(), dbNames[1], StudyProfile.MAMA, true);
+             Store dima = Store.forProfileTest(getContext(), dbNames[2], StudyProfile.DIMA, true)) {
+            String[] words = {
+                    "family test unique alpha", "family test unique beta",
+                    "family test unique gamma", "family test unique delta",
+                    "family test unique epsilon"
+            };
+            for (int i=0;i<words.length;i++)
+                papa.addCard(words[i], "papa translation " + i, 0, 2);
+            // Papa's mastered archive is still eligible as a transfer source.
+            papa.setMastered(papa.vocabulary().get(0).id(), true);
+            papa.addCard("family test expression one", "expression", 1, 0);
+
+            mama.addCard(words[0], "Mama own studying definition", 0, 2);
+            mama.addCard(words[1], "Mama own mastered definition", 0, 2);
+            mama.setMastered(mama.vocabulary().get(1).id(), true);
+            mama.addCard(words[2], "Previously deleted by Mama", 0, 2);
+            long deleted = mama.vocabulary().get(2).id();
+            assertTrue(mama.deleteCard(deleted));
+
+            dima.addCard(words[0], "Dima own definition", 0, 2);
+            dima.setMastered(dima.vocabulary().get(0).id(), true);
+
+            List<Store.Card> forMama = mama.copyMissingWordsFrom(papa, 2);
+            List<Store.Card> forDima = dima.copyMissingWordsFrom(papa, 2);
+            assertEquals(2, forMama.size());
+            assertEquals(words[3], forMama.get(0).spanish());
+            assertEquals(words[4], forMama.get(1).spanish());
+            assertEquals(2, forDima.size());
+            assertEquals(words[1], forDima.get(0).spanish());
+            assertEquals(words[2], forDima.get(1).spanish());
+
+            // Repeating the transfer with a new limit adds the next missing word only.
+            assertEquals(0, mama.copyMissingWordsFrom(papa, 2).size());
+            List<Store.Card> dimaNext = dima.copyMissingWordsFrom(papa, 1);
+            assertEquals(1, dimaNext.size());
+            assertEquals(words[3], dimaNext.get(0).spanish());
+
+            assertFalse(mama.containsCard(words[2], 0));
+            assertFalse(mama.containsCard("family test expression one", 1));
+            assertFalse(dima.containsCard("family test expression one", 1));
+            assertEquals("Mama own studying definition", mama.vocabulary().get(0).meaning());
+            assertFalse(mama.vocabulary().get(0).mastered());
+            assertEquals("Mama own mastered definition", mama.vocabulary().get(1).meaning());
+            assertTrue(mama.vocabulary().get(1).mastered());
+            assertEquals("Dima own definition", dima.vocabulary().get(0).meaning());
+            assertTrue(dima.vocabulary().get(0).mastered());
+
+            for (Store.Card card : mama.vocabulary()) {
+                if (words[3].equals(card.spanish()) || words[4].equals(card.spanish())) {
+                    assertEquals(0, card.reviewCount());
+                    assertFalse(card.mastered());
+                    assertTrue(card.meaning().startsWith("papa translation"));
+                }
+            }
+            assertEquals(6, papa.vocabulary().size()); // Source was never modified.
+            try {
+                mama.copyMissingWordsFrom(papa, 0);
+                fail("Zero must be rejected");
+            } catch (IllegalArgumentException expected) {}
+        } finally {
+            for (String db : dbNames) getContext().deleteDatabase(db);
+        }
+    }
+
     public void testCopiesExistingPapaSvgAndEmojiButNeverReplacesTargetArt() throws Exception {
         String word = "exclusivo para transferir imagen familiar";
         String key = CardImageLoader.key(word);
