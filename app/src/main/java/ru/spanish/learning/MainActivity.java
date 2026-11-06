@@ -557,9 +557,9 @@ public final class MainActivity extends Activity {
                     render();
                     new AlertDialog.Builder(this).setTitle("Копирование завершено")
                             .setMessage("Мама: добавлено карточек " + done.mamaCards()
-                                    + ", картинок " + done.mamaPictures() + ".\\n"
+                                    + ", картинок " + done.mamaPictures() + ".\n"
                                     + "Дима: добавлено карточек " + done.dimaCards()
-                                    + ", картинок " + done.dimaPictures() + ".\\n"
+                                    + ", картинок " + done.dimaPictures() + ".\n"
                                     + "Существующие карточки и прогресс сохранены.")
                             .setPositiveButton("Закрыть", null).show();
                 }
