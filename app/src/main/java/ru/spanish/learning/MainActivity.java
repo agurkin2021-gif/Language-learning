@@ -209,6 +209,10 @@ public final class MainActivity extends Activity {
     private void selectStudyLanguage(String next) {
         if (!"en".equals(next) && !"es".equals(next)) return;
         if (next.equals(studyLanguage)) return;
+        if (familyTransferRunning.get()) {
+            Toast.makeText(this, "Дождитесь завершения переноса слов", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (imageRepairRunning) {
             Toast.makeText(this, "Сначала завершите или остановите создание картинок",
                     Toast.LENGTH_LONG).show();
@@ -480,8 +484,11 @@ public final class MainActivity extends Activity {
         Button profileButton = rowButton("Профиль: " + StudyProfile.name(activeProfile), null);
         box.addView(profileButton, spaced(10));
         box.addView(rowButton("Синхронизация", this::syncAllFamilyProfiles), spaced(10));
-        box.addView(rowButton("Скопировать слова и картинки Папы → Маме и Диме",
-                this::confirmFamilyTransfer), spaced(10));
+        // The transfer button exists only for the selected recipient; Papa is source only.
+        if (!StudyProfile.isPapa(activeProfile)) {
+            box.addView(rowButton("Добавить слова Папы → " + StudyProfile.name(activeProfile),
+                    this::confirmFamilyTransfer), spaced(10));
+        }
         box.addView(rowButton("Google — сохранить озвучку всех рассказов",
                 this::startGoogleStoryRecording), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
@@ -516,31 +523,47 @@ public final class MainActivity extends Activity {
 
     /** Explicit local transfer from Papa's SQLite and private picture folders. */
     private void confirmFamilyTransfer() {
+        if (StudyProfile.isPapa(activeProfile)) return;
         if (familyTransferRunning.get() || manualVocabularySyncing.get() || imageRepairRunning
                 || assistantRequestInFlight || storyWordRequestInFlight) {
             Toast.makeText(this, "Завершите текущую операцию", Toast.LENGTH_LONG).show();
             return;
         }
-        final boolean selectedEnglish = studyingEnglish();
-        LinearLayout form = new LinearLayout(this);
-        form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(dp(20), dp(8), dp(20), dp(8));
-        textInto(form, "Сколько НОВЫХ слов Папы добавить отдельно Маме и Диме? "
-                + "Уже изучаемые, выученные и ранее удалённые слова пропускаются. "
-                + "Переносится только " + (selectedEnglish ? "английский" : "испанский")
-                + " словарь, с переводами и готовыми картинками. "
-                + "Прогресс и картинки других профилей сохраняются.", 16);
+        // Freeze recipient and language before opening either dialog.
+        final String targetProfile = activeProfile;
+        final boolean english = studyingEnglish();
+        new AlertDialog.Builder(this)
+                .setTitle("Слова Папы → " + StudyProfile.name(targetProfile))
+                .setItems(new String[]{
+                        "Указать количество вручную",
+                        "Добавить все отсутствующие слова"
+                }, (dialog, which) -> {
+                    if (which == 0) showFamilyTransferQuantity(targetProfile, english);
+                    else confirmFamilyTransferAll(targetProfile, english);
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showFamilyTransferQuantity(String targetProfile, boolean english) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), dp(8));
+        textInto(box, "Сколько новых слов Папы добавить в профиль "
+                + StudyProfile.name(targetProfile) + "? "
+                + "Выученные, изучаемые и ранее удалённые слова получателя пропускаются. "
+                + "Переводы и готовые картинки копируются. Другие профили не изменяются.", 16);
         EditText amount = new EditText(this);
         amount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         amount.setSingleLine(true);
-        amount.setHint("Количество слов, например 20");
+        amount.setHint("Количество, например 20");
         amount.setText("20");
         amount.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
         ui.styleInput(amount);
-        form.addView(amount, spaced(8));
+        box.addView(amount, spaced(8));
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Добавить слова Папы → Маме и Диме")
-                .setView(form)
+                .setTitle("Слова Папы → " + StudyProfile.name(targetProfile))
+                .setView(box)
                 .setNegativeButton("Отмена", null)
                 .setPositiveButton("Добавить", null)
                 .create();
@@ -558,18 +581,35 @@ public final class MainActivity extends Activity {
                         return;
                     }
                     dialog.dismiss();
-                    runFamilyTransfer(count, selectedEnglish);
+                    runFamilyTransfer(targetProfile, count, english);
                 }));
         dialog.show();
     }
 
-    private void runFamilyTransfer(int maxWords, boolean english) {
+    private void confirmFamilyTransferAll(String targetProfile, boolean english) {
+        new AlertDialog.Builder(this)
+                .setTitle("Добавить все отсутствующие слова?")
+                .setMessage("Профиль: " + StudyProfile.name(targetProfile)
+                        + ". Будут скопированы все слова Папы с переводами и готовыми "
+                        + "картинками, которых ещё нет в выученных и изучаемых карточках "
+                        + "этого профиля. Ранее удалённые слова не восстановятся. "
+                        + "Папа и другие профили останутся без изменений.")
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Добавить все", (dialog, which) ->
+                        runFamilyTransfer(targetProfile, Integer.MAX_VALUE, english))
+                .show();
+    }
+
+    private void runFamilyTransfer(String targetProfile, int maxWords, boolean english) {
+        if (!StudyProfile.MAMA.equals(targetProfile) && !StudyProfile.DIMA.equals(targetProfile))
+            return;
         if (!familyTransferRunning.compareAndSet(false, true)) return;
         new Thread(() -> {
             FamilyVocabularyTransfer.Result result = null;
             Exception failure = null;
             try {
-                result = FamilyVocabularyTransfer.copyFromPapa(getApplicationContext(), maxWords, english);
+                result = FamilyVocabularyTransfer.copyFromPapa(
+                        getApplicationContext(), targetProfile, maxWords, english);
             } catch (Exception error) {
                 failure = error;
             } finally {
@@ -587,10 +627,10 @@ public final class MainActivity extends Activity {
                 } else {
                     render();
                     new AlertDialog.Builder(this).setTitle("Копирование завершено · " + (english ? "EN" : "ES"))
-                            .setMessage("Мама: добавлено карточек " + done.mamaCards()
-                                    + ", картинок " + done.mamaPictures() + ".\n"
-                                    + "Дима: добавлено карточек " + done.dimaCards()
-                                    + ", картинок " + done.dimaPictures() + ".\n"
+                            .setMessage(StudyProfile.name(done.targetProfile())
+                                    + ": добавлено карточек " + done.cards()
+                                    + ", картинок " + done.pictures() + ".\n"
+                                    + "Папа и остальные профили без изменений. "
                                     + "Существующие карточки и прогресс сохранены.")
                             .setPositiveButton("Закрыть", null).show();
                 }
