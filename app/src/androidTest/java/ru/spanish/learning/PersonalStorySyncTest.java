@@ -99,6 +99,48 @@ public class PersonalStorySyncTest extends AndroidTestCase {
         }
     }
 
+    public void testPublishedCorrectionUpdatesExistingStoryWithoutLosingProgress() throws Exception {
+        String db = "test-corrected-remote-story.db";
+        getContext().deleteDatabase(db);
+        try (Store store = new Store(getContext(), db)) {
+            JSONObject incoming = feed("gerizim-ebal", "Gerizim y Ebal");
+            JSONObject item = incoming.getJSONArray("items").getJSONObject(0);
+            item.put("spanish", "En el siglo XVII antes de Cristo.");
+            item.put("russian", "В семнадцатом веке до нашей эры.");
+
+            assertEquals(1, PersonalStorySync.importStories(store, incoming, "public", "es").added());
+            Store.Story original = null;
+            for (Store.Story story : store.stories()) {
+                if ("Gerizim y Ebal".equals(story.title())) original = story;
+            }
+            assertNotNull(original);
+            long id = original.id();
+            int count = store.stories().size();
+            store.position(id, 1);
+
+            item.put("spanish", "En el siglo 17 antes de Cristo.");
+            assertEquals(1, PersonalStorySync.importStories(store, incoming, "public", "es").added());
+            assertEquals(count, store.stories().size());
+            Store.Story corrected = null;
+            for (Store.Story story : store.stories()) {
+                if (story.id() == id) corrected = story;
+            }
+            assertNotNull(corrected);
+            assertEquals("En el siglo 17 antes de Cristo.", corrected.body());
+            assertEquals("В семнадцатом веке до нашей эры.", corrected.translation());
+            assertEquals(1, corrected.position());
+            assertEquals(0, PersonalStorySync.importStories(store, incoming, "public", "es").added());
+
+            assertTrue(store.deleteStory(id));
+            item.put("spanish", "En el siglo 17 antes de Cristo. Otro texto.");
+            item.put("russian", "В семнадцатом веке до нашей эры. Другой текст.");
+            assertEquals(0, PersonalStorySync.importStories(store, incoming, "public", "es").added());
+            assertEquals(count - 1, store.stories().size());
+        } finally {
+            getContext().deleteDatabase(db);
+        }
+    }
+
     public void testResetBlocksPersonalRestoration() throws Exception {
         String esName = "test-reset-personal-es.db";
         String enName = "test-reset-personal-en.db";
