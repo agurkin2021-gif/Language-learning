@@ -91,17 +91,16 @@ public final class FamilyVocabularyTransferTest extends AndroidTestCase {
             papaEs.mkdirs();
             papaEn.mkdirs();
             mamaEs.mkdirs();
-            Files.writeString(paths[0].toPath(), "<svg><rect width=\"200\" height=\"200\" /></svg>",
-                    StandardCharsets.UTF_8);
-            Files.writeString(paths[1].toPath(), "🚗", StandardCharsets.UTF_8);
-            Files.writeString(paths[2].toPath(), "<svg>own Mama image</svg>", StandardCharsets.UTF_8);
+            Files.write(paths[0].toPath(), "<svg><rect width=\"200\" height=\"200\" /></svg>".getBytes(StandardCharsets.UTF_8));
+            Files.write(paths[1].toPath(), "🚗".getBytes(StandardCharsets.UTF_8));
+            Files.write(paths[2].toPath(), "<svg>own Mama image</svg>".getBytes(StandardCharsets.UTF_8));
             assertEquals(0, FamilyVocabularyTransfer.copyPictures(getContext(), sample, StudyProfile.MAMA, false));
             assertEquals(1, FamilyVocabularyTransfer.copyPictures(getContext(), sample, StudyProfile.DIMA, false));
             assertEquals(0, FamilyVocabularyTransfer.copyPictures(getContext(), sample, StudyProfile.DIMA, false));
             assertEquals(1, FamilyVocabularyTransfer.copyPictures(getContext(), sample, StudyProfile.MAMA, true));
-            assertEquals(Files.readString(paths[0].toPath()), Files.readString(paths[3].toPath()));
-            assertEquals("🚗", Files.readString(paths[4].toPath()));
-            assertEquals("<svg>own Mama image</svg>", Files.readString(paths[2].toPath()));
+            assertEquals(new String(Files.readAllBytes(paths[0].toPath()), StandardCharsets.UTF_8), new String(Files.readAllBytes(paths[3].toPath()), StandardCharsets.UTF_8));
+            assertEquals("🚗", new String(Files.readAllBytes(paths[4].toPath()), StandardCharsets.UTF_8));
+            assertEquals("<svg>own Mama image</svg>", new String(Files.readAllBytes(paths[2].toPath()), StandardCharsets.UTF_8));
         } finally {
             for (File file : paths) Files.deleteIfExists(file.toPath());
         }
