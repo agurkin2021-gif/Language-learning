@@ -95,7 +95,29 @@ final class RioplatensePronunciation {
                         Matcher.quoteReplacement(writtenRange.group()));
         }
         writtenRange.appendTail(normalized);
-        return normalized.toString();
+        // Older Bible translations contain obsolete tildes and historical
+        // transliterations which make modern Spanish TTS stress names or verbs
+        // incorrectly. Fix only what is spoken; never rewrite user stories.
+        return "es".equals(language)
+                ? spanishStressCorrections(normalized.toString()) : normalized.toString();
+    }
+
+    private static String spanishStressCorrections(String original) {
+        return original
+                // A missing tilde on oír shifts emphasis away from the final í.
+                .replaceAll("(?iu)(?<![\\p{L}])oir(?![\\p{L}])", "oír")
+                // 'pára' is an obsolete/nonstandard graphic accent; 'para'
+                // preserves the correct PA-ra stress.
+                .replaceAll("(?iu)(?<![\\p{L}])pára(?![\\p{L}])", "para")
+                // Historical Reina-Valera spellings: correct modern Spanish
+                // pronunciation of the same people and places.
+                .replaceAll("(?iu)(?<![\\p{L}])Nechâo(?![\\p{L}])", "Necao")
+                .replaceAll("(?iu)(?<![\\p{L}])Topheth(?![\\p{L}])", "Tófet")
+                .replaceAll("(?iu)(?<![\\p{L}])Jerusalem(?![\\p{L}])", "Jerusalén")
+                // 'á' was the old spelling of the unstressed preposition a.
+                .replaceAll("(?iu)(?<![\\p{L}])á(?![\\p{L}])", "a")
+                // Missing separator in the supplied story changes TTS word grouping.
+                .replace("bendicióno", "bendición o");
     }
 
     private static String cardinal(int number, String language) {
