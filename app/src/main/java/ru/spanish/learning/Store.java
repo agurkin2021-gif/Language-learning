@@ -40,7 +40,7 @@ public final class Store extends SQLiteOpenHelper {
         return new Store(context, dbName, english, StudyProfile.normalized(id));
     }
     private Store(Context context, String databaseName, boolean english, String profileId) {
-        super(context, databaseName, null, 11);
+        super(context, databaseName, null, 12);
         this.context = context.getApplicationContext();
         this.english = english;
         this.profileId = profileId;
@@ -73,6 +73,7 @@ public final class Store extends SQLiteOpenHelper {
                 BeginnerCards.seed(db);
                 setAppFlag(db, "beginner_700_seeded");
                 FamilyStory.seed(db);
+                if (!StudyProfile.PIMEN.equals(profileId)) GarageCarStory.seed(db);
                 if (StudyProfile.DIMA.equals(profileId)) {
                     DimaExtraCards.seed(db);
                     setAppFlag(db, "dima_extra_300_seeded");
@@ -87,6 +88,7 @@ public final class Store extends SQLiteOpenHelper {
         v.put("source", "Встроенный пример • написан заранее, не ИИ-генерация по архиву");
         db.insertOrThrow("stories", null, v);
         DefaultCards.seed(db);
+        GarageCarStory.seed(db);
     }
 
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
@@ -133,6 +135,9 @@ public final class Store extends SQLiteOpenHelper {
             if (appFlag(db,"personal_story_reset")) setAppStateTime(db,"vocabulary_sync_reset_ms",
                     System.currentTimeMillis());
         }
+        // Add only to the three family profiles, without modifying Pimen\'s data.
+        if (oldVersion < 12 && !english && !StudyProfile.PIMEN.equals(profileId))
+            GarageCarStory.seed(db);
     }
 
     // Existing Dima profiles receive the pack once. Never reseed after a deliberate reset.
