@@ -38,6 +38,7 @@ public final class SpeechPlayer {
     private String learningLanguage = "es";
     private int resumeOffset;
     private int utteranceBaseOffset;
+    private boolean spokenTextChangesOffsets;
     private String activeToken = "";
     public boolean sentenceMode = true;
     public float speed = 0.85f;
@@ -322,8 +323,11 @@ public final class SpeechPlayer {
         if (resumeOffset < 0 || resumeOffset >= full.length()) resumeOffset = 0;
         utteranceBaseOffset = resumeOffset;
         activeToken = token;
-        String spoken = RioplatensePronunciation.forSpeech(
-                full.substring(utteranceBaseOffset), learningLanguage);
+        String originalSpeech = full.substring(utteranceBaseOffset);
+        String spoken = RioplatensePronunciation.forSpeech(originalSpeech, learningLanguage);
+        // Expanding 11:26–28 into Russian words changes TTS range offsets.
+        // Do not mistake the spoken positions for positions in the displayed text.
+        spokenTextChangesOffsets = !spoken.equals(originalSpeech);
         error = "";
         tts.setSpeechRate(speed);
         if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
@@ -403,7 +407,8 @@ public final class SpeechPlayer {
     }
 
     private void rememberRange(String token, int start) {
-        if (closed || !token.equals(activeToken) || state.phase != PlaybackState.Phase.SPEAKING) return;
+        if (closed || !token.equals(activeToken) || state.phase != PlaybackState.Phase.SPEAKING
+                || spokenTextChangesOffsets) return;
         String full = current();
         resumeOffset = Math.max(0, Math.min(full.length(), utteranceBaseOffset + start));
     }
