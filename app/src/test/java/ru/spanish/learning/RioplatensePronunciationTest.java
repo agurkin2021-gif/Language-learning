@@ -76,6 +76,38 @@ public class RioplatensePronunciationTest {
                 RioplatensePronunciation.forSpeech("Он шёл туда-сюда.", "ru"));
     }
 
+    @Test public void biblicalSpanishStressIsNormalizedWithoutChangingOriginalText() {
+        assertEquals("su cerviz, por no oír ni",
+                RioplatensePronunciation.forSpeech("su cerviz, por no oir ni", "es"));
+        assertEquals("Antes que para el decreto",
+                RioplatensePronunciation.forSpeech("Antes que pára el decreto", "es"));
+        assertEquals("las palabras de Necao que eran de boca de Dios",
+                RioplatensePronunciation.forSpeech(
+                        "las palabras de Nechâo que eran de boca de Dios", "es"));
+        assertEquals("los altos de Tófet,",
+                RioplatensePronunciation.forSpeech("los altos de Topheth,", "es"));
+        assertEquals("puertas de Jerusalén;",
+                RioplatensePronunciation.forSpeech("puertas de Jerusalem;", "es"));
+        assertEquals("mandé a vuestros padres",
+                RioplatensePronunciation.forSpeech("mandé á vuestros padres", "es"));
+        assertEquals("Gerizim o Ebal, bendición o maldición.",
+                RioplatensePronunciation.forSpeech(
+                        "Gerizim o Ebal, bendicióno maldición.", "es"));
+    }
+    @Test public void validSpanishStressMarksAndVoseoArePreserved() {
+        for (String word : new String[] {
+                "Canaán", "Jehová", "Jeremías", "Josías", "Sofonías",
+                "Manasés", "Nínive", "Tófet", "Moisés", "Ezequías",
+                "Éufrates", "Hilcías", "salí", "oír", "escuchás", "tenés",
+                "podés", "andá", "esperá", "buscá", "sentate"}) {
+            assertEquals(word, RioplatensePronunciation.forSpeech(word, "es"));
+        }
+        assertEquals("Mas ellos no oyeron ni inclinaron su oído.",
+                RioplatensePronunciation.forSpeech(
+                        "Mas ellos no oyeron ni inclinaron su oído.", "es"));
+        assertEquals("Jerusalem", RioplatensePronunciation.forSpeech("Jerusalem", "en"));
+    }
+
     @Test public void punctuationAndOtherLanguagesAreNotAltered() {
         assertEquals("11:26–28", RioplatensePronunciation.forSpeech("11:26–28", "en"));
         assertEquals("Текст: десять сорок, а не 12:30:45.",
