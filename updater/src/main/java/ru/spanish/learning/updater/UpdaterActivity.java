@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 public final class UpdaterActivity extends Activity {
-    public static final String ACTION_UPDATE = "ru.spanish.learning.updater.UPDATE";
+    public static final String ACTION_UPDATE = "ru.spanish.learning.familyupdater.UPDATE";
     private static final String TARGET = "ru.spanish.learning";
     private static final String REPOSITORY = "agurkin2021-gif/Language-learning";
     private static final String BASE = "https://raw.githubusercontent.com/" + REPOSITORY + "/refs/heads/family-builds/";
@@ -103,14 +103,14 @@ public final class UpdaterActivity extends Activity {
             show("Обновление уже выполняется.");
             return;
         }
-        show("Проверяю новую версию…");
+        show("Семейный обновлятор · family-builds\nПроверяю новую версию…");
         WORKER.execute(() -> {
             boolean committed = false;
             try {
                 Candidate candidate = loadCandidate();
                 if (candidate == null) {
                     runOnUiThread(() -> {
-                        Toast.makeText(this, "Установлена актуальная версия", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Последняя семейная версия уже установлена", Toast.LENGTH_LONG).show();
                         finish();
                     });
                     return;
