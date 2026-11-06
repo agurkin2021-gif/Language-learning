@@ -43,7 +43,7 @@ public final class AppUpdater {
     private static final String PACKAGE = "ru.spanish.learning";
     private static final String REPOSITORY = "agurkin2021-gif/Language-learning";
     private static final String BASE = "https://raw.githubusercontent.com/" + REPOSITORY
-            + "/refs/heads/phone-builds/";
+            + "/refs/heads/family-builds/";
     private static final String PREFS = "app_updates";
     private static final String CALLBACK_SESSION = "ru.spanish.learning.UPDATE_SESSION";
     private static final int PERIODIC_JOB = 72101;
@@ -207,7 +207,7 @@ public final class AppUpdater {
             if (((Number) number).doubleValue() != (double) version
                     || !REPOSITORY.equals(metadata.optString("repository"))
                     || !PACKAGE.equals(metadata.optString("application_id"))
-                    || !"phone-builds".equals(metadata.optString("channel")))
+                    || !"family-builds".equals(metadata.optString("channel")))
                 throw new IOException("Invalid metadata");
             String expectedDigest = metadata.optString("apk_sha256").toLowerCase(Locale.ROOT);
             if (!UpdatePolicy.validDigest(expectedDigest)) throw new IOException("Invalid digest");
