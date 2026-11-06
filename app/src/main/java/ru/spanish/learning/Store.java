@@ -918,26 +918,64 @@ public final class Store extends SQLiteOpenHelper {
         if (!cleanTranslation.isEmpty() && Sentences.split(body).size() != Sentences.split(cleanTranslation).size())
             throw new IllegalArgumentException("Количество предложений в переводе не совпадает");
         SQLiteDatabase db = getWritableDatabase();
+        boolean modified = false;
         db.beginTransaction();
         try {
-            if ((privateFeed ? personalStoriesDisabled(db) : sharedContentDisabled(db))
-                    || remoteImported(db, externalId)) {
+            if (privateFeed ? personalStoriesDisabled(db) : sharedContentDisabled(db)) {
                 db.setTransactionSuccessful();
                 return false;
             }
-            ContentValues v = new ContentValues();
-            v.put("title", title.trim());
-            v.put("body", body.trim());
-            v.put("translation", cleanTranslation);
-            v.put("source", "ChatGPT • синхронизировано");
-            long localId = db.insertOrThrow("stories", null, v);
-            markRemoteImported(db, externalId, "story", localId);
+
+            // A STORY INBOX correction keeps the same external ID. Update only an
+            // existing imported story in place, preserving its position and row ID.
+            // Deleted stories have a remote_items tombstone but no local row and
+            // must NEVER be recreated by a subsequent correction.
+            long knownLocalId = -1;
+            try (Cursor remote = db.rawQuery(
+                    "SELECT local_id FROM remote_items WHERE external_id=? AND item_type='story' LIMIT 1",
+                    new String[]{externalId})) {
+                if (remote.moveToFirst()) knownLocalId = remote.getLong(0);
+            }
+            if (knownLocalId >= 0) {
+                String id = Long.toString(knownLocalId);
+                try (Cursor local = db.query("stories", new String[]{"title", "body", "translation"},
+                        "id=?", new String[]{id}, null, null, null, "1")) {
+                    if (!local.moveToFirst()) {
+                        db.setTransactionSuccessful();
+                        return false; // Deliberately deleted; preserve the tombstone.
+                    }
+                    if (title.trim().equals(local.getString(0))
+                            && body.trim().equals(local.getString(1))
+                            && cleanTranslation.equals(local.getString(2))) {
+                        db.setTransactionSuccessful();
+                        return false; // Already synchronized, no duplicate.
+                    }
+                }
+                ContentValues correction = new ContentValues();
+                correction.put("title", title.trim());
+                correction.put("body", body.trim());
+                correction.put("translation", cleanTranslation);
+                modified = db.update("stories", correction, "id=?", new String[]{id}) == 1;
+            } else {
+                if (remoteImported(db, externalId)) {
+                    db.setTransactionSuccessful();
+                    return false; // External ID already belongs to another item.
+                }
+                ContentValues v = new ContentValues();
+                v.put("title", title.trim());
+                v.put("body", body.trim());
+                v.put("translation", cleanTranslation);
+                v.put("source", "ChatGPT • синхронизировано");
+                long localId = db.insertOrThrow("stories", null, v);
+                markRemoteImported(db, externalId, "story", localId);
+                modified = true;
+            }
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
         }
-        changed();
-        return true;
+        if (modified) changed();
+        return modified;
     }
 
     /** Retain remote_items tombstones to prevent restoration by the next sync. */
