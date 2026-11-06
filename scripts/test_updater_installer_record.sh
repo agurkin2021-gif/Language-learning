@@ -172,7 +172,7 @@ copy_candidate() {
 start_updater() {
   local appdir
   appdir=$(adb shell run-as "$updater" pwd | tr -d '\r')
-  timeout 20s adb shell am start -W -n "$updater/.UpdaterActivity" --es test_apk_path "$appdir/files/candidate.apk" >/dev/null
+  timeout 20s adb shell am start -W -n "$updater/ru.spanish.learning.updater.UpdaterActivity" --es test_apk_path "$appdir/files/candidate.apk" >/dev/null
 }
 
 wait_for_version() {
