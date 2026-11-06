@@ -23,7 +23,7 @@ public final class FamilyStoryTest extends AndroidTestCase {
             assertEquals(2, papa.stories().size());
             assertEquals(GarageCarStory.TITLE, papa.stories().get(0).title());
             assertEquals(0, en.stories().size());
-            assertEquals(3, mama.stories().size());
+            assertEquals(2, mama.stories().size());
             assertEquals(2, dima.stories().size());
             Store.Story story = mama.stories().stream().filter(x -> FamilyStory.TITLE.equals(x.title())).findFirst().orElseThrow();
             assertEquals(FamilyStory.TITLE, story.title());
