@@ -116,6 +116,13 @@ public final class FamilyVocabularyTransferTest extends AndroidTestCase {
             assertEquals(1, dimaNext.size());
             assertEquals(words[3], dimaNext.get(0).spanish());
 
+            // "All" takes every remaining missing word in ONLY the selected target.
+            List<Store.Card> allRemaining = dima.copyMissingWordsFrom(papa, Integer.MAX_VALUE);
+            assertEquals(1, allRemaining.size());
+            assertEquals(words[4], allRemaining.get(0).spanish());
+            assertEquals(0, dima.copyMissingWordsFrom(papa, Integer.MAX_VALUE).size());
+            assertEquals(0, mama.copyMissingWordsFrom(papa, Integer.MAX_VALUE).size());
+
             assertFalse(mama.containsCard(words[2], 0));
             assertFalse(mama.containsCard("family test expression one", 1));
             assertFalse(dima.containsCard("family test expression one", 1));
@@ -141,6 +148,19 @@ public final class FamilyVocabularyTransferTest extends AndroidTestCase {
         } finally {
             for (String db : dbNames) getContext().deleteDatabase(db);
         }
+    }
+
+    public void testTransferRejectsPapaAndPimenAsRecipients() throws Exception {
+        for (String invalid : new String[]{StudyProfile.PAPA, StudyProfile.PIMEN, "unknown"}) {
+            try {
+                FamilyVocabularyTransfer.copyFromPapa(getContext(), invalid, 10, false);
+                fail("Must reject target " + invalid);
+            } catch (IllegalArgumentException expected) {}
+        }
+        try {
+            FamilyVocabularyTransfer.copyFromPapa(getContext(), StudyProfile.MAMA, 0, false);
+            fail("Must reject zero word limit");
+        } catch (IllegalArgumentException expected) {}
     }
 
     public void testCopiesExistingPapaSvgAndEmojiButNeverReplacesTargetArt() throws Exception {
