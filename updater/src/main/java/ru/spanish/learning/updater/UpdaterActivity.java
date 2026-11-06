@@ -108,12 +108,7 @@ public final class UpdaterActivity extends Activity {
             boolean committed = false;
             try {
                 Candidate candidate = loadCandidate();
-                if (candidate == null) {
-                    runOnUiThread(() -> show("Семейная версия актуальна.\\n" +
-                            "Канал обновления: family-builds.\\n" +
-                            "Версии приложения и сервера показаны выше."));
-                    return;
-                }
+                if (candidate == null) return; // Installed and available versions remain visible.
                 install(candidate);
                 committed = true;
             } catch (Exception error) {
@@ -147,9 +142,10 @@ public final class UpdaterActivity extends Activity {
         long expectedVersion = metadata.getLong("version_code");
         PackageInfo installed = installedPackage();
         long installedCode = version(installed);
-        showFromWorker("Семейный канал · family-builds\\n" +
+        showFromWorker("Семейный канал · family-builds\n" +
                 "Установлено: №" + Math.max(0, installedCode - 100L) +
-                " · Доступно: №" + Math.max(0, expectedVersion - 100L));
+                " · Доступно: №" + Math.max(0, expectedVersion - 100L) +
+                (installedCode >= expectedVersion ? "\nОбновление не требуется." : "\nНайдено обновление."));
         if (installedCode >= expectedVersion) return null;
         String expectedSha = metadata.getString("apk_sha256").toLowerCase(Locale.ROOT);
         if (!expectedSha.matches("[0-9a-f]{64}")) throw new IOException("Bad digest");
