@@ -87,6 +87,8 @@ public final class MainActivity extends Activity {
     private TextView sentence, sentenceRu, playbackStatus, cardVoiceStatus;
     private Button toggle, repeat;
     private List<String> storyTranslations = new java.util.ArrayList<>();
+    private List<String> storyOriginalSentences = new java.util.ArrayList<>();
+    private boolean storyReadRussian;
     private boolean darkTheme;
     private UiStyle ui;
     private int kind;
@@ -341,7 +343,10 @@ public final class MainActivity extends Activity {
                     Toast.LENGTH_LONG).show();
             return;
         }
-        player.pause(); remember(); storyId = -1; screen = next; render();
+        player.pause(); remember();
+        if ("player".equals(screen) && !"player".equals(next))
+            player.setLearningLanguage(studyLanguage);
+        storyId = -1; screen = next; render();
     }
     private void render() {
         cancelCardSpeech();
@@ -2137,17 +2142,73 @@ public final class MainActivity extends Activity {
         remember();
         storyId = story.id();
         screen = "player";
+        storyOriginalSentences = Sentences.split(story.body());
+        storyTranslations = Sentences.split(story.translation());
+        // Never try to read a missing or non-aligned translation.
+        storyReadRussian = prefs.getBoolean(prefKey("storyReadRussian"), false)
+                && storyTranslations.size() == storyOriginalSentences.size()
+                && !storyTranslations.isEmpty();
+        player.setLearningLanguage(storyReadRussian ? "ru" : studyLanguage);
         HumanStoryAudio recorded = new HumanStoryAudio(this, activeProfile, studyLanguage,
                 story.id(), story.body());
         GoogleStoryAudio google = new GoogleStoryAudio(this, activeProfile, studyLanguage,
                 story.id(), story.body());
         String source = prefs.getString(prefKey("narrationSource"),
                 prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
-        player.attachHumanStory(recorded, "human".equals(source));
-        player.attachGoogleStory(google, "google".equals(source));
-        player.load(story.body(), story.position());
+        player.attachHumanStory(recorded, !storyReadRussian && "human".equals(source));
+        player.attachGoogleStory(google, !storyReadRussian && "google".equals(source));
+        player.load(storyReadRussian ? story.translation() : story.body(), story.position());
         render();
     }
+
+    /** Switch only the spoken story text, not the language of study cards. */
+    boolean selectStoryPlaybackLanguage(boolean russian) {
+        Store.Story selected = null;
+        for (Store.Story story : store.stories()) if (story.id() == storyId) {
+            selected = story;
+            break;
+        }
+        if (selected == null || !"player".equals(screen)) return false;
+        List<String> original = Sentences.split(selected.body());
+        List<String> translated = Sentences.split(selected.translation());
+        if (russian && (translated.isEmpty() || original.size() != translated.size())) {
+            Toast.makeText(this, "Русская озвучка недоступна: перевод неполный или не совпадают предложения",
+                    Toast.LENGTH_LONG).show();
+            return false;
+        }
+        if (storyReadRussian == russian) return true;
+        int position = player.state.index;
+        player.pause();
+        storyOriginalSentences = original;
+        storyTranslations = translated;
+        storyReadRussian = russian;
+        prefs.edit().putBoolean(prefKey("storyReadRussian"), russian).apply();
+        player.setLearningLanguage(russian ? "ru" : studyLanguage);
+        if (russian) {
+            // Stored Spanish/English recordings must NEVER play over Russian text.
+            player.useHumanVoice(false);
+            player.useGoogleVoice(false);
+        } else {
+            String source = prefs.getString(prefKey("narrationSource"), "tts");
+            player.useHumanVoice("human".equals(source));
+            player.useGoogleVoice("google".equals(source));
+        }
+        player.load(russian ? selected.translation() : selected.body(), position);
+        render();
+        return true;
+    }
+
+    private void chooseStoryPlaybackLanguage() {
+        new AlertDialog.Builder(this)
+                .setTitle("Язык озвучки рассказа")
+                .setSingleChoiceItems(new String[]{studyingEnglish() ? "Английский" : "Испанский",
+                        "Русский"}, storyReadRussian ? 1 : 0, (dialog, which) -> {
+                    if (selectStoryPlaybackLanguage(which == 1)) dialog.dismiss();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     private void storyPlayer() {
         Store.Story selected = null; for(Store.Story story : store.stories()) if(story.id() == storyId) selected = story;
         if(selected == null) { text("Рассказ не найден", 22); return; }
@@ -2158,6 +2219,12 @@ public final class MainActivity extends Activity {
         hint.setTextColor(secondaryText());
         hint.setPadding(0, dp(4), 0, dp(12));
 
+        Button storySpeechLanguage = button("Язык озвучки: "
+                + (storyReadRussian ? "Русский" : studyingEnglish() ? "Английский" : "Испанский")
+                + " ▾", this::chooseStoryPlaybackLanguage);
+        storySpeechLanguage.setTag("story-speech-language");
+        ui.style(storySpeechLanguage, UiStyle.Tone.OUTLINE);
+        storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
         LinearLayout readingPanel = new LinearLayout(this);
         readingPanel.setOrientation(LinearLayout.VERTICAL);
@@ -2166,7 +2233,7 @@ public final class MainActivity extends Activity {
         readingPanel.setElevation(dp(4));
         content.addView(readingPanel, spaced(15));
 
-        sentence = textInto(readingPanel, player.current(), 26);
+        sentence = textInto(readingPanel, currentOriginalSentence(), 26);
         sentence.setLineSpacing(dp(5), 1.07f);
         sentence.setPadding(0, dp(3), 0, dp(13));
         attachStoryWordGesture(sentence, this::currentTranslation);
@@ -2190,10 +2257,13 @@ public final class MainActivity extends Activity {
 
         humanVoiceButton = button("Источник: " + narrationLabel(), this::chooseNarrationSource);
         ui.style(humanVoiceButton, UiStyle.Tone.OUTLINE);
+        humanVoiceButton.setEnabled(!storyReadRussian);
         Button googleAudio = button("Google — озвучить все рассказы", this::startGoogleStoryRecording);
         ui.style(googleAudio, UiStyle.Tone.OUTLINE);
+        googleAudio.setEnabled(!storyReadRussian);
         Button recordHuman = button("Записать живой голос", this::openHumanRecorder);
         ui.style(recordHuman, UiStyle.Tone.OUTLINE);
+        recordHuman.setEnabled(!storyReadRussian);
 
         toggle = button("Слушать", () -> {
             if (player.state.phase == PlaybackState.Phase.SPEAKING ||
@@ -2214,11 +2284,16 @@ public final class MainActivity extends Activity {
         ui.style(back, UiStyle.Tone.OUTLINE);
     }
     private String narrationLabel() {
+        if (storyReadRussian) return "Системный голос (русский)";
         return player.googleSelected() ? "Google (сохранённая запись)"
                 : player.humanSelected() ? "Живой голос" : "Системный голос";
     }
 
     private void chooseNarrationSource() {
+        if (storyReadRussian) {
+            Toast.makeText(this, "Русский текст озвучивает системный русский голос", Toast.LENGTH_LONG).show();
+            return;
+        }
         new AlertDialog.Builder(this)
                 .setTitle("Источник озвучки")
                 .setItems(new String[]{"Системный голос", "Google (сохранённая запись)",
@@ -2290,7 +2365,7 @@ public final class MainActivity extends Activity {
                             if (story.id() != storyId) continue;
                             GoogleStoryAudio archived = new GoogleStoryAudio(MainActivity.this,
                                     activeProfile, studyLanguage, story.id(), story.body());
-                            if (archived.complete()) {
+                            if (!storyReadRussian && archived.complete()) {
                                 player.attachGoogleStory(archived, true);
                                 prefs.edit().putString(prefKey("narrationSource"), "google")
                                         .putBoolean(prefKey("humanVoice"), false).apply();
@@ -2393,7 +2468,7 @@ public final class MainActivity extends Activity {
                 try { session.stop(false); } catch (Exception ignored) {}
             }
             if (humanRecording == session) {
-                if (session.complete()) {
+                if (!storyReadRussian && session.complete()) {
                     player.useHumanVoice(true);
                     prefs.edit().putString(prefKey("narrationSource"), "human")
                             .putBoolean(prefKey("humanVoice"), true).apply();
@@ -2478,7 +2553,9 @@ public final class MainActivity extends Activity {
         for (Store.Story story : store.stories()) {
             if (story.id() == storyId) { selected = story; break; }
         }
-        if (selected == null || selected.body().trim().isEmpty()) {
+        String exportBody = selected == null ? "" :
+                storyReadRussian ? selected.translation() : selected.body();
+        if (exportBody.trim().isEmpty()) {
             Toast.makeText(this, "Нет текста для озвучивания", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -2489,8 +2566,8 @@ public final class MainActivity extends Activity {
         }
         player.pause();
         final String title = selected.title();
-        StoryAudioExporter exporter = new StoryAudioExporter(this, title, selected.body(),
-                studyLanguage, player.selectedVoiceNameForExport(), player.speed,
+        StoryAudioExporter exporter = new StoryAudioExporter(this, title, exportBody,
+                storyReadRussian ? "ru" : studyLanguage, player.selectedVoiceNameForExport(), player.speed,
                 new StoryAudioExporter.Listener() {
                     @Override public void progress(int done, int total) {
                         if (audioExporter == null || audioExportDialog == null
@@ -2675,6 +2752,11 @@ public final class MainActivity extends Activity {
     }
 
     private String findBody() { for(Store.Story s : store.stories()) if(s.id() == storyId) return s.body(); return ""; }
+    private String currentOriginalSentence() {
+        if (storyOriginalSentences.isEmpty()) return "";
+        int i = Math.max(0, Math.min(player.state.index, storyOriginalSentences.size() - 1));
+        return storyOriginalSentences.get(i);
+    }
     private String currentTranslation() {
         if (storyTranslations.isEmpty()) return "";
         int i = Math.max(0, Math.min(player.state.index, storyTranslations.size() - 1));
@@ -2700,14 +2782,17 @@ public final class MainActivity extends Activity {
         if (cardVoiceStatus != null) cardVoiceStatus.setText(player.voiceDescription);
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
         if (sentence == null) return;
-        sentence.setText(player.current()); if (sentenceRu != null) sentenceRu.setText(currentTranslation());
+        sentence.setText(currentOriginalSentence());
+        if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
         toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
         if (humanVoiceButton != null)
             humanVoiceButton.setText("Источник: " + narrationLabel());
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
-        playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
+        playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status
+                + (player.error.isEmpty() ? "" : "\n" + player.error)
+                + (!player.canPlay() ? "\n" + player.voiceDescription : ""));
     }
     private void syncContent() {
         if (personalStorySync == null || syncingContent) return;
