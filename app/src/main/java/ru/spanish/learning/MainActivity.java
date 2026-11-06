@@ -2276,7 +2276,7 @@ public final class MainActivity extends Activity {
         toggle.setMinHeight(dp(70));
 
         repeat = button("Повторить предложение", player::repeat);
-        Button readAll = button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
+        Button readAll = button("Читать весь рассказ заново", player::playAllFromStart);
         ui.style(readAll, UiStyle.Tone.OUTLINE);
         Button share = button("Отправить аудио", this::shareCurrentStory);
         ui.style(share, UiStyle.Tone.OUTLINE);
