@@ -164,7 +164,8 @@ final class GoogleStoryBatch {
                 return;
             }
             currentToken = "google:" + index + ":" + System.nanoTime();
-            String speech = clip.audio().sentence(clip.sentence());
+            String speech = RioplatensePronunciation.forSpeech(
+                    clip.audio().sentence(clip.sentence()), clip.language());
             if (tts.synthesizeToFile(speech, new Bundle(), pending, currentToken)
                     != TextToSpeech.SUCCESS) {
                 fail("Сервис Google отказался создавать аудиозапись.");
