@@ -123,15 +123,28 @@ public final class SpeechPlayer {
             }
             voices.add(voice);
         }
-        voices.sort(Comparator.comparingInt((Voice voice) -> {
-            if ("en".equals(learningLanguage))
-                return "US".equals(voice.getLocale().getCountry()) ? 0
-                        : "GB".equals(voice.getLocale().getCountry()) ? 1 : 2;
-            return "ru".equals(learningLanguage) ? 0
-                    : SpanishVoicePreference.regionRank(voice.getLocale());
-        }).thenComparingInt(voice -> voice.isNetworkConnectionRequired() ? 1 : 0)
-          .thenComparing((Voice voice) -> -voice.getQuality())
-          .thenComparing(Voice::getName));
+        voices.sort((first, second) -> {
+            int order;
+            if ("es".equals(learningLanguage)) {
+                order = SpanishVoicePreference.compareQualityFirst(
+                        first.getQuality(), first.getLocale(),
+                        second.getQuality(), second.getLocale());
+            } else {
+                int firstRegion = "en".equals(learningLanguage)
+                        ? ("US".equals(first.getLocale().getCountry()) ? 0
+                        : "GB".equals(first.getLocale().getCountry()) ? 1 : 2) : 0;
+                int secondRegion = "en".equals(learningLanguage)
+                        ? ("US".equals(second.getLocale().getCountry()) ? 0
+                        : "GB".equals(second.getLocale().getCountry()) ? 1 : 2) : 0;
+                order = Integer.compare(firstRegion, secondRegion);
+            }
+            if (order != 0) return order;
+            order = Boolean.compare(first.isNetworkConnectionRequired(),
+                    second.isNetworkConnectionRequired());
+            if (order != 0) return order;
+            order = Integer.compare(second.getQuality(), first.getQuality());
+            return order != 0 ? order : first.getName().compareTo(second.getName());
+        });
         return voices;
     }
 
