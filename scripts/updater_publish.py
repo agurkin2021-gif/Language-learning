@@ -15,8 +15,8 @@ from phone_publish import (
     signing_configuration, trusted_source, verify_signed
 )
 
-CHANNEL = "family-updater-builds"
-PACKAGE = "ru.spanish.learning.updater"
+CHANNEL = "family-updater-v2-builds"
+PACKAGE = "ru.spanish.learning.familyupdater"
 APK_NAME = "SpanishLearningUpdater.apk"
 FILES = (APK_NAME, "SHA256SUMS.txt", "build-info.json")
 
@@ -46,7 +46,7 @@ def read_channel(github):
     tree = github.request("/git/trees/" + commit["tree"]["sha"])
     entries = {entry["path"]: entry for entry in tree["tree"]}
     if tree.get("truncated") or set(entries) != set(FILES):
-        raise PublishError("Ветка family-updater-builds содержит неожиданные файлы")
+        raise PublishError("Ветка family-updater-v2-builds содержит неожиданные файлы")
     metadata = json.loads(github.blob(entries["build-info.json"]["sha"]))
     return {"head": head, "entries": entries, "metadata": metadata}
 
