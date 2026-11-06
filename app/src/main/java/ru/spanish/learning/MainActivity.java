@@ -2230,7 +2230,7 @@ public final class MainActivity extends Activity {
         readingPanel.setPadding(dp(18), dp(16), dp(18), dp(16));
         readingPanel.setBackground(ui.cardSurface());
         readingPanel.setElevation(dp(4));
-        content.addView(readingPanel, spaced(15));
+        content.addView(readingPanel, spaced(6));
 
         sentence = textInto(readingPanel, currentOriginalSentence(), 26);
         sentence.setLineSpacing(dp(5), 1.07f);
@@ -2248,6 +2248,17 @@ public final class MainActivity extends Activity {
         sentenceRu.setTextColor(secondaryText());
         sentenceRu.setLineSpacing(dp(4), 1.05f);
 
+        // Primary control must be reachable directly below the reading panel.
+        toggle = button("Слушать", () -> {
+            if (player.state.phase == PlaybackState.Phase.SPEAKING ||
+                    (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
+                player.pause();
+            else player.play();
+        });
+        ui.style(toggle, UiStyle.Tone.PRIMARY);
+        toggle.setTextSize(20);
+        toggle.setMinHeight(dp(70));
+
         playbackStatus = text("", 15);
         playbackStatus.setTextColor(ui.accent);
         playbackStatus.setBackground(ui.rounded(ui.soft, 13, Color.TRANSPARENT));
@@ -2263,16 +2274,6 @@ public final class MainActivity extends Activity {
         Button recordHuman = button("Записать живой голос", this::openHumanRecorder);
         ui.style(recordHuman, UiStyle.Tone.OUTLINE);
         recordHuman.setEnabled(!storyReadRussian);
-
-        toggle = button("Слушать", () -> {
-            if (player.state.phase == PlaybackState.Phase.SPEAKING ||
-                    (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
-                player.pause();
-            else player.play();
-        });
-        ui.style(toggle, UiStyle.Tone.PRIMARY);
-        toggle.setTextSize(20);
-        toggle.setMinHeight(dp(70));
 
         Button readAll = button("Читать весь рассказ заново", player::playAllFromStart);
         ui.style(readAll, UiStyle.Tone.OUTLINE);
