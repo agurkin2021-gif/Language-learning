@@ -2212,18 +2212,17 @@ public final class MainActivity extends Activity {
     private void storyPlayer() {
         Store.Story selected = null; for(Store.Story story : store.stories()) if(story.id() == storyId) selected = story;
         if(selected == null) { text("Рассказ не найден", 22); return; }
-        text(selected.title(), 25);
-        TextView source = text(selected.source(), 14);
-        source.setTextColor(secondaryText());
-        TextView hint = text(studyingEnglish() ? "Удерживайте незнакомое английское слово, чтобы добавить его в карточки." : "Удерживайте незнакомое испанское слово, чтобы добавить его в карточки.", 14);
-        hint.setTextColor(secondaryText());
-        hint.setPadding(0, dp(4), 0, dp(12));
+        // Single-handed navigation: immediately below the Cards/Stories tabs,
+        // left aligned and before the large reading panel.
+        repeat = rowButton("← Назад", player::backOneSentence);
+        repeat.setTag("story-back-sentence");
+        repeat.setContentDescription("Назад по предложениям: первое нажатие повторяет, каждое следующее — на одно предложение назад");
+        ui.style(repeat, UiStyle.Tone.OUTLINE);
+        LinearLayout.LayoutParams rewindParams = new LinearLayout.LayoutParams(dp(126), dp(50));
+        rewindParams.bottomMargin = dp(8);
+        content.addView(repeat, rewindParams);
 
-        Button storySpeechLanguage = button("Язык озвучки: "
-                + (storyReadRussian ? "Русский" : studyingEnglish() ? "Английский" : "Испанский")
-                + " ▾", this::chooseStoryPlaybackLanguage);
-        storySpeechLanguage.setTag("story-speech-language");
-        ui.style(storySpeechLanguage, UiStyle.Tone.OUTLINE);
+        text(selected.title(), 25);
         storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
         LinearLayout readingPanel = new LinearLayout(this);
@@ -2275,13 +2274,26 @@ public final class MainActivity extends Activity {
         toggle.setTextSize(20);
         toggle.setMinHeight(dp(70));
 
-        repeat = button("Повторить предложение", player::repeat);
         Button readAll = button("Читать весь рассказ заново", player::playAllFromStart);
         ui.style(readAll, UiStyle.Tone.OUTLINE);
         Button share = button("Отправить аудио", this::shareCurrentStory);
         ui.style(share, UiStyle.Tone.OUTLINE);
         Button back = button("← Библиотека", () -> navigate("stories"));
         ui.style(back, UiStyle.Tone.OUTLINE);
+
+        // Less frequently used controls sit below the playback actions.
+        Button storySpeechLanguage = button("Язык озвучки: "
+                + (storyReadRussian ? "Русский" : studyingEnglish() ? "Английский" : "Испанский")
+                + " ▾", this::chooseStoryPlaybackLanguage);
+        storySpeechLanguage.setTag("story-speech-language");
+        storySpeechLanguage.setTextSize(13);
+        storySpeechLanguage.setMinHeight(dp(48));
+        ui.style(storySpeechLanguage, UiStyle.Tone.OUTLINE);
+
+        TextView source = text(selected.source(), 11);
+        source.setTag("story-source-footer");
+        source.setTextColor(secondaryText());
+        source.setPadding(0, dp(3), 0, dp(8));
     }
     private String narrationLabel() {
         if (storyReadRussian) return "Системный голос (русский)";
