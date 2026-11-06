@@ -288,13 +288,14 @@ public final class Store extends SQLiteOpenHelper {
                         db.insertOrThrow("cards",null,v);
                         changedAny = true;
                     } else if (!card.meaning().equals(e.meaning())
+                            || !card.spanish().equals(e.spanish())
                             || card.mastered()!=e.mastered()
                             || card.lastResult()!=e.lastResult()
                             || card.reviewCount()!=e.reviewCount()
                             || card.nextDue()!=e.nextDue()
                             || card.category()!=e.category()) {
                         ContentValues v = new ContentValues();
-                        v.put("meaning",e.meaning()); v.put("mastered",e.mastered()?1:0);
+                        v.put("spanish",e.spanish()); v.put("meaning",e.meaning()); v.put("mastered",e.mastered()?1:0);
                         v.put("last_result",e.lastResult());v.put("review_count",e.reviewCount());
                         v.put("next_due",e.nextDue());v.put("category",e.category());
                         db.update("cards",v,"id=?",new String[]{Long.toString(card.id())});
