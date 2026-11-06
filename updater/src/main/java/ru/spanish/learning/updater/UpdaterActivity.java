@@ -43,7 +43,7 @@ public final class UpdaterActivity extends Activity {
     public static final String ACTION_UPDATE = "ru.spanish.learning.updater.UPDATE";
     private static final String TARGET = "ru.spanish.learning";
     private static final String REPOSITORY = "agurkin2021-gif/Language-learning";
-    private static final String BASE = "https://raw.githubusercontent.com/" + REPOSITORY + "/refs/heads/phone-builds/";
+    private static final String BASE = "https://raw.githubusercontent.com/" + REPOSITORY + "/refs/heads/family-builds/";
     private static final String RELEASE_CERT = "ea5402c00a64b4a6e1940624743c58c38593a12b15ca6c85e955b05ba5ac641d";
     private static final String CALLBACK_SESSION = "session_id";
     private static final long MAX_APK_BYTES = 200L * 1024 * 1024;
@@ -142,7 +142,7 @@ public final class UpdaterActivity extends Activity {
         JSONObject metadata = new JSONObject(new String(readUrl(BASE + "build-info.json", 16 * 1024), StandardCharsets.UTF_8));
         if (!TARGET.equals(metadata.optString("application_id"))
                 || !REPOSITORY.equals(metadata.optString("repository"))
-                || !"phone-builds".equals(metadata.optString("channel"))
+                || !"family-builds".equals(metadata.optString("channel"))
                 || !RELEASE_CERT.equalsIgnoreCase(metadata.optString("certificate_sha256")))
             throw new IOException("Bad metadata");
         long expectedVersion = metadata.getLong("version_code");
