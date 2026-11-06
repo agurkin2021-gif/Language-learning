@@ -109,10 +109,9 @@ public final class UpdaterActivity extends Activity {
             try {
                 Candidate candidate = loadCandidate();
                 if (candidate == null) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Последняя семейная версия уже установлена", Toast.LENGTH_LONG).show();
-                        finish();
-                    });
+                    runOnUiThread(() -> show("Семейная версия актуальна.\\n" +
+                            "Канал обновления: family-builds.\\n" +
+                            "Версии приложения и сервера показаны выше."));
                     return;
                 }
                 install(candidate);
@@ -147,7 +146,11 @@ public final class UpdaterActivity extends Activity {
             throw new IOException("Bad metadata");
         long expectedVersion = metadata.getLong("version_code");
         PackageInfo installed = installedPackage();
-        if (version(installed) >= expectedVersion) return null;
+        long installedCode = version(installed);
+        showFromWorker("Семейный канал · family-builds\\n" +
+                "Установлено: №" + Math.max(0, installedCode - 100L) +
+                " · Доступно: №" + Math.max(0, expectedVersion - 100L));
+        if (installedCode >= expectedVersion) return null;
         String expectedSha = metadata.getString("apk_sha256").toLowerCase(Locale.ROOT);
         if (!expectedSha.matches("[0-9a-f]{64}")) throw new IOException("Bad digest");
 
