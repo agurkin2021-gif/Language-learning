@@ -466,6 +466,52 @@ public final class Store extends SQLiteOpenHelper {
         return added;
     }
 
+    /**
+     * Explicitly copy Papa's translated cards into Mama or Dima, for the same language.
+     * Both unlearned and mastered Papa words/phrases arrive as new study cards.
+     * Target cards, their progress, translations and deletion tombstones are untouched.
+     */
+    int copyTranslatedVocabularyFrom(Store source) {
+        if (source == null || source == this || this.english != source.english
+                || !StudyProfile.PAPA.equals(source.profileId)
+                || (!StudyProfile.MAMA.equals(this.profileId)
+                    && !StudyProfile.DIMA.equals(this.profileId)))
+            throw new IllegalArgumentException("Only Papa to Mama/Dima, same language");
+        java.util.Set<String> known = new java.util.HashSet<>();
+        for (SyncEntry entry : vocabularyForSync())
+            known.add(syncKey(entry.kind(), entry.spanish()));
+        int added = 0;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (Card card : source.vocabulary()) {
+                if (card.spanish() == null || card.spanish().isBlank()
+                        || card.meaning() == null || card.meaning().isBlank()
+                        || (card.kind() != 0 && card.kind() != 1)) continue;
+                String key = syncKey(card.kind(), card.spanish());
+                if (known.contains(key)) continue;
+                ContentValues values = new ContentValues();
+                values.put("spanish", card.spanish());
+                values.put("meaning", card.meaning());
+                values.put("kind", card.kind());
+                values.put("category", card.kind() == 1 ? 0 : card.category());
+                values.put("mastered", 0);
+                values.put("last_result", 0);
+                values.put("review_count", 0);
+                values.put("next_due", 0);
+                db.insertOrThrow("cards", null, values);
+                trackLocal(db, card.spanish(), card.kind(), false);
+                known.add(key);
+                added++;
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        if (added > 0) changed();
+        return added;
+    }
+
     public void addCard(String spanish, String meaning, int kind) {
         addCard(spanish, meaning, kind, kind == 0 ? 1 : 0);
     }
