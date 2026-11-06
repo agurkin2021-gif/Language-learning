@@ -94,6 +94,39 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         getInstrumentation().runOnMainSync(() -> assertNotNull(find(getActivity().getWindow().getDecorView(),"← Библиотека")));
         tap("← Библиотека");
     }
+    public void testStoryCanSwitchSpanishAndRussianNarrationWithoutChangingDisplayedText() {
+        getActivity();
+        tap("Рассказы");
+        openSampleStory();
+        getInstrumentation().runOnMainSync(() -> {
+            MainActivity activity = getActivity();
+            View root = activity.getWindow().getDecorView();
+            assertNotNull("Narration language button must be visible", find(root,
+                    "Язык озвучки: Испанский ▾"));
+            assertTrue("Russian translation can be selected", activity.selectStoryPlaybackLanguage(true));
+            root = activity.getWindow().getDecorView();
+            assertNotNull(find(root, "Язык озвучки: Русский ▾"));
+            assertNotNull("Original Spanish is still readable",
+                    find(root, "Lucía vive en una casa pequeña."));
+            assertNotNull("Russian translation is visible",
+                    find(root, "Лусия живёт в маленьком доме."));
+            try {
+                java.lang.reflect.Field field = MainActivity.class.getDeclaredField("player");
+                field.setAccessible(true);
+                SpeechPlayer player = (SpeechPlayer) field.get(activity);
+                assertEquals("ru", player.learningLanguage());
+                assertEquals("Лусия живёт в маленьком доме.", player.current());
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError(e);
+            }
+            assertTrue(activity.selectStoryPlaybackLanguage(false));
+            root = activity.getWindow().getDecorView();
+            assertNotNull(find(root, "Язык озвучки: Испанский ▾"));
+            assertNotNull(find(root, "Lucía vive en una casa pequeña."));
+        });
+        getInstrumentation().waitForIdleSync();
+    }
+
     public void testChatGptSendShowsVisibleProgressAndDisablesDuplicates() throws Exception {
         getActivity();
         tap("Рассказы");
