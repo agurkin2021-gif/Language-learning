@@ -5,7 +5,7 @@
     <queries>
         <package android:name="ru.spanish.learning" />
     </queries>
-    <application android:label="Обновление испанского" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false">
+    <application android:label="Семейное обновление" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false">
         <receiver android:name=".InstallResultReceiver" android:exported="false" />
         <activity android:name=".UpdaterActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter>
@@ -13,7 +13,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
-                <action android:name="ru.spanish.learning.updater.UPDATE" />
+                <action android:name="ru.spanish.learning.familyupdater.UPDATE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
