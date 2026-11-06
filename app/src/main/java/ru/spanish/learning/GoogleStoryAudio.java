@@ -53,7 +53,7 @@ final class GoogleStoryAudio {
         // clips must be regenerated rather than replayed from the old cache.
         String raw = sentences.get(index);
         String normalized = RioplatensePronunciation.forSpeech(raw, language);
-        String suffix = normalized.equals(raw) ? "" : "-bible-normalized-v3";
+        String suffix = normalized.equals(raw) ? "" : "-speech-normalized-v4";
         return new File(directory, String.format(Locale.ROOT, "sentence-%05d%s.wav", index, suffix));
     }
 
