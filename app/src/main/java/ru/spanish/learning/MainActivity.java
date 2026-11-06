@@ -1674,8 +1674,10 @@ public final class MainActivity extends Activity {
         more.setGravity(Gravity.CENTER);
         more.setTag("card-edit-menu");
         more.setContentDescription("Изменить карточку");
-        more.setBackground(ui.ripple(ui.surface, 24, ui.outline));
-        more.setElevation(dp(12));
+        // Plain three-dot glyph: no circle, border, ripple background or shadow.
+        more.setBackground(null);
+        more.setElevation(0f);
+        more.setPadding(0, 0, 0, 0);
         more.setOnClickListener(v -> {
             cancelCardSpeech();
             player.pause();
