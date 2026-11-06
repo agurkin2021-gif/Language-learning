@@ -106,11 +106,66 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
         tap("⚙");
         getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
         getInstrumentation().waitForIdleSync();
-        for(int i=0;i<8;i++) tap("Повторить предложение");
+        for(int i=0;i<8;i++) tap("← Назад");
         tap("Карточки"); tap("Рассказы"); openSampleStory();
         getInstrumentation().runOnMainSync(() -> assertNotNull(find(getActivity().getWindow().getDecorView(),"← Библиотека")));
         tap("← Библиотека");
     }
+    public void testBackControlRewindsOneSentencePerTapAndMovesAuxiliaryControlsDown() {
+        getActivity();
+        tap("Рассказы");
+        openSampleStory();
+        getInstrumentation().runOnMainSync(() -> {
+            MainActivity activity = getActivity();
+            View root = activity.getWindow().getDecorView();
+            View back = find(root, "← Назад");
+            View original = find(root, "Lucía vive en una casa pequeña.");
+            View language = find(root, "Язык озвучки: Испанский ▾");
+            View attribution = find(root, "Встроенный пример • написан заранее, не ИИ-генерация по архиву");
+            assertNotNull("Back button must be visible", back);
+            assertNotNull("Original story sentence", original);
+            assertNotNull("Narration selector", language);
+            assertNotNull("Source in footer", attribution);
+            assertNull("Old repeat button is removed", find(root, "Повторить предложение"));
+            assertNull("Word-holding hint is removed",
+                    find(root, "Удерживайте незнакомое испанское слово, чтобы добавить его в карточки."));
+            int[] backXY = new int[2], textXY = new int[2], languageXY = new int[2], sourceXY = new int[2];
+            back.getLocationOnScreen(backXY);
+            original.getLocationOnScreen(textXY);
+            language.getLocationOnScreen(languageXY);
+            attribution.getLocationOnScreen(sourceXY);
+            assertTrue("Back button is above the story text", backXY[1] < textXY[1]);
+            assertTrue("Narration selector is below the story text", languageXY[1] > textXY[1]);
+            assertTrue("Attribution is below narration selector", sourceXY[1] > languageXY[1]);
+            assertTrue("Back button is left aligned", backXY[0] <= original.getResources()
+                    .getDisplayMetrics().widthPixels / 3);
+            assertEquals("Narration selector uses compact text", 13f,
+                    ((TextView) language).getTextSize() /
+                            activity.getResources().getDisplayMetrics().scaledDensity, 0.2f);
+
+            try {
+                java.lang.reflect.Field field = MainActivity.class.getDeclaredField("player");
+                field.setAccessible(true);
+                SpeechPlayer player = (SpeechPlayer) field.get(activity);
+                assertTrue(player.state.count > 5);
+                player.pause();
+                player.state.load(player.state.count, 5);
+                back.performClick();
+                assertEquals("First tap repeats current phrase", 5, player.state.index);
+                back.performClick();
+                assertEquals("Second tap goes back one", 4, player.state.index);
+                back.performClick();
+                assertEquals("Third tap goes back two", 3, player.state.index);
+                for (int i = 0; i < 10; i++) back.performClick();
+                assertEquals("Rewind never goes below zero", 0, player.state.index);
+                player.pause();
+            } catch (ReflectiveOperationException exception) {
+                throw new AssertionError(exception);
+            }
+        });
+        getInstrumentation().waitForIdleSync();
+    }
+
     public void testStoryCanSwitchSpanishAndRussianNarrationWithoutChangingDisplayedText() {
         getActivity();
         tap("Рассказы");
