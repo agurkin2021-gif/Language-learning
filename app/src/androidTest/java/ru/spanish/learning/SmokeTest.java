@@ -138,8 +138,8 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
                 assertNotNull("Playback status", status);
                 ViewGroup container = (ViewGroup) panel.getParent();
                 assertSame("Main player button shares the story content layout", container, primary.getParent());
-                assertEquals("Continue/Pause must be directly below the reading panel",
-                        container.indexOfChild(panel) + 1, container.indexOfChild(primary));
+                assertEquals("Continue/Pause must be directly above the reading panel",
+                        container.indexOfChild(primary) + 1, container.indexOfChild(panel));
                 assertTrue("Status follows the primary button",
                         container.indexOfChild(status) > container.indexOfChild(primary));
                 assertTrue("Footer language follows the primary button",
