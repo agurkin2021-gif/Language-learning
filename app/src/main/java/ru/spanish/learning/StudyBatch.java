@@ -13,6 +13,13 @@ final class StudyBatch {
         return new ArrayList<>(unmastered.subList(0, count));
     }
 
+    /** Separate phrase limit. Word preferences stay unchanged for upgrades from version 414. */
+    static String preferenceKey(int kind, int category) {
+        if (kind == 1) return "studyBatchPhrases";
+        if (kind != 0) throw new IllegalArgumentException("kind");
+        return preferenceKey(category);
+    }
+
     /** Unique limits for All / Verbs / Nouns / Adjectives; profile and language are scoped by prefKey. */
     static String preferenceKey(int category) {
         if (category < 0 || category > 3)
