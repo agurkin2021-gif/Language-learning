@@ -1665,6 +1665,32 @@ public final class MainActivity extends Activity {
         strip.setTag("card-swipe-viewport");
         cardFrame.addView(strip, new FrameLayout.LayoutParams(-1, dp(315)));
 
+        // Edit the currently centered word or phrase without leaving the cards screen.
+        TextView more = new TextView(this);
+        more.setText("⋮");
+        more.setTextSize(29);
+        more.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        more.setTextColor(primaryText());
+        more.setGravity(Gravity.CENTER);
+        more.setTag("card-edit-menu");
+        more.setContentDescription("Изменить карточку");
+        more.setBackground(ui.ripple(ui.surface, 24, ui.outline));
+        more.setElevation(dp(12));
+        more.setOnClickListener(v -> {
+            cancelCardSpeech();
+            player.pause();
+            android.widget.PopupMenu menu = new android.widget.PopupMenu(this, more);
+            menu.getMenu().add("Изменить карточку").setOnMenuItemClickListener(item -> {
+                editExistingCard(cards.get(reviewIndex));
+                return true;
+            });
+            menu.show();
+        });
+        FrameLayout.LayoutParams editParams =
+                new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        editParams.topMargin = dp(9);
+        cardFrame.addView(more, editParams);
+
         FrameLayout.LayoutParams deleteParams =
                 new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.START);
         deleteParams.topMargin = dp(9);
@@ -1912,6 +1938,55 @@ public final class MainActivity extends Activity {
                         });
                     }
                 });
+    }
+
+    /** Edit only the selected card; keep its ID, mastery state and review history. */
+    private void editExistingCard(Store.Card card) {
+        if (card == null || isFinishing() || isDestroyed()) return;
+        cancelCardSpeech();
+        player.pause();
+        LinearLayout box = form();
+        EditText original = field(box, studyingEnglish()
+                ? "Английское слово или выражение" : "Испанское слово или выражение", 500, false);
+        EditText translation = field(box, "Перевод на русский", 1000, true);
+        original.setText(card.spanish());
+        translation.setText(card.meaning());
+        original.setSelectAllOnFocus(true);
+        AlertDialog editDialog = new AlertDialog.Builder(this)
+                .setTitle(card.kind() == 1 ? "Изменить выражение" : "Изменить слово")
+                .setView(box)
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Сохранить", null)
+                .create();
+        editDialog.setOnShowListener(d ->
+                editDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    String newText = original.getText().toString().trim();
+                    String newMeaning = translation.getText().toString().trim();
+                    if (newText.isEmpty()) {
+                        original.setError("Введите слово или выражение");
+                        return;
+                    }
+                    if (newMeaning.isEmpty()) {
+                        translation.setError("Введите перевод");
+                        return;
+                    }
+                    try {
+                        if (!store.editCard(card.id(), newText, newMeaning)) {
+                            Toast.makeText(this, "Карточка не найдена", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        if (!card.spanish().equals(newText))
+                            CardImageMigration.copyOnEdit(this, card.spanish(), newText, studyingEnglish());
+                        editDialog.dismiss();
+                        cardRevealed = false;
+                        render();
+                    } catch (IllegalArgumentException invalid) {
+                        original.setError(invalid.getMessage());
+                    } catch (Exception error) {
+                        Toast.makeText(this, "Не удалось сохранить изменения", Toast.LENGTH_LONG).show();
+                    }
+                }));
+        editDialog.show();
     }
 
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {
