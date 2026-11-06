@@ -2236,6 +2236,7 @@ public final class MainActivity extends Activity {
         ui.style(toggle, UiStyle.Tone.PRIMARY);
         toggle.setTextSize(20);
         toggle.setMinHeight(dp(70));
+        toggle.setMinimumHeight(dp(70));
 
         LinearLayout readingPanel = new LinearLayout(this);
         readingPanel.setOrientation(LinearLayout.VERTICAL);
