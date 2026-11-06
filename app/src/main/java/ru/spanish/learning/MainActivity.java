@@ -699,32 +699,32 @@ public final class MainActivity extends Activity {
                 }).show();
     }
     /**
-     * Use only the built-in signed family channel for production updates.
-     * A separately installed updater may still be the legacy phone-builds client,
-     * so its version is not a reliable indication of its configured channel.
-     * The dedicated updater remains available solely for the Android emulator
-     * installer-of-record integration fixture.
+     * Prefer the distinct family updater v2 package, never the legacy updater.
+     * If not installed, use the built-in signed family-builds channel.
      */
     private void startUpdateNow() {
         cancelCardSpeech();
         player.pause();
         remember();
 
-        // The existing emulator regression test injects a verified local fixture.
-        // This test-only branch never runs in a published production APK.
+        // A dedicated, differently named family updater can be installed next to
+        // the legacy updater. Only the new package is eligible for this action.
+        Intent familyUpdater = new Intent("ru.spanish.learning.familyupdater.UPDATE")
+                .setPackage("ru.spanish.learning.familyupdater");
         if (BuildConfig.DEBUG) {
             String testPath = getIntent().getStringExtra("updater_test_path");
             if (testPath != null && !testPath.isEmpty()) {
-                Intent testIntent = new Intent("ru.spanish.learning.updater.UPDATE")
-                        .setPackage("ru.spanish.learning.updater")
-                        .putExtra("test_apk_path", testPath);
-                try {
-                    startActivity(testIntent);
-                } catch (ActivityNotFoundException ignored) {
-                    Toast.makeText(this, "Тестовый обновлятор недоступен", Toast.LENGTH_LONG).show();
-                }
+                familyUpdater.putExtra("test_apk_path", testPath);
+            }
+        }
+        try {
+            // Android 11+ queries are declared in AndroidManifest.xml.
+            if (getPackageManager().resolveActivity(familyUpdater, 0) != null) {
+                startActivity(familyUpdater);
                 return;
             }
+        } catch (ActivityNotFoundException ignored) {
+            // The signed in-app updater is the safe fallback.
         }
 
         if (Build.VERSION.SDK_INT >= 26
@@ -746,9 +746,7 @@ public final class MainActivity extends Activity {
             return;
         }
 
-        // Never dispatch the production update button to the separate Updater APK:
-        // this app checks family-builds, validates SHA-256 and signing certificate,
-        // then uses Android PackageInstaller on the same app package.
+        // Fallback: check family-builds and verify the signed update directly.
         AppUpdater.updateNow(this);
         Toast.makeText(this, "Проверяю обновления семейной версии…", Toast.LENGTH_LONG).show();
     }
