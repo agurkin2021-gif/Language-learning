@@ -11,7 +11,7 @@ This branch is the ongoing family source of the Spanish learning app.
 The two Android updater implementations use the family APK feed.
 The publisher scripts produce family release branches only.
 The default-branch Android workflow allows publishing only when the PR head is `family-android-v2`.
-Do not merge the release PR: it is only a CI trigger.
+CI is triggered by a PR from family-android-v2 to the conflict-free family-release-base branch. Do not merge the release PR: it is only a CI trigger.
 
 **Not private:** All branches of this repository are public. This arrangement stops automatic updates for users pinned to the legacy channel, but does not prevent a person from finding public releases or accessing public content.
 
