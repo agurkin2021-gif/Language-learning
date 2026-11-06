@@ -291,13 +291,14 @@ public class StoreTest extends AndroidTestCase {
         getContext().deleteDatabase(name);
         try {
             try (Store store = new Store(getContext(), name)) {
-                assertEquals(1, store.stories().size());
-                long seedId = store.stories().get(0).id();
+                assertEquals(2, store.stories().size());
+                java.util.List<Long> seedIds = new java.util.ArrayList<>();
+                for (Store.Story seed : store.stories()) seedIds.add(seed.id());
                 long localId = store.addStory("Prueba", "Hola.", "Привет.", "Личное");
                 assertTrue(store.importRemoteStory("remote-story-deleted", "El gato",
                         "El gato duerme.", "Кот спит."));
                 long remoteId = store.stories().get(0).id();
-                assertTrue(store.deleteStory(seedId));
+                for (long seedId : seedIds) assertTrue(store.deleteStory(seedId));
                 assertTrue(store.deleteStory(localId));
                 assertTrue(store.deleteStory(remoteId));
                 assertFalse(store.deleteStory(localId));
@@ -334,7 +335,7 @@ public class StoreTest extends AndroidTestCase {
                 long id = english.addStory("The cat", "The cat sleeps.", "Кот спит.", "Личное");
                 assertTrue(english.deleteStory(id));
                 assertEquals(0, english.stories().size());
-                assertEquals(1, spanish.stories().size());
+                assertEquals(2, spanish.stories().size());
             }
         } finally {
             getContext().deleteDatabase(es);
@@ -403,7 +404,7 @@ public class StoreTest extends AndroidTestCase {
         getContext().deleteDatabase(database);
         try (Store s = new Store(getContext(), database)) {
             assertEquals(950, s.vocabulary().size());
-            assertEquals(1, s.stories().size());
+            assertEquals(2, s.stories().size());
             assertFalse(s.sharedContentDisabled());
 
             s.addCard("palabra personal", "личное слово", 0, 1);
@@ -413,7 +414,7 @@ public class StoreTest extends AndroidTestCase {
             assertTrue(s.importRemoteCard("shared-word", "barco", "лодка", 0, 2));
             assertTrue(s.importRemoteStory("shared-story", "Pescador", "Vuelve.", "Возвращается."));
             assertEquals(953, s.vocabulary().size());
-            assertEquals(3, s.stories().size());
+            assertEquals(4, s.stories().size());
 
             s.resetLearningData();
             assertTrue("Shared GitHub feed is disabled only for this database", s.sharedContentDisabled());
@@ -460,7 +461,7 @@ public class StoreTest extends AndroidTestCase {
         try (Store s = new Store(getContext(), database)) {
             assertEquals("Schema upgrade must not restore manually deleted cards", 949, s.vocabulary().size());
             assertFalse(s.sharedContentDisabled());
-            assertEquals(1, s.stories().size());
+            assertEquals(2, s.stories().size());
         }
         getContext().deleteDatabase(database);
     }
@@ -509,7 +510,7 @@ public class StoreTest extends AndroidTestCase {
                 assertFalse(spanish.isEnglish());
                 assertTrue(english.isEnglish());
                 assertEquals(950, spanish.vocabulary().size());
-                assertEquals(1, spanish.stories().size());
+                assertEquals(2, spanish.stories().size());
                 assertEquals(0, english.vocabulary().size());
                 assertEquals(0, english.stories().size());
                 assertTrue(english.sharedContentDisabled());
@@ -521,7 +522,7 @@ public class StoreTest extends AndroidTestCase {
                 assertEquals(2, english.vocabulary().size());
                 assertEquals(1, english.stories().size());
                 assertEquals(950, spanish.vocabulary().size());
-                assertEquals(1, spanish.stories().size());
+                assertEquals(2, spanish.stories().size());
 
                 ChatGptAssistant assistant = new ChatGptAssistant(getContext());
                 try {
@@ -545,7 +546,7 @@ public class StoreTest extends AndroidTestCase {
                 assertEquals(0, english.vocabulary().size());
                 assertTrue(english.sharedContentDisabled());
                 assertEquals(950, spanish.vocabulary().size());
-                assertEquals(1, spanish.stories().size());
+                assertEquals(2, spanish.stories().size());
             }
         } finally {
             getContext().deleteDatabase(esDb);
@@ -618,7 +619,7 @@ public class StoreTest extends AndroidTestCase {
                 // Stories may contain infinitives freely.
                 spanish.addStory("Sin límites", "Quiero comer. Voy a salir.",
                         "Я хочу есть. Я собираюсь выйти.", "Test");
-                assertEquals(2, spanish.stories().size());
+                assertEquals(3, spanish.stories().size());
                 // English study phrases are outside the Spanish-specific rule.
                 english.addCard("to be honest", "честно говоря", 1, 0);
                 assertEquals(1, english.vocabulary().size());
