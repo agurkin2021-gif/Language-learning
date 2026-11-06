@@ -698,6 +698,12 @@ public final class MainActivity extends Activity {
                     openBrowser(url);
                 }).show();
     }
+    /**
+     * Family release: never ask a legacy updater (versionCode <= 1369) to check
+     * the frozen phone-builds feed. It cannot discover family-builds releases.
+     * A current family updater retains the established silent-install flow;
+     * otherwise use the signed and SHA-256-verified in-app family updater.
+     */
     private void startUpdateNow() {
         cancelCardSpeech();
         player.pause();
@@ -709,15 +715,50 @@ public final class MainActivity extends Activity {
             if (testPath != null && !testPath.isEmpty())
                 updateIntent.putExtra("test_apk_path", testPath);
         }
+
+        boolean familyUpdater = false;
         try {
-            startActivity(updateIntent);
-        } catch (ActivityNotFoundException e) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Нужен Updater")
-                    .setMessage("Для обновлений установите приложение «Обновление испанского» один раз. После этого кнопка «Обновление» будет передавать установку ему.")
-                    .setPositiveButton("Понятно", null)
-                    .show();
+            android.content.pm.PackageInfo installedUpdater =
+                    getPackageManager().getPackageInfo("ru.spanish.learning.updater", 0);
+            long updaterVersion = Build.VERSION.SDK_INT >= 28
+                    ? installedUpdater.getLongVersionCode() : installedUpdater.versionCode;
+            // 1.0.370 is the first updater built for the family channel.
+            familyUpdater = updaterVersion >= 1370L;
+        } catch (PackageManager.NameNotFoundException ignored) {
+            // No dedicated updater is installed; the in-app update path is available.
         }
+        if (familyUpdater) {
+            try {
+                startActivity(updateIntent);
+                return;
+            } catch (ActivityNotFoundException ignored) {
+                // A broken or disabled updater must not block family updates.
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= 26
+                && !getPackageManager().canRequestPackageInstalls()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Разрешение на обновление")
+                    .setMessage("Старый обновлятор не поддерживает семейную версию. " +
+                            "Разрешите приложению «Изучение испанского» устанавливать обновления, " +
+                            "затем снова нажмите «Обновление».")
+                    .setPositiveButton("Открыть настройки", (dialog, which) -> {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:" + getPackageName())));
+                        } catch (ActivityNotFoundException e) {
+                            Toast.makeText(this, "Разрешите установку из этого приложения в настройках Android",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+            return;
+        }
+
+        AppUpdater.updateNow(this);
+        Toast.makeText(this, "Проверяю семейное обновление…", Toast.LENGTH_LONG).show();
     }
     private void openBrowser(String url) {
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
