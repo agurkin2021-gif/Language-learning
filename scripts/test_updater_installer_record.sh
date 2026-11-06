@@ -8,7 +8,7 @@ updater_apk=${4:?updater APK required}
 reports=${5:-updater-installer-test}
 
 target=ru.spanish.learning
-updater=ru.spanish.learning.updater
+updater=ru.spanish.learning.familyupdater
 mkdir -p "$reports"
 
 collect() {
