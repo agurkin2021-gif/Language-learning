@@ -107,17 +107,39 @@ public final class UpdaterActivity extends Activity {
         WORKER.execute(() -> {
             boolean committed = false;
             try {
-                Candidate candidate = loadCandidate();
+                Candidate candidate = loadCandidateWithNetworkRetry();
                 if (candidate == null) return; // Installed and available versions remain visible.
                 install(candidate);
                 committed = true;
             } catch (Exception error) {
                 Log.e("SpanishUpdater", "Update failed", error);
-                fail("Обновление не выполнено.");
+                if (error instanceof IOException) {
+                    fail("Не удалось загрузить обновление. Проверьте интернет и повторите.");
+                } else {
+                    fail("Обновление не выполнено.");
+                }
             } finally {
                 if (!committed) RUNNING.set(false);
             }
         });
+    }
+
+    /** Retry only transient transport failures, never signature or metadata errors. */
+    private Candidate loadCandidateWithNetworkRetry() throws Exception {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return loadCandidate();
+            } catch (java.net.UnknownHostException | java.net.SocketTimeoutException
+                     | java.net.ConnectException error) {
+                if (attempt >= 4) throw error;
+                showFromWorker("Проверяю соединение… повтор " + attempt + " из 3");
+                Thread.sleep(2000L * attempt);
+            } catch (java.net.SocketException error) {
+                if (attempt >= 4) throw error;
+                showFromWorker("Сеть временно недоступна… повтор " + attempt + " из 3");
+                Thread.sleep(2000L * attempt);
+            }
+        }
     }
 
     private Candidate loadCandidate() throws Exception {
