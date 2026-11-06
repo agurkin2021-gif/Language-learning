@@ -1,4 +1,4 @@
-package ru.spanish.learning.familyupdater;
+package ru.spanish.learning.updater;
 
 import android.app.Activity;
 import android.app.PendingIntent;
