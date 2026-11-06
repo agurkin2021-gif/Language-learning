@@ -2225,6 +2225,18 @@ public final class MainActivity extends Activity {
         text(selected.title(), 25);
         storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
+
+        // Primary playback control is directly ABOVE the story reading panel.
+        toggle = button("Слушать", () -> {
+            if (player.state.phase == PlaybackState.Phase.SPEAKING ||
+                    (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
+                player.pause();
+            else player.play();
+        });
+        ui.style(toggle, UiStyle.Tone.PRIMARY);
+        toggle.setTextSize(20);
+        toggle.setMinHeight(dp(70));
+
         LinearLayout readingPanel = new LinearLayout(this);
         readingPanel.setOrientation(LinearLayout.VERTICAL);
         readingPanel.setPadding(dp(18), dp(16), dp(18), dp(16));
@@ -2247,17 +2259,6 @@ public final class MainActivity extends Activity {
         sentenceRu.setTextIsSelectable(true);
         sentenceRu.setTextColor(secondaryText());
         sentenceRu.setLineSpacing(dp(4), 1.05f);
-
-        // Primary control must be reachable directly below the reading panel.
-        toggle = button("Слушать", () -> {
-            if (player.state.phase == PlaybackState.Phase.SPEAKING ||
-                    (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
-                player.pause();
-            else player.play();
-        });
-        ui.style(toggle, UiStyle.Tone.PRIMARY);
-        toggle.setTextSize(20);
-        toggle.setMinHeight(dp(70));
 
         playbackStatus = text("", 15);
         playbackStatus.setTextColor(ui.accent);
