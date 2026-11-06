@@ -5,22 +5,31 @@ import static org.junit.Assert.*;
 
 public class RioplatensePronunciationTest {
     @Test public void originalSpanishSpellingIsSentToTts() {
-        for (String word : new String[]{"toalla", "cepillo", "calle", "talle", "lluvia", "yo", "ayer", "hoy", "soy", "rey"}) {
+        for (String word : new String[]{"toalla", "cepillo", "calle", "talle",
+                "lluvia", "yo", "ayer", "hoy", "soy", "rey"}) {
             assertEquals(word, RioplatensePronunciation.forSpeech(word, "es"));
         }
     }
-    @Test public void originalStoryOffsetsAndPunctuationArePreserved() {
-        String story = "Yo llevé la toalla y el cepillo ayer.";
-        assertEquals(story, RioplatensePronunciation.forSpeech(story, "es"));
+
+    @Test public void normalStorySentencesRemainUnchanged() {
+        String spanish = "Yo llevé la toalla y el cepillo ayer.";
+        assertEquals(spanish, RioplatensePronunciation.forSpeech(spanish, "es"));
+        String russian = "В семнадцатом веке до нашей эры. 609 год.";
+        assertEquals(russian, RioplatensePronunciation.forSpeech(russian, "ru"));
+        assertEquals("yellow", RioplatensePronunciation.forSpeech("yellow", "en"));
     }
-    @Test public void russianScriptureReferencesAreReadAsPlainNumbersNotTime() {
+
+    @Test public void russianScriptureReferencesAreCardinalNumbersWithoutHyphenOrTime() {
         assertEquals("Второзаконие. одиннадцать двадцать шесть двадцать восемь,",
                 RioplatensePronunciation.forSpeech("Второзаконие. 11:26–28,", "ru"));
         assertEquals("Иеремия. два восемь:",
                 RioplatensePronunciation.forSpeech("Иеремия. 2:8:", "ru"));
-        assertEquals("Иеремия. Пять: одиннадцать — двенадцать, пять одиннадцать двенадцать:",
-                RioplatensePronunciation.forSpeech(
-                        "Иеремия. Пять: одиннадцать — двенадцать, 5:11–12:", "ru"));
+        assertEquals("Иеремия двадцать два четырнадцать тридцать",
+                RioplatensePronunciation.forSpeech("Иеремия 22: 14-30", "ru"));
+        assertEquals("Иеремия двадцать два четырнадцать тридцать",
+                RioplatensePronunciation.forSpeech("Иеремия 22 : 14 — 30", "ru"));
+        assertEquals("Иеремия. пять одиннадцать двенадцать:",
+                RioplatensePronunciation.forSpeech("Иеремия. 5:11–12:", "ru"));
         assertEquals("Иеремия. семнадцать двадцать один двадцать три:",
                 RioplatensePronunciation.forSpeech("Иеремия. 17:21–23:", "ru"));
         assertEquals("Вторая книга Паралипоменон тридцать четыре четырнадцать:",
@@ -28,17 +37,50 @@ public class RioplatensePronunciationTest {
                         "Вторая книга Паралипоменон 34:14:", "ru"));
         assertEquals("Софония два один два:",
                 RioplatensePronunciation.forSpeech("Софония 2:1-2:", "ru"));
+        assertEquals("Псалом сто девятнадцать один сто семьдесят шесть",
+                RioplatensePronunciation.forSpeech("Псалом 119:1-176", "ru"));
     }
-    @Test public void russianSpeechDoesNotChangeOtherNumbersOrVisibleStoryText() {
-        String story = "В семнадцатом веке до нашей эры. 609 год.";
-        assertEquals(story, RioplatensePronunciation.forSpeech(story, "ru"));
-        assertEquals("Deuteronomio. 11:26-28,",
+
+    @Test public void spanishScriptureReferencesAreCardinalNumbersWithoutGuionOrHora() {
+        assertEquals("Jeremías veintidós catorce treinta",
+                RioplatensePronunciation.forSpeech("Jeremías 22: 14-30", "es"));
+        assertEquals("Jeremías veintidós catorce treinta",
+                RioplatensePronunciation.forSpeech("Jeremías 22:14–30", "es"));
+        assertEquals("Jeremías veintidós catorce treinta",
+                RioplatensePronunciation.forSpeech("Jeremías 22 : 14 — 30", "es"));
+        assertEquals("Deuteronomio. once veintiséis veintiocho,",
                 RioplatensePronunciation.forSpeech("Deuteronomio. 11:26-28,", "es"));
-        assertEquals("11:26–28", RioplatensePronunciation.forSpeech("11:26–28", "en"));
-        assertNull(RioplatensePronunciation.forSpeech(null, "ru"));
+        assertEquals("Jeremías. cinco once doce:",
+                RioplatensePronunciation.forSpeech("Jeremías. 5:11–12:", "es"));
+        assertEquals("Sofonías dos uno dos:",
+                RioplatensePronunciation.forSpeech("Sofonías 2:1–2:", "es"));
+        assertEquals("Crónicas treinta y cuatro veintitrés treinta y uno",
+                RioplatensePronunciation.forSpeech("Crónicas 34:23-31", "es"));
+        assertEquals("Salmos ciento diecinueve uno ciento setenta y seis",
+                RioplatensePronunciation.forSpeech("Salmos 119:1-176", "es"));
     }
-    @Test public void otherLanguagesAndNullArePreserved() {
-        assertEquals("yellow", RioplatensePronunciation.forSpeech("yellow", "en"));
+
+    @Test public void spellingOutVerseRangesDoesNotSpeakDashesInEitherLanguage() {
+        assertEquals("Jeremías. Cinco: once doce, cinco once doce:",
+                RioplatensePronunciation.forSpeech(
+                        "Jeremías. Cinco: once-doce, 5:11–12:", "es"));
+        assertEquals("Jeremías. Cinco: veintiséis veintiocho:",
+                RioplatensePronunciation.forSpeech(
+                        "Jeremías. Cinco: veintiséis–veintiocho:", "es"));
+        assertEquals("Иеремия. Пять: одиннадцать двенадцать, пять одиннадцать двенадцать:",
+                RioplatensePronunciation.forSpeech(
+                        "Иеремия. Пять: одиннадцать — двенадцать, 5:11–12:", "ru"));
+        assertEquals("Buenos Aires-Mendoza es una ruta.",
+                RioplatensePronunciation.forSpeech("Buenos Aires-Mendoza es una ruta.", "es"));
+        assertEquals("Он шёл туда-сюда.",
+                RioplatensePronunciation.forSpeech("Он шёл туда-сюда.", "ru"));
+    }
+
+    @Test public void punctuationAndOtherLanguagesAreNotAltered() {
+        assertEquals("11:26–28", RioplatensePronunciation.forSpeech("11:26–28", "en"));
+        assertEquals("Текст: десять сорок, а не 12:30:45.",
+                RioplatensePronunciation.forSpeech("Текст: десять сорок, а не 12:30:45.", "ru"));
         assertNull(RioplatensePronunciation.forSpeech(null, "es"));
+        assertNull(RioplatensePronunciation.forSpeech(null, "ru"));
     }
 }
