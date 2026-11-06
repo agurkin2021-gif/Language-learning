@@ -9,7 +9,7 @@ android {
     compileSdk 35
     buildToolsVersion "35.0.0"
     defaultConfig {
-        applicationId 'ru.spanish.learning.updater'
+        applicationId 'ru.spanish.learning.familyupdater'
         minSdk 31
         targetSdk 35
         versionCode 1000 + buildNumber
