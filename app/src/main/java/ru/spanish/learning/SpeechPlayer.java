@@ -34,6 +34,8 @@ public final class SpeechPlayer {
     private MediaPlayer humanPlayer;
     private int humanResumeMs;
     private int humanResumeIndex = -1;
+    /** Most recent position chosen through the Back button, until playback advances normally. */
+    private int lastBackIndex = -1;
     private boolean ready, closed, ttsInitialized;
     private String learningLanguage = "es";
     private int resumeOffset;
@@ -288,6 +290,7 @@ public final class SpeechPlayer {
 
     public void load(String body, int position) {
         pause();
+        lastBackIndex = -1;
         resumeOffset = 0;
         humanResumeMs = 0;
         humanResumeIndex = -1;
@@ -299,6 +302,7 @@ public final class SpeechPlayer {
     public String current() { return sentences.isEmpty() ? "" : sentences.get(state.index); }
     public void playAllFromStart() {
         pause();
+        lastBackIndex = -1;
         resumeOffset = 0;
         activeToken = "";
         sentenceMode = false;
@@ -306,7 +310,33 @@ public final class SpeechPlayer {
         listener.changed();
         play();
     }
+    /** A normal Play/Continue starts a fresh backwards-navigation sequence. */
     public void play() {
+        lastBackIndex = -1;
+        speakCurrent();
+    }
+
+    /**
+     * First tap replays the last/current sentence. Each following tap walks
+     * exactly one earlier sentence (never before sentence zero), including
+     * when the TTS engine is still speaking the sentence just requested.
+     */
+    public void backOneSentence() {
+        if (closed || sentences.isEmpty()) return;
+        int target = lastBackIndex >= 0 ? Math.max(0, lastBackIndex - 1)
+                : state.phase == PlaybackState.Phase.WAITING ? Math.max(0, state.index - 1)
+                : state.index;
+        pause();
+        resumeOffset = 0;
+        humanResumeMs = 0;
+        humanResumeIndex = -1;
+        state.load(sentences.size(), target);
+        lastBackIndex = target;
+        listener.changed();
+        speakCurrent();
+    }
+
+    private void speakCurrent() {
         if (closed || !canPlay() || state.phase == PlaybackState.Phase.SPEAKING) return;
         handler.removeCallbacks(autoPlay);
         boolean restart = state.phase == PlaybackState.Phase.FINISHED;
@@ -455,6 +485,7 @@ public final class SpeechPlayer {
         listener.changed();
     }
     public void repeat() {
+        lastBackIndex = -1;
         boolean previous = state.phase == PlaybackState.Phase.WAITING;
         pause();
         resumeOffset = 0;
