@@ -587,6 +587,49 @@ public final class Store extends SQLiteOpenHelper {
         changed();
     }
 
+    /**
+     * Edit the same card row, retaining its ID, category and all study progress.
+     * A changed source spelling needs a tombstone for the old sync identity
+     * and a new local revision, so an old GitHub snapshot cannot restore it.
+     */
+    public boolean editCard(long id, String text, String meaning) {
+        if (id <= 0) return false;
+        String cleanText = text == null ? "" : text.trim();
+        String cleanMeaning = meaning == null ? "" : meaning.trim();
+        if (cleanText.isEmpty() || cleanMeaning.isEmpty())
+            throw new IllegalArgumentException("Заполните оба поля");
+        if (cleanText.length() > 500 || cleanMeaning.length() > 1000)
+            throw new IllegalArgumentException("Слишком длинный текст");
+        Card existing = null;
+        for (Card card : vocabulary()) if (card.id() == id) { existing = card; break; }
+        if (existing == null) return false;
+        String oldKey = syncKey(existing.kind(), existing.spanish());
+        String newKey = syncKey(existing.kind(), cleanText);
+        for (Card card : vocabulary()) {
+            if (card.id() != id && syncKey(card.kind(), card.spanish()).equals(newKey))
+                throw new IllegalArgumentException("Такая карточка уже есть в словаре");
+        }
+        if (existing.spanish().equals(cleanText) && existing.meaning().equals(cleanMeaning))
+            return true;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        int updated;
+        try {
+            ContentValues v = new ContentValues();
+            v.put("spanish", cleanText);
+            v.put("meaning", cleanMeaning);
+            updated = db.update("cards", v, "id=?", new String[]{Long.toString(id)});
+            if (updated == 1) {
+                if (!oldKey.equals(newKey))
+                    trackLocal(db, existing.spanish(), existing.kind(), true);
+                trackLocal(db, cleanText, existing.kind(), false);
+            }
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+        if (updated == 1) changed();
+        return updated == 1;
+    }
+
     /** Keep the exact inflected form, including irregular verbs, as a separate learning card. */
     public StoryWordSave addStoryWord(String spanish, String meaning, int category) {
         if (spanish == null || spanish.trim().isEmpty() || meaning == null || meaning.trim().isEmpty()
