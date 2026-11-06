@@ -5,7 +5,10 @@ import org.json.JSONObject;
 
 public final class PimenProfileTest extends AndroidTestCase {
     public void testPaths() {
-        assertEquals(4, StudyProfile.IDS.length);
+        assertEquals(3, StudyProfile.IDS.length);
+        assertEquals(3, StudyProfile.LABELS.length);
+        for (String id : StudyProfile.IDS) assertFalse("pimen".equals(id));
+        for (String label : StudyProfile.LABELS) assertFalse("Пимен".equals(label));
         assertEquals("pimen", StudyProfile.normalized("pimen"));
         assertEquals("Пимен", StudyProfile.name("pimen"));
         assertEquals("learning_pimen.db", StudyProfile.databaseName("pimen", false));
