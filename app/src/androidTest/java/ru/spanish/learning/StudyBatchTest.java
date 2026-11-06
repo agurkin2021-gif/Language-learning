@@ -19,7 +19,7 @@ public final class StudyBatchTest extends AndroidTestCase {
     }
 
     public void testActiveSetRefillsFromUnmasteredPoolAfterMasteryAndDeletion() {
-        try (Store store = Store.forProfileTest(getContext(), TEST_DB, StudyProfile.MAMA, false)) {
+        try (Store store = Store.forProfileTest(getContext(), TEST_DB, StudyProfile.MAMA, true)) {
             String[] words = {"estudiar ventana alfa", "estudiar ventana beta",
                     "estudiar ventana gamma", "estudiar ventana delta",
                     "estudiar ventana epsilon"};
