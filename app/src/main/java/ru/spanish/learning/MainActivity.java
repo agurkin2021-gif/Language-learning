@@ -2286,9 +2286,9 @@ public final class MainActivity extends Activity {
                 + (storyReadRussian ? "Русский" : studyingEnglish() ? "Английский" : "Испанский")
                 + " ▾", this::chooseStoryPlaybackLanguage);
         storySpeechLanguage.setTag("story-speech-language");
+        ui.style(storySpeechLanguage, UiStyle.Tone.OUTLINE);
         storySpeechLanguage.setTextSize(13);
         storySpeechLanguage.setMinHeight(dp(48));
-        ui.style(storySpeechLanguage, UiStyle.Tone.OUTLINE);
 
         TextView source = text(selected.source(), 11);
         source.setTag("story-source-footer");
