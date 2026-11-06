@@ -286,10 +286,9 @@ jobs:
     needs: [build, device-test, self-update-test, updater-installer-test]
     if: >-
       needs.build.result == 'success' && needs.device-test.result == 'success' && needs.self-update-test.result == 'success' && needs.updater-installer-test.result == 'success' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-       (github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.head.ref == 'codex/android-v1'))
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'family-android-v2')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -342,7 +341,7 @@ jobs:
           mkdir -p previous-phone-build
           python3 - <<'PY'
           import json, os, pathlib, urllib.error, urllib.request
-          base = "https://raw.githubusercontent.com/" + os.environ["GITHUB_REPOSITORY"] + "/refs/heads/phone-builds/"
+          base = "https://raw.githubusercontent.com/" + os.environ["GITHUB_REPOSITORY"] + "/refs/heads/family-builds/"
           out = pathlib.Path("previous-phone-build")
           try:
               for name in ("SpanishLearning.apk", "build-info.json"):
@@ -395,10 +394,9 @@ jobs:
     needs: [build, updater-installer-test]
     if: >-
       needs.build.result == 'success' && needs.updater-installer-test.result == 'success' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-       (github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.head.ref == 'codex/android-v1'))
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'family-android-v2')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
