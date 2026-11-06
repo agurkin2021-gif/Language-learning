@@ -56,6 +56,39 @@ public final class StudyBatchTest extends AndroidTestCase {
         }
     }
 
+    public void testPhraseWindowAutoRefillsAndSeparatelyPersistsLimit() {
+        try (Store store = Store.forProfileTest(getContext(), TEST_DB, StudyProfile.MAMA, true)) {
+            String[] phrases = {
+                    "Phrase batch first to learn", "Phrase batch second to learn",
+                    "Phrase batch third to learn", "Phrase batch fourth to learn"
+            };
+            for (String phrase : phrases)
+                store.addCard(phrase, "meaning " + phrase, 1, 0);
+            String phraseKey = StudyBatch.preferenceKey(1, 0);
+            assertFalse(phraseKey.equals(StudyBatch.preferenceKey(0, 0)));
+            assertFalse(phraseKey.equals(StudyBatch.preferenceKey(0, 1)));
+
+            List<Store.Card> current = StudyBatch.active(store.cards(false, 1, 0), 2);
+            assertEquals(2, current.size());
+            assertEquals(phrases[0], current.get(0).spanish());
+            assertEquals(phrases[1], current.get(1).spanish());
+            store.review(current.get(0).id(), 2, 0); // ✓ archive phrase
+            List<Store.Card> next = StudyBatch.active(store.cards(false, 1, 0), 2);
+            assertEquals(2, next.size());
+            assertEquals(phrases[1], next.get(0).spanish());
+            assertEquals(phrases[2], next.get(1).spanish());
+            assertTrue(store.mastered().stream().anyMatch(c -> phrases[0].equals(c.spanish())));
+
+            store.review(next.get(0).id(), 2, 0);
+            store.review(next.get(1).id(), 2, 0);
+            List<Store.Card> last = StudyBatch.active(store.cards(false, 1, 0), 2);
+            assertEquals(1, last.size());
+            assertEquals(phrases[3], last.get(0).spanish());
+            assertEquals(1, StudyBatch.active(store.cards(false, 1, 0), 0).size());
+            assertEquals(0, store.cards(false, 0, 0).size());
+        }
+    }
+
     public void testPartOfSpeechFiltersAndPreferencesAreIndependent() {
         try (Store store = Store.forProfileTest(getContext(), TEST_DB, StudyProfile.DIMA, true)) {
             store.addCard("study batch verb one", "v1", 0, 1);
@@ -77,6 +110,12 @@ public final class StudyBatchTest extends AndroidTestCase {
                     StudyProfile.MAMA, "es", StudyBatch.preferenceKey(1));
             String dimaSpanish = StudyProfile.preferenceKey(
                     StudyProfile.DIMA, "es", StudyBatch.preferenceKey(1));
+            String phraseSpanish = StudyProfile.preferenceKey(
+                    StudyProfile.PAPA, "es", StudyBatch.preferenceKey(1, 0));
+            String phraseEnglish = StudyProfile.preferenceKey(
+                    StudyProfile.PAPA, "en", StudyBatch.preferenceKey(1, 0));
+            String phraseMama = StudyProfile.preferenceKey(
+                    StudyProfile.MAMA, "es", StudyBatch.preferenceKey(1, 0));
             String nounSpanish = StudyProfile.preferenceKey(
                     StudyProfile.PAPA, "es", StudyBatch.preferenceKey(2));
             String adjectiveSpanish = StudyProfile.preferenceKey(
@@ -84,6 +123,9 @@ public final class StudyBatchTest extends AndroidTestCase {
             assertFalse(papaSpanish.equals(papaEnglish));
             assertFalse(papaSpanish.equals(mamaSpanish));
             assertFalse(papaSpanish.equals(dimaSpanish));
+            assertFalse(papaSpanish.equals(phraseSpanish));
+            assertFalse(phraseSpanish.equals(phraseEnglish));
+            assertFalse(phraseSpanish.equals(phraseMama));
             assertFalse(papaSpanish.equals(nounSpanish));
             assertFalse(papaSpanish.equals(adjectiveSpanish));
         }
