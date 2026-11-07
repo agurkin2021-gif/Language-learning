@@ -435,9 +435,15 @@ public final class SpeechPlayer {
         final MediaPlayer mp = humanPlayer;
         final String token = activeToken;
         try {
+            // Pause FIRST, then read the position at which audio ACTUALLY
+            // stopped. Saving a pre-pause position can drift a few frames.
+            mp.pause();
             int ms = mp.getCurrentPosition();
             int duration = mp.getDuration();
-            if (ms < 1 || ms >= duration - 10) return false;
+            if (ms < 1 || ms >= duration - 10) {
+                mp.start();
+                return false;
+            }
             int marker = calibrationGaps.get(calibrationNext);
             String key = calibrationKey(state.index);
             Map<Integer,Integer> timings = ManualPauseTimings.decode(
@@ -446,11 +452,11 @@ public final class SpeechPlayer {
                 int previousMs = timings.getOrDefault(calibrationGaps.get(calibrationNext - 1), 0);
                 if (ms <= previousMs) {
                     error = "Тайминг должен быть позже предыдущей метки.";
+                    mp.start();
                     listener.changed();
                     return false;
                 }
             }
-            mp.pause();
             calibrationSilentHold = true;
             timings.put(marker, ms);
             manualTimePrefs.edit().putString(key, ManualPauseTimings.encode(timings)).apply();
@@ -471,6 +477,9 @@ public final class SpeechPlayer {
             }, Math.max(0, manualPauseMs));
             return true;
         } catch (RuntimeException failure) {
+            // A failed calibration must not strand the audio in a paused state.
+            try { if (mp == humanPlayer) mp.start(); }
+            catch (RuntimeException ignored) {}
             error = "Не удалось зафиксировать время нажатия.";
             listener.changed();
             return false;
