@@ -18,6 +18,22 @@ public final class ManualStoryPausesTest {
         assertTrue(positions.isEmpty());
     }
 
+    @Test public void punctuationWithoutWhitespaceIsAnEditableBoundary() {
+        String text = "Hola,amigo y mirá—seguí.";
+        int comma = text.indexOf("amigo");
+        int dash = text.indexOf("seguí");
+        assertEquals(comma, ManualStoryPauses.nearestGap(text, comma));
+        assertEquals(dash, ManualStoryPauses.nearestGap(text, dash));
+        Map<Integer, List<Integer>> positions = new HashMap<>();
+        ManualStoryPauses.toggle(positions, 0, comma);
+        ManualStoryPauses.toggle(positions, 0, dash);
+        String stored = ManualStoryPauses.encode(positions);
+        assertEquals(List.of(comma, dash),
+                ManualStoryPauses.decode(stored, List.of(text)).get(0));
+        assertEquals(2, ManualStoryPauses.display(text, List.of(comma, dash))
+                .split("⏸", -1).length - 1);
+    }
+
     @Test public void visualMarkersRoundTripWithoutEditingOriginalText() {
         String source = "Los hombres van a la ciudad.";
         List<Integer> gaps = List.of(3, 17);
