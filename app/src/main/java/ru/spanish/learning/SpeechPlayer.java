@@ -42,6 +42,11 @@ public final class SpeechPlayer {
     private int utteranceBaseOffset;
     private boolean spokenTextChangesOffsets;
     private String activeToken = "";
+    private boolean slowArticles;
+    private List<ArticleSlowSpeech.Part> articleParts = List.of();
+    private int articlePartIndex;
+    private int articleFullOffset;
+    private String articlePartId = "";
     public boolean sentenceMode = true;
     public float speed = 0.85f;
     public int pauseMs = 1500;
@@ -63,18 +68,26 @@ public final class SpeechPlayer {
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) {}
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
-                    handler.post(() -> rememberRange(id, start));
+                    handler.post(() -> {
+                        if (id != null && id.equals(articlePartId)) rememberRange(activeToken, start);
+                        else rememberRange(id, start);
+                    });
                 }
                 @Override public void onDone(String id) {
                     handler.post(() -> {
                         if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        else if (id != null && id.equals(articlePartId)) advanceArticlePart(id);
                         else done(id);
                     });
                 }
                 @Override public void onError(String id) {
                     handler.post(() -> {
                         if (id != null && id.startsWith("card:")) finishCardSpeech();
-                        else failed(id);
+                        else if (id != null && id.equals(articlePartId)) {
+                            String originalToken = activeToken;
+                            clearArticleParts();
+                            failed(originalToken);
+                        } else failed(id);
                     });
                 }
             });
@@ -301,6 +314,13 @@ public final class SpeechPlayer {
         listener.changed();
     }
 
+    /** Only the special article-training copy uses segmented system TTS. */
+    public void setSlowArticles(boolean enabled) {
+        slowArticles = enabled;
+    }
+
+    public boolean slowArticlesEnabled() { return slowArticles; }
+
     public void load(String body, int position) {
         pause();
         lastBackIndex = -1;
@@ -372,10 +392,61 @@ public final class SpeechPlayer {
         // Do not mistake the spoken positions for positions in the displayed text.
         spokenTextChangesOffsets = !spoken.equals(originalSpeech);
         error = "";
+        if (slowArticles && "es".equals(learningLanguage)) {
+            articleParts = ArticleSlowSpeech.split(originalSpeech);
+            boolean found = false;
+            for (ArticleSlowSpeech.Part part : articleParts) if (part.slow()) { found = true; break; }
+            if (found) {
+                articleFullOffset = utteranceBaseOffset;
+                articlePartIndex = 0;
+                speakArticlePart(token);
+                listener.changed();
+                return;
+            }
+            articleParts = List.of();
+        }
         tts.setSpeechRate(speed);
         if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token) == TextToSpeech.ERROR) failed(token);
         listener.changed();
     }
+
+    private void speakArticlePart(String token) {
+        if (closed || !token.equals(activeToken)
+                || state.phase != PlaybackState.Phase.SPEAKING) return;
+        if (articlePartIndex >= articleParts.size()) {
+            clearArticleParts();
+            done(token); // Advance one sentence, not one TTS fragment.
+            return;
+        }
+        ArticleSlowSpeech.Part part = articleParts.get(articlePartIndex);
+        String original = part.text();
+        String spoken = RioplatensePronunciation.forSpeech(original, learningLanguage);
+        utteranceBaseOffset = articleFullOffset + part.start();
+        spokenTextChangesOffsets = !spoken.equals(original);
+        tts.setSpeechRate(part.slow() ? Math.max(0.3f, speed * 0.55f) : speed);
+        articlePartId = token + ":article:" + articlePartIndex;
+        if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, articlePartId)
+                == TextToSpeech.ERROR) {
+            clearArticleParts();
+            failed(token);
+        }
+    }
+
+    private void advanceArticlePart(String id) {
+        if (closed || !id.equals(articlePartId)
+                || state.phase != PlaybackState.Phase.SPEAKING) return;
+        String token = activeToken;
+        articlePartId = "";
+        articlePartIndex++;
+        speakArticlePart(token);
+    }
+
+    private void clearArticleParts() {
+        articlePartId = "";
+        articleParts = List.of();
+        articlePartIndex = 0;
+    }
+
     private void releaseHumanPlayer() {
         MediaPlayer old = humanPlayer;
         humanPlayer = null;
@@ -488,6 +559,7 @@ public final class SpeechPlayer {
             }
         }
         state.pause();
+        clearArticleParts();
         releaseHumanPlayer();
         if (previous != PlaybackState.Phase.SPEAKING) {
             resumeOffset = 0;
