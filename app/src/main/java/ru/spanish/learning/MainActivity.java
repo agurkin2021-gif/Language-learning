@@ -444,6 +444,7 @@ public final class MainActivity extends Activity {
                 player.useGoogleVoice("google".equals(source));
             }
             player.setSlowArticles(enabled);
+            player.prepareWholeStory();
         }
         remember();
         if ("player".equals(screen)) render();
@@ -473,6 +474,7 @@ public final class MainActivity extends Activity {
                 player.useHumanVoice("human".equals(source));
                 player.useGoogleVoice("google".equals(source));
             }
+            player.prepareWholeStory();
         }
     }
 
@@ -605,6 +607,8 @@ public final class MainActivity extends Activity {
                         .setItems(new String[]{"0.3×", "0.4×", "0.5×", "0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
                             player.pause();
                             player.speed = new float[]{.3f,.4f,.5f,.6f,.75f,.85f,1f,1.2f}[w];
+                            if ("player".equals(screen) && storyId >= 0)
+                                player.prepareWholeStory();
                             speed.setText("Скорость речи: " + player.speed + "× (рассказы и карточки)");
                             remember();
                             updatePlayer();
@@ -2369,6 +2373,7 @@ public final class MainActivity extends Activity {
                 && !manualTts && "google".equals(source));
         player.setSlowArticles(shortSpeech);
         player.load(storyReadRussian ? story.translation() : story.body(), story.position());
+        player.prepareWholeStory();
         render();
     }
 
@@ -2408,6 +2413,7 @@ public final class MainActivity extends Activity {
             player.useGoogleVoice("google".equals(source));
         }
         player.load(russian ? selected.translation() : selected.body(), position);
+        player.prepareWholeStory();
         render();
         return true;
     }
@@ -2964,15 +2970,16 @@ public final class MainActivity extends Activity {
         sentence.setTextColor(storyReadingTextColor(player.state.index));
         if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
-        toggle.setText(player.preparingTextPauses() ? "Подготовка озвучки…"
+        toggle.setText(player.preparingTextPauses() ? "Подготовка всего рассказа…"
                 : active ? "Ⅱ Пауза"
                 : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
         if (humanVoiceButton != null)
             humanVoiceButton.setText("Источник: " + narrationLabel());
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
-        if (player.preparingTextPauses()) status = "Подготовка точных пауз";
+        if (player.preparingTextPauses()) status = "Подготовка до начала чтения";
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status
+                + (player.storyAudioStatus().isEmpty() ? "" : "\n" + player.storyAudioStatus())
                 + (player.error.isEmpty() ? "" : "\n" + player.error)
                 + (!player.canPlay() ? "\n" + player.voiceDescription : ""));
     }
