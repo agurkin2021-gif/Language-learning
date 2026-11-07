@@ -2466,8 +2466,8 @@ public final class MainActivity extends Activity {
         readingPanel.setElevation(dp(4));
         content.addView(readingPanel, spaced(6));
 
-        sentence = textInto(readingPanel,
-                markedSentenceText(currentOriginalSentence(), player.state.index), 26);
+        sentence = textInto(readingPanel, currentOriginalSentence(), 26);
+        sentence.setText(markedSentenceText(currentOriginalSentence(), player.state.index));
         sentence.setTextColor(storyReadingTextColor(player.state.index));
         sentence.setLineSpacing(dp(5), 1.07f);
         sentence.setPadding(0, dp(3), 0, dp(13));
