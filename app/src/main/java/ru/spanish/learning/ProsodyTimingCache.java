@@ -19,6 +19,37 @@ final class ProsodyTimingCache {
         return value.toString();
     }
 
+    /**
+     * Every requested text gap must have a distinct, ordered word-start frame.
+     * This is a fast structural check for cached TTS metadata; the WAV splicer
+     * additionally checks the frame against the actual PCM duration.
+     */
+    static boolean covers(String spoken, List<Integer> gaps,
+                          List<ProsodyPauseAudio.WordTiming> ranges) {
+        if (spoken == null || gaps == null || gaps.isEmpty() || ranges == null)
+            return false;
+        int previousFrame = -1;
+        for (int gap : gaps) {
+            if (gap <= 0 || gap >= spoken.length()
+                    || !Character.isWhitespace(spoken.charAt(gap))) return false;
+            int next = gap;
+            while (next < spoken.length() && Character.isWhitespace(spoken.charAt(next))) next++;
+            while (next < spoken.length() && !Character.isLetterOrDigit(spoken.charAt(next))) next++;
+            if (next >= spoken.length()) return false;
+            int matchedFrame = -1;
+            for (ProsodyPauseAudio.WordTiming range : ranges) {
+                if (range.start() != next || range.end() <= next
+                        || range.end() > spoken.length() || range.frame() <= 0)
+                    continue;
+                if (matchedFrame != -1 && matchedFrame != range.frame()) return false;
+                matchedFrame = range.frame();
+            }
+            if (matchedFrame <= previousFrame) return false;
+            previousFrame = matchedFrame;
+        }
+        return true;
+    }
+
     static List<ProsodyPauseAudio.WordTiming> decode(String encoded, String spoken) {
         List<ProsodyPauseAudio.WordTiming> ranges = new ArrayList<>();
         if (encoded == null || encoded.isEmpty() || spoken == null) return ranges;
