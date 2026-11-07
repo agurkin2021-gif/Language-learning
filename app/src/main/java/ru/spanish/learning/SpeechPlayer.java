@@ -772,9 +772,11 @@ public final class SpeechPlayer {
         // Completion advances; restore the failed sentence so retry cannot skip it.
         if (state.phase == PlaybackState.Phase.WAITING) state.index--;
         state.pause(); state.phase = PlaybackState.Phase.PAUSED;
-        error = (humanSelected() || googleSelected()) ?
-                "Не удалось воспроизвести сохранённое аудио." :
-                "Не удалось озвучить. Проверьте установленный офлайн-голос.";
+        if (error == null || error.isEmpty()) {
+            error = (humanSelected() || googleSelected()) ?
+                    "Не удалось воспроизвести сохранённое аудио." :
+                    "Не удалось озвучить. Проверьте установленный офлайн-голос.";
+        }
         audio.abandonAudioFocusRequest(focus); listener.changed();
     }
     public void pause() {
