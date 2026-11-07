@@ -438,6 +438,7 @@ public final class SpeechPlayer {
     }
 
     public String storyAudioStatus() { return storyPreparation.status(); }
+    public boolean storyAudioFailed() { return storyPreparation.hasError(); }
 
     /** Identity includes story, sentence, speech rate and voice, not marker positions. */
     private String speechCacheKey(int sentenceIndex) {
