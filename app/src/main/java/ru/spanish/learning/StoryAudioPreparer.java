@@ -49,9 +49,9 @@ final class StoryAudioPreparer {
     private volatile int generation;
     private int nextIndex;
     private int completed;
-    private boolean required, preparing, ready;
+    private volatile boolean required, preparing, ready;
     private String error = "";
-    private String utterance = "";
+    private volatile String utterance = "";
     private String spoken = "";
     private List<Integer> gaps = List.of();
     private File original, result;
@@ -69,6 +69,7 @@ final class StoryAudioPreparer {
     }
 
     boolean required() { return required; }
+    boolean hasError() { return required && !error.isEmpty(); }
     boolean isPreparing() { return required && preparing; }
     boolean isReady() { return required && ready && !preparing && error.isEmpty()
             && prepared.size() == sentences.size(); }
