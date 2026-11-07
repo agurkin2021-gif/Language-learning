@@ -2481,7 +2481,7 @@ public final class MainActivity extends Activity {
             ui.style(manualPauseCapture, UiStyle.Tone.PRIMARY);
             manualPauseCapture.setTextSize(16);
             manualPauseCapture.setMinHeight(dp(56));
-            content.addView(manualPauseCapture, spaced(6));
+            manualPauseCapture.setLayoutParams(spaced(6));
             manualPauseRecalibrate = button("↻ Перезаписать тайминги пауз", () -> {
                 player.resetManualPauseTimingHere();
                 Toast.makeText(this,
@@ -2490,7 +2490,7 @@ public final class MainActivity extends Activity {
             });
             manualPauseRecalibrate.setTag("story-pause-reset-timestamps");
             ui.style(manualPauseRecalibrate, UiStyle.Tone.OUTLINE);
-            content.addView(manualPauseRecalibrate, spaced(5));
+            manualPauseRecalibrate.setLayoutParams(spaced(5));
         }
 
         LinearLayout readingPanel = new LinearLayout(this);
