@@ -20,8 +20,40 @@ curl_asset() {
   test -s "$out"
 }
 curl_asset phone-builds build-info.json "$reports/old.json"
-curl_asset family-builds build-info.json "$reports/family.json"
-curl_asset family-updater-v2-builds build-info.json "$reports/updater.json"
+# The phone APK and independent updater are published by parallel CI jobs.
+# GitHub's raw CDN can temporarily expose one new manifest and one stale one.
+# Wait for BOTH manifests from THIS run before downloading and verifying APKs.
+expected_run="${GITHUB_RUN_NUMBER:-}"
+for attempt in $(seq 1 36); do
+  nonce="${GITHUB_RUN_ID:-manual}-${attempt}"
+  curl --fail --location --retry 2 --connect-timeout 12 --max-time 30 --silent --show-error \
+    "$root/family-builds/build-info.json?cachebust=$nonce" \
+    -o "$reports/family.json"
+  curl --fail --location --retry 2 --connect-timeout 12 --max-time 30 --silent --show-error \
+    "$root/family-updater-v2-builds/build-info.json?cachebust=$nonce" \
+    -o "$reports/updater.json"
+  if python3 - "$reports/family.json" "$reports/updater.json" "$expected_run" <<'PY'
+import json,sys
+try:
+    family=json.load(open(sys.argv[1]))
+    updater=json.load(open(sys.argv[2]))
+    target=int(sys.argv[3]) if sys.argv[3] else family["run_number"]
+    assert family["run_number"]==target
+    assert updater["run_number"]==target
+    assert family["source_revision"]==updater["source_revision"]
+except (ValueError,KeyError,TypeError,AssertionError):
+    sys.exit(1)
+PY
+  then
+    echo "Published phone and updater metadata agree on run ${expected_run:-manual}"
+    break
+  fi
+  if [[ "$attempt" == 36 ]]; then
+    echo "Published phone/updater metadata did not converge to run ${expected_run:-matching versions}" >&2
+    exit 1
+  fi
+  sleep 5
+done
 curl_asset phone-builds SpanishLearning.apk "$reports/old.apk"
 curl_asset updater-builds SpanishLearningUpdater.apk "$reports/legacy-updater.apk"
 curl_asset family-updater-v2-builds SpanishLearningUpdater.apk "$reports/updater.apk"
