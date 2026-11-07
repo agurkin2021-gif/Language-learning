@@ -537,7 +537,7 @@ public final class SpeechPlayer {
         String full = current();
         if (resumeOffset < 0 || resumeOffset >= full.length()) resumeOffset = 0;
         // Automatic alignment uses the whole sentence WAV. Restart at its beginning.
-        if (hasManualPauseHere()) resumeOffset = 0;
+        if (manualPausesActive()) resumeOffset = 0;
         utteranceBaseOffset = resumeOffset;
         activeToken = token;
         if (manualPausesActive()) {
