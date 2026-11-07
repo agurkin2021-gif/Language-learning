@@ -121,19 +121,19 @@ public final class ProsodyPauseAudioTest {
         File output = File.createTempFile("native-voice-marked-", ".wav");
         try {
             try (RandomAccessFile f = new RandomAccessFile(input,"rw")) {
-                f.writeBytes("RIFF"); little(f, 36+20, 4); f.writeBytes("WAVEfmt ");
+                f.writeBytes("RIFF"); little(f, 36+2000, 4); f.writeBytes("WAVEfmt ");
                 little(f, 16, 4); little(f, 1, 2); little(f, 1, 2);
                 little(f, 1000, 4); little(f, 2000, 4);
                 little(f, 2, 2); little(f, 16, 2);
-                f.writeBytes("data"); little(f, 20, 4);
-                for(int i=0;i<10;i++) little(f, 123, 2);
+                f.writeBytes("data"); little(f, 2000, 4);
+                for(int i=0;i<1000;i++) little(f, 123, 2);
             }
             ProsodyPauseAudio.insertSilence(input,output,"La luz",List.of(2),List.of(),500);
-            assertEquals(44+20+1000, output.length());
+            assertEquals(44+2000+1000, output.length());
             byte[] result=Files.readAllBytes(output.toPath());
             byte[] original=Files.readAllBytes(input.toPath());
             assertEquals(original[44],result[44]); // not at audio start
-            assertEquals(original[63],result[result.length-1]); // not at audio end
+            assertEquals(original[original.length-1], result[result.length-1]); // not at audio end
         } finally { input.delete();output.delete(); }
     }
 }
