@@ -501,6 +501,10 @@ public final class MainActivity extends Activity {
                 new GestureDetector.SimpleOnGestureListener() {
                     @Override public boolean onDown(MotionEvent event) { return true; }
                     @Override public void onLongPress(MotionEvent event) {
+                        // The main reading label is reused when playback advances; other
+                        // labels in "full text" keep their own fixed sentence index.
+                        int activeIndex = label == sentence ? player.state.index : sentenceIndex;
+                        String activeOriginal = label == sentence ? currentOriginalSentence() : original;
                         Layout layout = label.getLayout();
                         if (layout == null) return;
                         float yy = event.getY() - label.getTotalPaddingTop() + label.getScrollY();
@@ -510,15 +514,15 @@ public final class MainActivity extends Activity {
                         if (xx < layout.getLineLeft(line) || xx > layout.getLineRight(line)) return;
                         int displayOffset = layout.getOffsetForHorizontal(line, xx);
                         int sourceOffset = ManualStoryPauses.originalOffset(displayOffset,
-                                ManualStoryPauses.forSentence(manualStoryMarks, sentenceIndex));
-                        int gap = ManualStoryPauses.nearestGap(original, sourceOffset);
+                                ManualStoryPauses.forSentence(manualStoryMarks, activeIndex));
+                        int gap = ManualStoryPauses.nearestGap(activeOriginal, sourceOffset);
                         if (gap < 1) return;
                         label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                        ManualStoryPauses.toggle(manualStoryMarks, sentenceIndex, gap);
+                        ManualStoryPauses.toggle(manualStoryMarks, activeIndex, gap);
                         prefs.edit().putString(manualStoryKey,
                                 ManualStoryPauses.encode(manualStoryMarks)).apply();
                         configureManualStoryPlayback();
-                        label.setText(markedSentenceText(original, sentenceIndex));
+                        label.setText(markedSentenceText(activeOriginal, activeIndex));
                         updatePlayer();
                     }
                 });
