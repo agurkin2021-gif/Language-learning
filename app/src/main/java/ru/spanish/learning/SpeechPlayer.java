@@ -641,6 +641,10 @@ public final class SpeechPlayer {
                 finishProsodySynthesis(prosodyId);
                 return;
             }
+            // If the exact recording is missing, old timestamps must never be
+            // applied to a newly synthesized voice waveform.
+            manualTimePrefs.edit().remove(calibrationKey(state.index)).apply();
+            if (prosodyStableInput.exists()) prosodyStableInput.delete();
             prosodyInput = File.createTempFile("prosody-original-", ".wav", prosodyCache);
             tts.setSpeechRate(speed);
             if (tts.synthesizeToFile(spoken, new Bundle(), prosodyInput, prosodyId)
