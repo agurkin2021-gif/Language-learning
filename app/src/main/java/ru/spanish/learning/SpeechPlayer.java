@@ -64,6 +64,9 @@ public final class SpeechPlayer {
     /** Keep the natural full-sentence WAV across plays and marker edits. */
     private final File sentenceAudioCache;
     private final ExecutorService prosodyFiles = Executors.newSingleThreadExecutor();
+    /** A canceled splice may still be writing; delete its output only after it exits. */
+    private final java.util.Set<File> prosodyOutputsInFlight =
+            Collections.synchronizedSet(new java.util.HashSet<>());
     private volatile String prosodyId = "";
     private volatile TimedStoryCapture prosodyCapture;
     private String prosodySpoken = "";
@@ -502,17 +505,14 @@ public final class SpeechPlayer {
         if (!gaps.isEmpty()) {
             // A manual pause is not punctuation: synthesize the entire sentence
             // before inserting digital silence so that the pitch is untouched.
-            // Word offsets belong to the displayed text. When Bible references
-            // are expanded for speech, remap each boundary into the TTS string.
-            List<Integer> spokenGaps = new ArrayList<>();
-            for (int originalGap : gaps) {
-                String prefix = RioplatensePronunciation.forSpeech(
-                        originalSpeech.substring(0, originalGap), learningLanguage);
-                int mapped = prefix.length();
-                if (mapped > 0 && mapped < spoken.length()) spokenGaps.add(mapped);
-            }
-            if (!spokenGaps.isEmpty()) beginProsodySynthesis(token, spoken, spokenGaps);
-            else {
+            // Map ALL displayed markers to the unchanged whole-sentence TTS text.
+            // Ambiguous Bible-reference normalization must not move or drop a pause.
+            try {
+                beginProsodySynthesis(token, spoken,
+                        SpokenGapMapper.map(originalSpeech, spoken, gaps, learningLanguage));
+            } catch (IllegalArgumentException mappingError) {
+                error = "Точную границу паузы нельзя сопоставить с произношением: "
+                        + mappingError.getMessage();
                 tts.setSpeechRate(speed);
                 if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token)
                         == TextToSpeech.ERROR) failed(token);
@@ -566,11 +566,14 @@ public final class SpeechPlayer {
             prosodyId = token + ":prosody";
             // The word-to-frame map belongs to this exact WAV, not to a tap event.
             if (prosodyStableInput.isFile() && prosodyStableInput.length() > 44) {
-                prosodyInput = prosodyStableInput;
-                prosodyTiming.addAll(ProsodyTimingCache.decode(
-                        pausePrefs.getString(rangeCacheKey(prosodyStableInput), ""), spoken));
-                finishProsodySynthesis(prosodyId);
-                return;
+                List<ProsodyPauseAudio.WordTiming> cached = ProsodyTimingCache.decode(
+                        pausePrefs.getString(rangeCacheKey(prosodyStableInput), ""), spoken);
+                if (ProsodyTimingCache.covers(spoken, gaps, cached)) {
+                    prosodyInput = prosodyStableInput;
+                    prosodyTiming.addAll(cached);
+                    finishProsodySynthesis(prosodyId);
+                    return;
+                }
             }
             // synthesizeToFile does not deliver onRangeStart for the AOSP
             // file-synthesis route. Collect both PCM and timing from one muted
@@ -605,6 +608,8 @@ public final class SpeechPlayer {
             prosodyCapture = null;
             try {
                 TimedStoryCapture.Snapshot snapshot = capture.snapshot();
+                if (!ProsodyTimingCache.covers(prosodySpoken, prosodyGaps, snapshot.ranges()))
+                    throw new IOException("Движок не передал границы всех выбранных слов");
                 if (prosodyStableInput == null)
                     throw new IOException("No persistent original WAV path");
                 File pending = File.createTempFile("speech-captured-", ".wav", prosodyCache);
@@ -647,6 +652,7 @@ public final class SpeechPlayer {
         final int duration = manualPauseMs;
         // Strict: each visible marker must match an actual onRangeStart frame.
         // Never use text-proportional or acoustic-gap estimates.
+        prosodyOutputsInFlight.add(output);
         prosodyFiles.execute(() -> {
             String problem = null;
             try {
@@ -657,9 +663,13 @@ public final class SpeechPlayer {
             }
             final String failureReason = problem;
             handler.post(() -> {
+                prosodyOutputsInFlight.remove(output);
                 if (!isProsodyId(id) || closed
                         || state.phase != PlaybackState.Phase.SPEAKING
-                        || !token.equals(activeToken)) return;
+                        || !token.equals(activeToken)) {
+                    output.delete();
+                    return;
+                }
                 if (failureReason != null) {
                     error = "Этот голос не дал точной границы слова. "
                             + "Пауза не вставлена: " + failureReason;
@@ -725,7 +735,8 @@ public final class SpeechPlayer {
         // Keep the whole-sentence recording and its saved word-frame mapping.
         if (prosodyInput != null && !prosodyInput.equals(prosodyStableInput))
             prosodyInput.delete();
-        if (prosodyOutput != null) prosodyOutput.delete();
+        if (prosodyOutput != null && !prosodyOutputsInFlight.contains(prosodyOutput))
+            prosodyOutput.delete();
         prosodyInput = null;
         prosodyOutput = null;
         prosodyStableInput = null;
