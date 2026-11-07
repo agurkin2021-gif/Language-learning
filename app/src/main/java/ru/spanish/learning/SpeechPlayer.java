@@ -16,6 +16,8 @@ import android.speech.tts.Voice;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public final class SpeechPlayer {
     public interface Listener { void changed(); }
@@ -44,7 +46,9 @@ public final class SpeechPlayer {
     private boolean spokenTextChangesOffsets;
     private String activeToken = "";
     private boolean slowArticles;
-    private List<ArticleSlowSpeech.Part> articleParts = List.of();
+    private List<ManualStoryPauses.Piece> articleParts = List.of();
+    private Map<Integer, List<Integer>> manualPositions = Map.of();
+    private int manualPauseMs;
     private int articleFullOffset;
     private String articleLastId = "";
     public boolean sentenceMode = true;
@@ -331,6 +335,20 @@ public final class SpeechPlayer {
 
     public boolean slowArticlesEnabled() { return slowArticles; }
 
+    /** Set markers for this specific story only. Zero duration disables playback of markers. */
+    public void setManualPauses(Map<Integer, List<Integer>> positions, int millis) {
+        Map<Integer, List<Integer>> copy = new HashMap<>();
+        for (Map.Entry<Integer, List<Integer>> item : positions.entrySet())
+            copy.put(item.getKey(), List.copyOf(item.getValue()));
+        manualPositions = copy;
+        manualPauseMs = Math.max(0, Math.min(5000, millis));
+    }
+
+    public boolean manualPausesActive() {
+        return manualPauseMs > 0 && !manualPositions.isEmpty()
+                && !"ru".equals(learningLanguage);
+    }
+
     public void load(String body, int position) {
         pause();
         lastBackIndex = -1;
@@ -402,13 +420,22 @@ public final class SpeechPlayer {
         // Do not mistake the spoken positions for positions in the displayed text.
         spokenTextChangesOffsets = !spoken.equals(originalSpeech);
         error = "";
-        // Equal rates need no segmentation; retain the original natural prosody.
-        if (slowArticles && "es".equals(learningLanguage)
-                && Math.abs(shortWordSpeed - speed) > 0.001f) {
-            articleParts = ArticleSlowSpeech.split(originalSpeech);
-            boolean found = false;
-            for (ArticleSlowSpeech.Part part : articleParts) if (part.slow()) { found = true; break; }
-            if (found) {
+        // Build a complete queue once: slow words and user-marked silence coexist.
+        // When both features are off, retain a single natural-prosody TTS utterance.
+        boolean slowWords = slowArticles && "es".equals(learningLanguage)
+                && Math.abs(shortWordSpeed - speed) > 0.001f;
+        List<Integer> gaps = new ArrayList<>();
+        if (manualPauseMs > 0 && !"ru".equals(learningLanguage)) {
+            for (int gap : manualPositions.getOrDefault(state.index, List.of()))
+                if (gap > utteranceBaseOffset && gap < full.length())
+                    gaps.add(gap - utteranceBaseOffset);
+        }
+        if (slowWords || !gaps.isEmpty()) {
+            articleParts = ManualStoryPauses.pieces(originalSpeech, gaps, slowWords);
+            boolean segmented = false;
+            for (ManualStoryPauses.Piece part : articleParts)
+                if (part.slow() || part.silence()) { segmented = true; break; }
+            if (segmented) {
                 articleFullOffset = utteranceBaseOffset;
                 queueArticleSentence(token);
                 listener.changed();
@@ -431,21 +458,24 @@ public final class SpeechPlayer {
         if (closed || !token.equals(activeToken)
                 || state.phase != PlaybackState.Phase.SPEAKING) return;
         for (int i = 0; i < articleParts.size(); i++) {
-            ArticleSlowSpeech.Part part = articleParts.get(i);
-            String spoken = RioplatensePronunciation.forSpeech(part.text(), learningLanguage).trim();
+            ManualStoryPauses.Piece part = articleParts.get(i);
             String id = token + ":article:" + i;
             articleLastId = id;
-            // Every slow word is actually synthesized at the chosen slower rate;
-            // regular words are spoken at the main sentence speed.
-            float rate = part.slow() ? shortWordSpeed : speed;
-            // Android copies the current per-utterance TTS parameters when a
-            // nonempty Bundle is passed. setSpeechRate() sets mParams["rate"];
-            // a documented volume param forces a snapshot for each queued item.
-            tts.setSpeechRate(rate);
-            Bundle params = new Bundle();
-            params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
             int queue = i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
-            if (spoken.isEmpty() || tts.speak(spoken, queue, params, id) == TextToSpeech.ERROR) {
+            int result;
+            if (part.silence()) {
+                // An actual silent interval, not an artificial change of word speed.
+                result = tts.playSilentUtterance(manualPauseMs, queue, id);
+            } else {
+                String spoken = RioplatensePronunciation.forSpeech(
+                        part.text(), learningLanguage).trim();
+                tts.setSpeechRate(part.slow() ? shortWordSpeed : speed);
+                Bundle params = new Bundle();
+                params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
+                result = spoken.isEmpty() ? TextToSpeech.ERROR
+                        : tts.speak(spoken, queue, params, id);
+            }
+            if (result == TextToSpeech.ERROR) {
                 clearArticleParts();
                 tts.stop();
                 failed(token);
@@ -464,7 +494,8 @@ public final class SpeechPlayer {
         try {
             int position = Integer.parseInt(id.substring((activeToken + ":article:").length()));
             if (position < 0 || position >= articleParts.size()) return;
-            ArticleSlowSpeech.Part part = articleParts.get(position);
+            ManualStoryPauses.Piece part = articleParts.get(position);
+            if (part.silence()) return;
             // Keep original-string offsets intact for pause/resume.
             if (!RioplatensePronunciation.forSpeech(part.text(), learningLanguage)
                     .equals(part.text())) return;
