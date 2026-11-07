@@ -20,6 +20,10 @@ import java.util.Map;
 import java.util.HashMap;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Collections;
@@ -57,13 +61,15 @@ public final class SpeechPlayer {
     private int articleFullOffset;
     private String articleLastId = "";
     private final File prosodyCache;
+    /** Reuse exactly the WAV on which the user recorded the pause time. */
+    private final File calibratedAudioCache;
     private final ExecutorService prosodyFiles = Executors.newSingleThreadExecutor();
     private volatile String prosodyId = "";
     private String prosodySpoken = "";
     private List<Integer> prosodyGaps = List.of();
     private final List<ProsodyPauseAudio.WordTiming> prosodyTiming =
             Collections.synchronizedList(new ArrayList<>());
-    private File prosodyInput, prosodyOutput;
+    private File prosodyInput, prosodyOutput, prosodyStableInput;
     private boolean prosodyPlayback;
     private final SharedPreferences manualTimePrefs;
     private String manualStoryKey = "";
@@ -81,6 +87,7 @@ public final class SpeechPlayer {
     public SpeechPlayer(Context context, Listener listener) {
         this.listener = listener;
         prosodyCache = context.getCacheDir();
+        calibratedAudioCache = new File(context.getFilesDir(), "calibrated_manual_pause_wav");
         manualTimePrefs = context.getSharedPreferences("ui", Context.MODE_PRIVATE);
         voicePrefs = context.getSharedPreferences("tts_voice_settings", Context.MODE_PRIVATE);
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -609,15 +616,32 @@ public final class SpeechPlayer {
         return id != null && !prosodyId.isEmpty() && id.equals(prosodyId);
     }
 
+    private File calibratedOriginalFile(String spoken) {
+        String identity = calibrationKey(state.index) + ":text:" + spoken;
+        String name = UUID.nameUUIDFromBytes(
+                identity.getBytes(StandardCharsets.UTF_8)).toString() + ".wav";
+        return new File(calibratedAudioCache, name);
+    }
+
     private void beginProsodySynthesis(String token, String spoken, List<Integer> gaps) {
         try {
             cleanupProsody();
-            prosodyInput = File.createTempFile("prosody-original-", ".wav", prosodyCache);
+            if (!calibratedAudioCache.exists() && !calibratedAudioCache.mkdirs())
+                throw new IOException("Cannot create audio cache directory");
+            prosodyStableInput = calibratedOriginalFile(spoken);
             prosodyOutput = File.createTempFile("prosody-paused-", ".wav", prosodyCache);
             prosodySpoken = spoken;
             prosodyGaps = List.copyOf(gaps);
             prosodyTiming.clear();
             prosodyId = token + ":prosody";
+            // Never re-synthesize a sentence after calibration: a network TTS
+            // voice may change word timings between separate requests.
+            if (prosodyStableInput.isFile() && prosodyStableInput.length() > 44) {
+                prosodyInput = prosodyStableInput;
+                finishProsodySynthesis(prosodyId);
+                return;
+            }
+            prosodyInput = File.createTempFile("prosody-original-", ".wav", prosodyCache);
             tts.setSpeechRate(speed);
             if (tts.synthesizeToFile(spoken, new Bundle(), prosodyInput, prosodyId)
                     == TextToSpeech.ERROR) {
@@ -635,6 +659,22 @@ public final class SpeechPlayer {
     private void finishProsodySynthesis(String id) {
         if (!isProsodyId(id) || closed
                 || state.phase != PlaybackState.Phase.SPEAKING) return;
+        // Promote the successfully completed WAV to private persistent storage.
+        // Renaming within the same app filesystem preserves every sample.
+        if (prosodyInput != null && prosodyStableInput != null
+                && !prosodyInput.equals(prosodyStableInput)) {
+            try {
+                Files.move(prosodyInput.toPath(), prosodyStableInput.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING);
+                prosodyInput = prosodyStableInput;
+            } catch (IOException failure) {
+                String token = activeToken;
+                cleanupProsody();
+                error = "Не удалось сохранить запись для точных ручных пауз.";
+                failed(token);
+                return;
+            }
+        }
         final String token = activeToken;
         final File input = prosodyInput;
         final File output = prosodyOutput;
@@ -740,10 +780,13 @@ public final class SpeechPlayer {
         calibrationSilentHold = false;
         calibrationGaps = List.of();
         calibrationNext = 0;
-        if (prosodyInput != null) prosodyInput.delete();
+        // Keep the original calibrated WAV: re-synthesis would shift its timing.
+        if (prosodyInput != null && !prosodyInput.equals(prosodyStableInput))
+            prosodyInput.delete();
         if (prosodyOutput != null) prosodyOutput.delete();
         prosodyInput = null;
         prosodyOutput = null;
+        prosodyStableInput = null;
     }
 
     /**
