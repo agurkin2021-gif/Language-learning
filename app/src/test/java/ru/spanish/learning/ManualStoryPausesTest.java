@@ -20,23 +20,23 @@ public final class ManualStoryPausesTest {
 
     @Test public void visualMarkersRoundTripWithoutEditingOriginalText() {
         String source = "Los hombres van a la ciudad.";
-        List<Integer> gaps = List.of(3, 14);
+        List<Integer> gaps = List.of(3, 17);
         String display = ManualStoryPauses.display(source, gaps);
         assertEquals(2, display.split("⏸", -1).length - 1);
         for (int index=0; index<source.length(); index++) {
             int displayIndex = index + (index>=3?ManualStoryPauses.SYMBOL.length():0)
-                    + (index>=14?ManualStoryPauses.SYMBOL.length():0);
+                    + (index>=17?ManualStoryPauses.SYMBOL.length():0);
             assertEquals(index, ManualStoryPauses.originalOffset(displayIndex, gaps));
         }
         assertEquals(3, ManualStoryPauses.originalOffset(4, gaps));
-        assertEquals(14, ManualStoryPauses.originalOffset(15 + ManualStoryPauses.SYMBOL.length(), gaps));
+        assertEquals(17, ManualStoryPauses.originalOffset(17 + ManualStoryPauses.SYMBOL.length() + 1, gaps));
         assertEquals("Los hombres van a la ciudad.", source);
     }
 
     @Test public void pauseAndSlowWordPiecesHaveCorrectOffsets() {
         String text = "Los hombres van a la ciudad.";
         int gap = ManualStoryPauses.nearestGap(text, 19);
-        assertEquals(16, gap); // gap after "a"
+        assertEquals(20, gap); // gap after "la"
         List<ManualStoryPauses.Piece> parts = ManualStoryPauses.pieces(text, List.of(gap), true);
         long pauses = parts.stream().filter(ManualStoryPauses.Piece::silence).count();
         assertEquals(1L, pauses);
