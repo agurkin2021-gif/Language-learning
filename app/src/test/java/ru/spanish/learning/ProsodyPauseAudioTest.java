@@ -136,4 +136,62 @@ public final class ProsodyPauseAudioTest {
             assertEquals(original[original.length-1], result[result.length-1]); // not at audio end
         } finally { input.delete();output.delete(); }
     }
+
+    @Test public void calibratedTapTimesInsertExactlyWherePressedNotAtTextEstimatedTimes()
+            throws Exception {
+        File original=File.createTempFile("precise-tapped-", ".wav");
+        File result=File.createTempFile("precise-splice-", ".wav");
+        try {
+            try(RandomAccessFile f=new RandomAccessFile(original,"rw")) {
+                f.setLength(0);
+                f.writeBytes("RIFF"); little(f,236,4);
+                f.writeBytes("WAVEfmt "); little(f,16,4);
+                little(f,1,2); little(f,1,2);
+                little(f,1000,4); little(f,2000,4);
+                little(f,2,2); little(f,16,2);
+                f.writeBytes("data"); little(f,200,4);
+                for(int i=0;i<100;i++) little(f,1000+i,2);
+            }
+            // The user tapped at 20ms and 70ms while the original WAV played.
+            // Neither the sentence text nor acoustic energy is consulted.
+            ProsodyPauseAudio.insertSilenceAtMs(original,result,List.of(20,70),100);
+            byte[] before=Files.readAllBytes(original.toPath());
+            byte[] after=Files.readAllBytes(result.toPath());
+            assertEquals(44+200+400,after.length);
+            for(int i=0;i<40;i++) assertEquals(before[44+i],after[44+i]);
+            for(int i=40;i<240;i++) assertEquals(0,after[44+i]);
+            for(int i=40;i<140;i++)
+                assertEquals(before[44+i],after[44+i+200]);
+            for(int i=340;i<540;i++) assertEquals(0,after[44+i]);
+            for(int i=140;i<200;i++)
+                assertEquals(before[44+i],after[44+i+400]);
+        } finally {original.delete();result.delete();}
+    }
+
+    @Test public void uncalibratedAndOutOfOrderManualTimesAreRejected()
+            throws Exception {
+        File original=File.createTempFile("precise-valid-", ".wav");
+        File result=File.createTempFile("precise-invalid-", ".wav");
+        try {
+            try(RandomAccessFile f=new RandomAccessFile(original,"rw")) {
+                f.setLength(0);
+                f.writeBytes("RIFF"); little(f,236,4);
+                f.writeBytes("WAVEfmt "); little(f,16,4);
+                little(f,1,2); little(f,1,2);
+                little(f,1000,4); little(f,2000,4);
+                little(f,2,2); little(f,16,2);
+                f.writeBytes("data"); little(f,200,4);
+                for(int i=0;i<100;i++) little(f,2222+i,2);
+            }
+            for(List<Integer> bad : List.of(List.of(0),List.of(1000),
+                    List.of(80,30),List.of(50,50))) {
+                try {
+                    ProsodyPauseAudio.insertSilenceAtMs(original,result,bad,250);
+                    fail("Invalid manually timed pauses must not be inserted: " + bad);
+                } catch(java.io.IOException expected) {
+                    assertNotNull(expected.getMessage());
+                }
+            }
+        } finally {original.delete();result.delete();}
+    }
 }
