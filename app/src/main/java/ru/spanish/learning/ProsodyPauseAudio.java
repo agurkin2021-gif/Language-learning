@@ -17,10 +17,29 @@ final class ProsodyPauseAudio {
     private record Cut(long frame, int durationMs) {}
     private ProsodyPauseAudio() {}
 
+    /**
+     * Exact MANUALLY calibrated audio coordinates. The user taps while the
+     * whole sentence plays; each timestamp is captured with MediaPlayer's
+     * getCurrentPosition() in the original, unmodified WAV timeline.
+     * No text proportions, energy peaks or TTS word ranges are involved.
+     */
+    static void insertSilenceAtMs(File input, File output, List<Integer> momentsMs,
+                                  int silenceMs) throws IOException {
+        if (silenceMs <= 0 || momentsMs == null || momentsMs.isEmpty())
+            throw new IOException("No manual pause timing");
+        splice(input, output, "", List.of(), List.of(), silenceMs, momentsMs);
+    }
+
     static void insertSilence(File input, File output, String spoken,
                               List<Integer> gaps, List<WordTiming> timing,
                               int silenceMs) throws IOException {
         if (silenceMs <= 0 || gaps.isEmpty()) throw new IOException("No manual pauses");
+        splice(input, output, spoken, gaps, timing, silenceMs, null);
+    }
+
+    private static void splice(File input, File output, String spoken,
+                               List<Integer> gaps, List<WordTiming> timing,
+                               int silenceMs, List<Integer> momentsMs) throws IOException {
         try (RandomAccessFile wav = new RandomAccessFile(input, "r")) {
             if (wav.length() < 44 || !"RIFF".equals(readAscii(wav))
                     || readInt(wav) < 36 || !"WAVE".equals(readAscii(wav)))
@@ -55,6 +74,14 @@ final class ProsodyPauseAudio {
             if (dataSize % frameBytes != 0) throw new IOException("Misaligned PCM data");
             long totalFrames = dataSize / frameBytes;
             List<Cut> cuts = new ArrayList<>();
+            if (momentsMs != null) {
+                for (int ms : momentsMs) {
+                    long frame = Math.round(sampleRate * (ms / 1000.0));
+                    if (ms <= 0 || frame <= 0 || frame >= totalFrames)
+                        throw new IOException("Manual timestamp outside audio");
+                    cuts.add(new Cut(frame, silenceMs));
+                }
+            } else {
             List<Long> acousticFallback = null;
             int gapIndex = -1;
             for (int gap : gaps) {
@@ -84,6 +111,7 @@ final class ProsodyPauseAudio {
                     frame = acousticFallback.get(gapIndex);
                 }
                 cuts.add(new Cut(frame, silenceMs));
+            }
             }
             if (cuts.isEmpty()) throw new IOException("No valid pause positions");
             cuts.sort(Comparator.comparingLong(Cut::frame));
