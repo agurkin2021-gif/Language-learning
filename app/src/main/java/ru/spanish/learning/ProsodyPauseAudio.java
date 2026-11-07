@@ -126,8 +126,9 @@ final class ProsodyPauseAudio {
             if (t.start() != nextWord) continue;
             long frame = t.frame();
             // Zero/-1, an end-of-file position and a frame from a different
-            // clock are not usable boundaries. 20 ms also avoids edge clicks.
-            long edge = Math.max(1, sampleRate / 50);
+            // clock are not usable boundaries. A 10 ms margin rejects
+            // block-edge artifacts without rejecting short first words.
+            long edge = Math.max(1, sampleRate / 100);
             if (frame <= edge || frame >= totalFrames - edge)
                 continue;
             if (result >= 0 && result != frame)
