@@ -1,13 +1,18 @@
 package ru.spanish.learning;
 
+import android.accessibilityservice.AccessibilityService;
+import android.app.UiAutomation;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.SystemClock;
 import android.test.ActivityInstrumentationTestCase2;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
+import java.util.List;
 
-/** The global on/off control must take effect on the OPEN story immediately. */
+/** The global rate control belongs to Settings, never above the reader. */
 public final class ArticleSlowSpeechToggleTest
         extends ActivityInstrumentationTestCase2<MainActivity> {
     public ArticleSlowSpeechToggleTest() { super(MainActivity.class); }
@@ -32,7 +37,28 @@ public final class ArticleSlowSpeechToggleTest
         return null;
     }
 
-    public void testToggleIsImmediateAndRestoresLastRate() throws Exception {
+    private boolean clickAccessibilityText(String text) {
+        UiAutomation automation = getInstrumentation().getUiAutomation();
+        for (int attempt = 0; attempt < 15; attempt++) {
+            AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+            if (root != null) {
+                try {
+                    List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByText(text);
+                    for (AccessibilityNodeInfo node : nodes) {
+                        if (node.getText() != null && text.contentEquals(node.getText())
+                                && node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                            return true;
+                    }
+                } finally {
+                    root.recycle();
+                }
+            }
+            SystemClock.sleep(150);
+        }
+        return false;
+    }
+
+    public void testToggleLivesOnlyInSettingsAndRestoresLastRate() throws Exception {
         SharedPreferences prefs = getInstrumentation().getTargetContext()
                 .getSharedPreferences("ui", Context.MODE_PRIVATE);
         float original = prefs.getFloat("shortWordSpeed", .45f);
@@ -64,26 +90,31 @@ public final class ArticleSlowSpeechToggleTest
             assertEquals(.45f, player.shortWordSpeed, .001f);
 
             getInstrumentation().runOnMainSync(() -> {
-                View button = byTag(activity.getWindow().getDecorView(), "story-short-word-toggle");
-                assertNotNull("Off switch must be in story reader", button);
-                assertTrue(((TextView) button).getText().toString().startsWith("ОТКЛЮЧИТЬ"));
-                button.performClick();
+                View reader = activity.getWindow().getDecorView();
+                assertNull("No article toggle is permitted over the reading panel",
+                        byTag(reader, "story-short-word-toggle"));
+                View settings = byText(reader, "⚙");
+                assertNotNull("Settings gear must remain reachable", settings);
+                settings.performClick();
             });
+            getInstrumentation().waitForIdleSync();
+
+            assertTrue("Off control must exist in Settings",
+                    clickAccessibilityText("ОТКЛЮЧИТЬ замедление (los, las, del, el, la, les)"));
             getInstrumentation().waitForIdleSync();
             assertFalse("Off takes effect without reopening story", player.slowArticlesEnabled());
             assertEquals(0f, player.shortWordSpeed, .001f);
             assertEquals(0f, prefs.getFloat("shortWordSpeed", -1f), .001f);
 
-            getInstrumentation().runOnMainSync(() -> {
-                View button = byTag(activity.getWindow().getDecorView(), "story-short-word-toggle");
-                assertNotNull("On switch must replace off switch immediately", button);
-                assertTrue(((TextView) button).getText().toString().startsWith("ВКЛЮЧИТЬ"));
-                button.performClick();
-            });
+            assertTrue("On control must replace off control in Settings",
+                    clickAccessibilityText("ВКЛЮЧИТЬ замедление (los, las, del, el, la, les)"));
             getInstrumentation().waitForIdleSync();
             assertTrue("On takes effect without reopening story", player.slowArticlesEnabled());
             assertEquals(.6f, player.shortWordSpeed, .001f);
             assertEquals(.6f, prefs.getFloat("shortWordSpeed", -1f), .001f);
+            getInstrumentation().runOnMainSync(() ->
+                    assertNull("Toggle must not reappear on story reader",
+                            byTag(activity.getWindow().getDecorView(), "story-short-word-toggle")));
         } finally {
             prefs.edit().putString("activeProfile", oldProfile)
                     .putString("studyLanguage", oldLanguage).putString("screen", oldScreen)
