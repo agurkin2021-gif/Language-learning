@@ -132,7 +132,9 @@ public final class MainActivity extends Activity {
         player = new SpeechPlayer(this, this::updatePlayer);
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f);
-        player.shortWordSpeed = prefs.getFloat(prefKey("shortWordSpeed"), .45f);
+        // One shared speed preference across profiles and languages; Papa ES legacy
+        // preference was already saved under this same unprefixed key.
+        player.shortWordSpeed = prefs.getFloat("shortWordSpeed", .45f);
         player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         screen = prefs.getString(prefKey("screen"), "cards");
         kind = prefs.getInt(prefKey("kind"), 0);
@@ -198,7 +200,6 @@ public final class MainActivity extends Activity {
         store = studyingEnglish() ? englishStore : spanishStore;
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f);
-        player.shortWordSpeed = prefs.getFloat(prefKey("shortWordSpeed"), .45f);
         player.pauseMs = prefs.getInt(prefKey("pause"), 1500);
         player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         kind = prefs.getInt(prefKey("kind"), 0);
@@ -244,7 +245,6 @@ public final class MainActivity extends Activity {
         store = studyingEnglish() ? englishStore : spanishStore;
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f);
-        player.shortWordSpeed = prefs.getFloat(prefKey("shortWordSpeed"), .45f);
         player.pauseMs = prefs.getInt(prefKey("pause"), 1500);
         player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         kind = prefs.getInt(prefKey("kind"), 0);
@@ -339,7 +339,7 @@ public final class MainActivity extends Activity {
                 .putInt(prefKey("reviewIndex"), reviewIndex)
                 .putLong(prefKey("reviewStep"), reviewStep)
                 .putFloat(prefKey("speed"), player.speed)
-                .putFloat(prefKey("shortWordSpeed"), player.shortWordSpeed)
+                .putFloat("shortWordSpeed", player.shortWordSpeed)
                 .putInt(prefKey("pause"), player.pauseMs)
                 .putBoolean(prefKey("sentenceMode"), player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
@@ -484,20 +484,24 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(speed, spaced(10));
 
-        // Separate absolute TTS rate: only short words in the "artículos lentos" story.
+        // One global rate for short words in every Spanish story. Disable to use saved audio.
         Button shortWordSpeed = rowButton(
-                "Скорость артиклей и коротких слов: " + player.shortWordSpeed + "×", null);
+                "Скорость артиклей и коротких слов: "
+                        + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
+                        + " (все рассказы)", null);
         shortWordSpeed.setTag("short-word-speed");
         shortWordSpeed.setOnClickListener(v ->
                 new AlertDialog.Builder(this)
-                        .setTitle("Скорость артиклей и коротких слов (1–3 буквы)")
-                        .setItems(new String[]{"0.3×", "0.35×", "0.4×", "0.45×", "0.5×",
+                        .setTitle("Скорость коротких слов во всех испанских рассказах")
+                        .setItems(new String[]{"Выключено (для сохранённой озвучки)",
+                                "0.3×", "0.35×", "0.4×", "0.45×", "0.5×",
                                 "0.55×", "0.6×", "0.7×", "0.8×", "1.0×"}, (d, w) -> {
                             player.pause();
-                            player.shortWordSpeed = new float[]{.3f, .35f, .4f, .45f, .5f,
+                            player.shortWordSpeed = new float[]{0f, .3f, .35f, .4f, .45f, .5f,
                                     .55f, .6f, .7f, .8f, 1f}[w];
                             shortWordSpeed.setText("Скорость артиклей и коротких слов: "
-                                    + player.shortWordSpeed + "×");
+                                    + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
+                                    + " (все рассказы)");
                             remember();
                             updatePlayer();
                         }).show());
@@ -2168,7 +2172,6 @@ public final class MainActivity extends Activity {
         player.pause();
         remember();
         storyId = story.id();
-        boolean articleTraining = ArticleSlowSpeech.appliesTo(story.title());
         bibleRedChunks = BibleStoryHighlight.appliesTo(story.title())
                 ? BibleStoryHighlight.mark(story.body()) : new boolean[0];
         screen = "player";
@@ -2179,15 +2182,17 @@ public final class MainActivity extends Activity {
                 && storyTranslations.size() == storyOriginalSentences.size()
                 && !storyTranslations.isEmpty();
         player.setLearningLanguage(storyReadRussian ? "ru" : studyLanguage);
+        boolean shortSpeech = ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian,
+                player.shortWordSpeed);
         HumanStoryAudio recorded = new HumanStoryAudio(this, activeProfile, studyLanguage,
                 story.id(), story.body());
         GoogleStoryAudio google = new GoogleStoryAudio(this, activeProfile, studyLanguage,
                 story.id(), story.body());
         String source = prefs.getString(prefKey("narrationSource"),
                 prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
-        player.attachHumanStory(recorded, !storyReadRussian && !articleTraining && "human".equals(source));
-        player.attachGoogleStory(google, !storyReadRussian && !articleTraining && "google".equals(source));
-        player.setSlowArticles(articleTraining && !storyReadRussian);
+        player.attachHumanStory(recorded, !storyReadRussian && !shortSpeech && "human".equals(source));
+        player.attachGoogleStory(google, !storyReadRussian && !shortSpeech && "google".equals(source));
+        player.setSlowArticles(shortSpeech);
         player.load(storyReadRussian ? story.translation() : story.body(), story.position());
         render();
     }
@@ -2215,10 +2220,11 @@ public final class MainActivity extends Activity {
         storyReadRussian = russian;
         prefs.edit().putBoolean(prefKey("storyReadRussian"), russian).apply();
         player.setLearningLanguage(russian ? "ru" : studyLanguage);
-        boolean articleTraining = ArticleSlowSpeech.appliesTo(selected.title());
-        player.setSlowArticles(articleTraining && !russian);
-        if (russian || articleTraining) {
-            // Stored Spanish/English recordings must NEVER play over Russian text.
+        boolean shortSpeech = ArticleSlowSpeech.appliesTo(studyLanguage, russian,
+                player.shortWordSpeed);
+        player.setSlowArticles(shortSpeech);
+        if (russian || shortSpeech) {
+            // Russian translation and slowly articulated Spanish require system TTS.
             player.useHumanVoice(false);
             player.useGoogleVoice(false);
         } else {
@@ -2256,10 +2262,6 @@ public final class MainActivity extends Activity {
         content.addView(repeat, rewindParams);
 
         text(selected.title(), 25);
-        if (ArticleSlowSpeech.appliesTo(selected.title())) {
-            TextView articleNotice = text("Артикли и короткие слова (1–3 буквы): медленнее. Остальные слова: обычная скорость.", 14);
-            articleNotice.setTextColor(secondaryText());
-        }
         storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
 
@@ -2345,7 +2347,7 @@ public final class MainActivity extends Activity {
 
     private void chooseNarrationSource() {
         if (player.slowArticlesEnabled()) {
-            Toast.makeText(this, "Для медленных артиклей используется системный голос", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Замедление коротких слов действует во всех испанских рассказах. Для записанного голоса отключите замедление в настройках.", Toast.LENGTH_LONG).show();
             return;
         }
         if (storyReadRussian) {

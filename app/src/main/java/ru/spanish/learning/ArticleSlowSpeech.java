@@ -6,13 +6,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Isolates all Spanish one-, two-, and three-letter words, plus the
+ * Isolates all Spanish one-, two-, and three-letter words in any story, plus the
  * four-letter articles "unos" and "unas", for a slower TTS rate.
  * The segments concatenate exactly to the original story and do not match
  * inside longer words. "él" is slowed as a short word, not as an article.
  */
 final class ArticleSlowSpeech {
-    private static final String TITLE_SUFFIX = "— artículos lentos";
     private static final Pattern SHORT_WORD = Pattern.compile(
             "(?iu)(?<![\\p{L}\\p{M}])(?:unos|unas|[\\p{L}]{1,3})(?![\\p{L}\\p{M}])");
 
@@ -20,8 +19,8 @@ final class ArticleSlowSpeech {
 
     private ArticleSlowSpeech() {}
 
-    static boolean appliesTo(String title) {
-        return title != null && title.trim().endsWith(TITLE_SUFFIX);
+    static boolean appliesTo(String studyLanguage, boolean readingRussian, float shortWordSpeed) {
+        return "es".equals(studyLanguage) && !readingRussian && shortWordSpeed > 0f;
     }
 
     static List<Part> split(String original) {

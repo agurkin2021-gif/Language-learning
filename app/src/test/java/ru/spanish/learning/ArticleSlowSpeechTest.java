@@ -5,10 +5,13 @@ import org.junit.Test;
 import java.util.List;
 
 public class ArticleSlowSpeechTest {
-    @Test public void separateStoryOnly() {
-        assertTrue(ArticleSlowSpeech.appliesTo("Gerizim y Ebal — artículos lentos"));
-        assertFalse(ArticleSlowSpeech.appliesTo("Gerizim y Ebal — citas en rojo"));
-        assertFalse(ArticleSlowSpeech.appliesTo("Gerizim y Ebal — versión fácil (Argentina)"));
+    @Test public void allSpanishStoriesIncludingNormalAndBibleCopies() {
+        // Does not depend on any title or profile: the setting applies globally.
+        assertTrue(ArticleSlowSpeech.appliesTo("es", false, .45f));
+        assertTrue(ArticleSlowSpeech.appliesTo("es", false, 1f));
+        assertFalse(ArticleSlowSpeech.appliesTo("es", false, 0f));
+        assertFalse(ArticleSlowSpeech.appliesTo("en", false, .45f));
+        assertFalse(ArticleSlowSpeech.appliesTo("es", true, .45f));
     }
 
     @Test public void slowEveryWordUpToThreeLettersPlusFourLetterArticles() {
