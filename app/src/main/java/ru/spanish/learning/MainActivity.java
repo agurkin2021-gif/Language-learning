@@ -2964,7 +2964,8 @@ public final class MainActivity extends Activity {
         sentence.setTextColor(storyReadingTextColor(player.state.index));
         if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
-        toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
+        toggle.setText(player.preparingTextPauses() ? "Подготовка озвучки…"
+                : active ? "Ⅱ Пауза"\n                : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
         if (humanVoiceButton != null)
             humanVoiceButton.setText("Источник: " + narrationLabel());
