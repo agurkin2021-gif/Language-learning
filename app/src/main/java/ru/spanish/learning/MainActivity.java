@@ -26,6 +26,11 @@ import android.text.InputFilter;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
+import java.util.Map;
+import java.util.HashMap;
 import android.text.style.BackgroundColorSpan;
 import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
@@ -102,6 +107,9 @@ public final class MainActivity extends Activity {
     private Runnable pendingCardSpeech;
     private String screen = "cards";
     private long storyId = -1;
+    private Map<Integer, List<Integer>> manualStoryMarks = new HashMap<>();
+    private String manualStoryKey = "";
+    private int manualPauseMillis = 700;
     // Rendering-only Bible markers. The story text and TTS input remain unmodified.
     private boolean[] bibleRedChunks = new boolean[0];
     private boolean rendering;
@@ -135,6 +143,7 @@ public final class MainActivity extends Activity {
         // One shared speed preference across profiles and languages; Papa ES legacy
         // preference was already saved under this same unprefixed key.
         player.shortWordSpeed = prefs.getFloat("shortWordSpeed", .45f);
+        manualPauseMillis = prefs.getInt("manualPauseMillis", 700);
         player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         screen = prefs.getString(prefKey("screen"), "cards");
         kind = prefs.getInt(prefKey("kind"), 0);
@@ -340,6 +349,7 @@ public final class MainActivity extends Activity {
                 .putLong(prefKey("reviewStep"), reviewStep)
                 .putFloat(prefKey("speed"), player.speed)
                 .putFloat("shortWordSpeed", player.shortWordSpeed)
+                .putInt("manualPauseMillis", manualPauseMillis)
                 .putInt(prefKey("pause"), player.pauseMs)
                 .putBoolean(prefKey("sentenceMode"), player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
@@ -438,6 +448,84 @@ public final class MainActivity extends Activity {
         remember();
         if ("player".equals(screen)) render();
         else updatePlayer();
+    }
+
+    private void setManualPauseMillis(int millis) {
+        manualPauseMillis = Math.max(0, millis);
+        configureManualStoryPlayback();
+        remember();
+        if ("player".equals(screen)) render();
+        else updatePlayer();
+    }
+
+    private void configureManualStoryPlayback() {
+        player.pause();
+        player.setManualPauses(manualStoryMarks, manualPauseMillis);
+        if ("player".equals(screen) && storyId >= 0) {
+            boolean requiresTts = player.manualPausesActive()
+                    || ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian, player.shortWordSpeed);
+            if (requiresTts) {
+                player.useHumanVoice(false);
+                player.useGoogleVoice(false);
+            } else if (!storyReadRussian) {
+                String source = prefs.getString(prefKey("narrationSource"),
+                        prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
+                player.useHumanVoice("human".equals(source));
+                player.useGoogleVoice("google".equals(source));
+            }
+        }
+    }
+
+    private CharSequence markedSentenceText(String original, int sentenceIndex) {
+        List<Integer> gaps = ManualStoryPauses.forSentence(manualStoryMarks, sentenceIndex);
+        if (gaps.isEmpty()) return original;
+        SpannableStringBuilder result = new SpannableStringBuilder(
+                ManualStoryPauses.display(original, gaps));
+        int from = 0;
+        for (int gap : gaps) {
+            int start = gap + from + 1; // The symbol follows one leading display space.
+            int end = start + 1;
+            result.setSpan(new ForegroundColorSpan(darkTheme ? 0xFFFFC857 : 0xFFBB5200),
+                    start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            result.setSpan(new StyleSpan(Typeface.BOLD),
+                    start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            from += ManualStoryPauses.SYMBOL.length();
+        }
+        return result;
+    }
+
+    /** Never changes the stored story text; only the overlay of ⏸ symbols. */
+    private void attachManualPauseGesture(TextView label, String original, int sentenceIndex) {
+        label.setTextIsSelectable(false);
+        GestureDetector detector = new GestureDetector(this,
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override public boolean onDown(MotionEvent event) { return true; }
+                    @Override public void onLongPress(MotionEvent event) {
+                        Layout layout = label.getLayout();
+                        if (layout == null) return;
+                        float yy = event.getY() - label.getTotalPaddingTop() + label.getScrollY();
+                        if (yy < 0 || yy >= layout.getHeight()) return;
+                        int line = layout.getLineForVertical((int) yy);
+                        float xx = event.getX() - label.getTotalPaddingLeft() + label.getScrollX();
+                        if (xx < layout.getLineLeft(line) || xx > layout.getLineRight(line)) return;
+                        int displayOffset = layout.getOffsetForHorizontal(line, xx);
+                        int sourceOffset = ManualStoryPauses.originalOffset(displayOffset,
+                                ManualStoryPauses.forSentence(manualStoryMarks, sentenceIndex));
+                        int gap = ManualStoryPauses.nearestGap(original, sourceOffset);
+                        if (gap < 1) return;
+                        label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                        ManualStoryPauses.toggle(manualStoryMarks, sentenceIndex, gap);
+                        prefs.edit().putString(manualStoryKey,
+                                ManualStoryPauses.encode(manualStoryMarks)).apply();
+                        configureManualStoryPlayback();
+                        label.setText(markedSentenceText(original, sentenceIndex));
+                        updatePlayer();
+                    }
+                });
+        label.setOnTouchListener((view,event) -> {
+            detector.onTouchEvent(event);
+            return true; // Long press edits pauses; no word-save / Android selection.
+        });
     }
 
     private void showSettings() {
@@ -550,6 +638,35 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(shortWordSpeed, spaced(10));
         box.addView(shortWordToggle, spaced(10));
+
+        // Manual pause marks are stored per story; the duration is a global preference.
+        Button manualPauses = rowButton("Ручные паузы в тексте", null);
+        manualPauses.setTag("manual-story-pauses-settings");
+        TextView manualPauseStatus = textInto(box,
+                manualPauseMillis == 0 ? "Ручные паузы: выключены"
+                        : "Ручные паузы: " + manualPauseMillis / 1000f + " с · удержание между словами", 14);
+        manualPauseStatus.setTextColor(secondaryText());
+        manualPauses.setOnClickListener(v -> {
+            int[] durations = {0, 300, 500, 700, 1000, 1500, 2000, 3000};
+            int selected = 0;
+            for (int i = 0; i < durations.length; i++)
+                if (manualPauseMillis == durations[i]) selected = i;
+            new AlertDialog.Builder(this)
+                    .setTitle("Ручные паузы в тексте")
+                    .setSingleChoiceItems(new String[]{
+                            "Выключено", "0,3 секунды", "0,5 секунды", "0,7 секунды",
+                            "1 секунда", "1,5 секунды", "2 секунды", "3 секунды"
+                    }, selected, (dialog, which) -> {
+                        setManualPauseMillis(durations[which]);
+                        manualPauseStatus.setText(manualPauseMillis == 0
+                                ? "Ручные паузы: выключены"
+                                : "Ручные паузы: " + manualPauseMillis / 1000f
+                                        + " с · удержание между словами");
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton("Отмена", null).show();
+        });
+        box.addView(manualPauses, spaced(10));
 
         Button pause = rowButton("Пауза между предложениями: " + player.pauseMs / 1000f + " с", () ->
                 new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
@@ -2216,6 +2333,12 @@ public final class MainActivity extends Activity {
         player.pause();
         remember();
         storyId = story.id();
+        manualStoryKey = "manual-story-pauses:" + activeProfile + ":" + studyLanguage
+                + ":" + story.id() + ":" + story.body().hashCode();
+        storyOriginalSentences = Sentences.split(story.body());
+        manualStoryMarks = ManualStoryPauses.decode(
+                prefs.getString(manualStoryKey, ""), storyOriginalSentences);
+        player.setManualPauses(manualStoryMarks, manualPauseMillis);
         bibleRedChunks = BibleStoryHighlight.appliesTo(story.title())
                 ? BibleStoryHighlight.mark(story.body()) : new boolean[0];
         screen = "player";
@@ -2234,8 +2357,11 @@ public final class MainActivity extends Activity {
                 story.id(), story.body());
         String source = prefs.getString(prefKey("narrationSource"),
                 prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
-        player.attachHumanStory(recorded, !storyReadRussian && !shortSpeech && "human".equals(source));
-        player.attachGoogleStory(google, !storyReadRussian && !shortSpeech && "google".equals(source));
+        boolean manualTts = !storyReadRussian && player.manualPausesActive();
+        player.attachHumanStory(recorded, !storyReadRussian && !shortSpeech
+                && !manualTts && "human".equals(source));
+        player.attachGoogleStory(google, !storyReadRussian && !shortSpeech
+                && !manualTts && "google".equals(source));
         player.setSlowArticles(shortSpeech);
         player.load(storyReadRussian ? story.translation() : story.body(), story.position());
         render();
@@ -2267,8 +2393,8 @@ public final class MainActivity extends Activity {
         boolean shortSpeech = ArticleSlowSpeech.appliesTo(studyLanguage, russian,
                 player.shortWordSpeed);
         player.setSlowArticles(shortSpeech);
-        if (russian || shortSpeech) {
-            // Russian translation and slowly articulated Spanish require system TTS.
+        if (russian || shortSpeech || (!russian && player.manualPausesActive())) {
+            // Russian translation and marked pauses require system TTS.
             player.useHumanVoice(false);
             player.useGoogleVoice(false);
         } else {
@@ -2336,11 +2462,12 @@ public final class MainActivity extends Activity {
         readingPanel.setElevation(dp(4));
         content.addView(readingPanel, spaced(6));
 
-        sentence = textInto(readingPanel, currentOriginalSentence(), 26);
+        sentence = textInto(readingPanel,
+                markedSentenceText(currentOriginalSentence(), player.state.index), 26);
         sentence.setTextColor(storyReadingTextColor(player.state.index));
         sentence.setLineSpacing(dp(5), 1.07f);
         sentence.setPadding(0, dp(3), 0, dp(13));
-        attachStoryWordGesture(sentence, this::currentTranslation);
+        attachManualPauseGesture(sentence, currentOriginalSentence(), player.state.index);
 
         View divider = new View(this);
         divider.setBackgroundColor(borderColor());
@@ -2361,13 +2488,16 @@ public final class MainActivity extends Activity {
 
         humanVoiceButton = button("Источник: " + narrationLabel(), this::chooseNarrationSource);
         ui.style(humanVoiceButton, UiStyle.Tone.OUTLINE);
-        humanVoiceButton.setEnabled(!storyReadRussian && !player.slowArticlesEnabled());
+        humanVoiceButton.setEnabled(!storyReadRussian && !player.slowArticlesEnabled()
+                && !player.manualPausesActive());
         Button googleAudio = button("Google — озвучить все рассказы", this::startGoogleStoryRecording);
         ui.style(googleAudio, UiStyle.Tone.OUTLINE);
-        googleAudio.setEnabled(!storyReadRussian && !player.slowArticlesEnabled());
+        googleAudio.setEnabled(!storyReadRussian && !player.slowArticlesEnabled()
+                && !player.manualPausesActive());
         Button recordHuman = button("Записать живой голос", this::openHumanRecorder);
         ui.style(recordHuman, UiStyle.Tone.OUTLINE);
-        recordHuman.setEnabled(!storyReadRussian && !player.slowArticlesEnabled());
+        recordHuman.setEnabled(!storyReadRussian && !player.slowArticlesEnabled()
+                && !player.manualPausesActive());
 
         Button readAll = button("Читать весь рассказ заново", player::playAllFromStart);
         ui.style(readAll, UiStyle.Tone.OUTLINE);
@@ -2392,12 +2522,17 @@ public final class MainActivity extends Activity {
     }
     private String narrationLabel() {
         if (storyReadRussian) return "Системный голос (русский)";
+        if (player.manualPausesActive()) return "Системный голос (ручные паузы)";
         if (player.slowArticlesEnabled()) return "Системный голос (шесть слов медленно)";
         return player.googleSelected() ? "Google (сохранённая запись)"
                 : player.humanSelected() ? "Живой голос" : "Системный голос";
     }
 
     private void chooseNarrationSource() {
+        if (player.manualPausesActive()) {
+            Toast.makeText(this, "Ручные паузы требуют системный голос. Режим отключается в настройках.", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (player.slowArticlesEnabled()) {
             Toast.makeText(this, "Замедление отключается кнопкой над текстом рассказа или в настройках.", Toast.LENGTH_LONG).show();
             return;
@@ -2732,93 +2867,6 @@ public final class MainActivity extends Activity {
         audioExportDialog.show();
         exporter.start();
     }
-    private interface TranslationText { String get(); }
-
-    private void attachStoryWordGesture(TextView label, TranslationText translation) {
-        label.setTextIsSelectable(false);
-        GestureDetector gesture = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
-            @Override public boolean onDown(MotionEvent event) { return true; }
-            @Override public void onLongPress(MotionEvent event) {
-                captureStoryWord(label, translation.get(), event.getX(), event.getY());
-            }
-        });
-        label.setOnTouchListener((view, event) -> {
-            gesture.onTouchEvent(event);
-            return true; // no Android selection/copy handles; parent ScrollView still handles scroll
-        });
-    }
-
-    private void captureStoryWord(TextView label, String russian, float x, float y) {
-        Layout layout = label.getLayout();
-        if (layout == null || label.getText() == null) return;
-        String source = label.getText().toString();
-        float insideY = y - label.getTotalPaddingTop() + label.getScrollY();
-        if (insideY < 0 || insideY >= layout.getHeight()) return;
-        int line = layout.getLineForVertical((int) insideY);
-        float insideX = x - label.getTotalPaddingLeft() + label.getScrollX();
-        if (insideX < layout.getLineLeft(line) || insideX > layout.getLineRight(line)) return;
-        int position = layout.getOffsetForHorizontal(line, insideX);
-        StoryWordPicker.Match match = StoryWordPicker.at(source, position);
-        if (match == null) return;
-        if (storyWordRequestInFlight) {
-            Toast.makeText(this, "Дождитесь проверки предыдущего слова", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try {
-            Store targetStore = store;
-            Store.StoryWordSave known = StoryVocabulary.existing(targetStore, match.word());
-            if (known != null) {
-                Toast.makeText(this, known == Store.StoryWordSave.RESTORED
-                        ? "Снова в изучении: " + match.word()
-                        : "Уже в карточках: " + match.word(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!assistant.isConnected()) {
-                Toast.makeText(this, "Для точного перевода подключите ChatGPT в разделе «Рассказы»",
-                        Toast.LENGTH_LONG).show();
-                return;
-            }
-            label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            SpannableString highlighted = new SpannableString(source);
-            highlighted.setSpan(new BackgroundColorSpan(darkTheme ? 0xFF526A66 : 0xFFFFE39A),
-                    match.start(), match.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            label.setText(highlighted);
-            cardSpeechHandler.postDelayed(() -> {
-                if (label.getText() == highlighted) label.setText(source);
-            }, 600);
-
-            storyWordRequestInFlight = true;
-            AtomicBoolean cancelled = new AtomicBoolean(false);
-            AlertDialog dialog = new AlertDialog.Builder(this)
-                    .setTitle("Перевод: " + match.word())
-                    .setMessage("Проверяю значение и грамматику…")
-                    .setNegativeButton("Отмена", (d, w) -> cancelled.set(true))
-                    .setCancelable(false).create();
-            dialog.show();
-            assistant.translateStoryWord(targetStore, match.word(), source, russian,
-                    cancelled::get, new ChatGptAssistant.StoryWordUpdates() {
-                @Override public void progress(String stage) {
-                    runOnUiThread(() -> {
-                        if (!cancelled.get() && dialog.isShowing() && !isFinishing())
-                            dialog.setMessage(stage);
-                    });
-                }
-                @Override public void finished(boolean ok, String message) {
-                    runOnUiThread(() -> {
-                        storyWordRequestInFlight = false;
-                        if (dialog.isShowing()) dialog.dismiss();
-                        if (!cancelled.get() && !isFinishing())
-                            Toast.makeText(MainActivity.this, message,
-                                    Toast.LENGTH_LONG).show();
-                    });
-                }
-            });
-        } catch (Exception e) {
-            storyWordRequestInFlight = false;
-            Toast.makeText(this, "Не удалось проверить перевод слова", Toast.LENGTH_LONG).show();
-        }
-    }
-
     private void showFullStory() {
         Store.Story selected = null;
         for (Store.Story story : store.stories()) if (story.id() == storyId) selected = story;
@@ -2829,7 +2877,7 @@ public final class MainActivity extends Activity {
         lines.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(lines);
         TextView hint = new TextView(this);
-        hint.setText(studyingEnglish() ? "Удерживайте английское слово для добавления в карточки." : "Удерживайте испанское слово для добавления в карточки.");
+        hint.setText("Удерживайте место между словами: ⏸ добавить или убрать паузу. Длительность — в настройках.");
         hint.setTextSize(14);
         hint.setTextColor(secondaryText());
         lines.addView(hint);
@@ -2846,13 +2894,13 @@ public final class MainActivity extends Activity {
             paragraph.setBackground(ui.rounded(ui.surface, 16, ui.outline));
             lines.addView(paragraph, spaced(10));
             TextView original = new TextView(this);
-            original.setText(es);
+            original.setText(markedSentenceText(es, index));
             original.setTextSize(22);
             original.setTextColor(index < redChunks.length && redChunks[index]
                     ? bibleTextRed() : primaryText());
             original.setLineSpacing(dp(3), 1.06f);
             original.setPadding(0, dp(6), 0, dp(5));
-            attachStoryWordGesture(original, () -> ru);
+            attachManualPauseGesture(original, es, index);
             paragraph.addView(original, new LinearLayout.LayoutParams(-1, -2));
             TextView translated = new TextView(this);
             translated.setText(ru);
@@ -2907,7 +2955,7 @@ public final class MainActivity extends Activity {
         if (cardVoiceStatus != null) cardVoiceStatus.setText(player.voiceDescription);
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
         if (sentence == null) return;
-        sentence.setText(currentOriginalSentence());
+        sentence.setText(markedSentenceText(currentOriginalSentence(), player.state.index));
         sentence.setTextColor(storyReadingTextColor(player.state.index));
         if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
