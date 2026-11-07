@@ -91,7 +91,6 @@ public final class MainActivity extends Activity {
     private LinearLayout content;
     private TextView sentence, sentenceRu, playbackStatus, cardVoiceStatus;
     private Button toggle, repeat;
-    private Button manualPauseCapture, manualPauseRecalibrate;
     private List<String> storyTranslations = new java.util.ArrayList<>();
     private List<String> storyOriginalSentences = new java.util.ArrayList<>();
     private boolean storyReadRussian;
@@ -520,9 +519,6 @@ public final class MainActivity extends Activity {
                         if (gap < 1) return;
                         label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                         ManualStoryPauses.toggle(manualStoryMarks, activeIndex, gap);
-                        // Timings for the old marker set must not be reused
-                        // after the text location changes.
-                        player.forgetManualPauseTiming(activeIndex);
                         prefs.edit().putString(manualStoryKey,
                                 ManualStoryPauses.encode(manualStoryMarks)).apply();
                         configureManualStoryPlayback();
@@ -2464,36 +2460,6 @@ public final class MainActivity extends Activity {
         toggle.setMinHeight(dp(70));
         toggle.setMinimumHeight(dp(70));
 
-        // Manual AUDIO timing: press exactly where playback should stop,
-        // rather than asking the TTS engine to guess a word boundary.
-        manualPauseCapture = null;
-        manualPauseRecalibrate = null;
-        if (!storyReadRussian) {
-            manualPauseCapture = rowButton("⏸ Зафиксировать момент паузы",
-                    () -> {
-                        if (!player.markPauseNow()) {
-                            Toast.makeText(this,
-                                    "Сначала запусти предложение. Нажми эту кнопку сразу после нужного слова.",
-                                    Toast.LENGTH_LONG).show();
-                        }
-                    });
-            manualPauseCapture.setTag("story-pause-record-timestamp");
-            ui.style(manualPauseCapture, UiStyle.Tone.PRIMARY);
-            manualPauseCapture.setTextSize(16);
-            manualPauseCapture.setMinHeight(dp(56));
-            // Attached inside the reading card below; never between Play
-            // and the card, which must remain adjacent.
-            manualPauseRecalibrate = rowButton("↻ Перезаписать тайминги пауз", () -> {
-                player.resetManualPauseTimingHere();
-                Toast.makeText(this,
-                        "Тайминги сброшены. Нажми «Продолжить» и фиксируй паузы во время речи.",
-                        Toast.LENGTH_LONG).show();
-            });
-            manualPauseRecalibrate.setTag("story-pause-reset-timestamps");
-            ui.style(manualPauseRecalibrate, UiStyle.Tone.OUTLINE);
-            // Calibration buttons appear with their relevant sentence.
-        }
-
         LinearLayout readingPanel = new LinearLayout(this);
         readingPanel.setOrientation(LinearLayout.VERTICAL);
         readingPanel.setPadding(dp(18), dp(16), dp(18), dp(16));
@@ -2507,10 +2473,6 @@ public final class MainActivity extends Activity {
         sentence.setLineSpacing(dp(5), 1.07f);
         sentence.setPadding(0, dp(3), 0, dp(13));
         attachManualPauseGesture(sentence, currentOriginalSentence(), player.state.index);
-        if (manualPauseCapture != null) {
-            readingPanel.addView(manualPauseCapture, spaced(6));
-            readingPanel.addView(manualPauseRecalibrate, spaced(5));
-        }
 
         View divider = new View(this);
         divider.setBackgroundColor(borderColor());
@@ -3004,16 +2966,6 @@ public final class MainActivity extends Activity {
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
         toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
-        if (manualPauseCapture != null) {
-            boolean visible = player.hasManualPauseHere();
-            manualPauseCapture.setVisibility(visible ? View.VISIBLE : View.GONE);
-            manualPauseCapture.setText(player.calibrationButtonLabel());
-            manualPauseCapture.setEnabled(player.canMarkPauseNow());
-        }
-        if (manualPauseRecalibrate != null) {
-            boolean visible = player.hasManualPauseHere();
-            manualPauseRecalibrate.setVisibility(visible ? View.VISIBLE : View.GONE);
-        }
         if (humanVoiceButton != null)
             humanVoiceButton.setText("Источник: " + narrationLabel());
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
