@@ -51,7 +51,7 @@ public class ArticleSlowSpeechTest {
         }
         assertEquals(source, rebuilt.toString());
         assertEquals(java.util.List.of("de", "la", "que", "se", "va", "con",
-                "su", "en", "el", "y", "por"), slow);
+                "su", "en", "el", "y", "por", "eso"), slow);
     }
 
     @Test public void emptyAndNoShortWords() {
