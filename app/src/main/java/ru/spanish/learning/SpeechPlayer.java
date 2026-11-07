@@ -44,12 +44,11 @@ public final class SpeechPlayer {
     private String activeToken = "";
     private boolean slowArticles;
     private List<ArticleSlowSpeech.Part> articleParts = List.of();
-    private int articlePartIndex;
     private int articleFullOffset;
-    private String articlePartId = "";
+    private String articleLastId = "";
     public boolean sentenceMode = true;
     public float speed = 0.85f;
-    /** Independent speed for short words in the dedicated article-training story. */
+    /** Separate rate for the six requested words in all Spanish stories. */
     public float shortWordSpeed = 0.45f;
     public int pauseMs = 1500;
     public String voiceDescription = "Подготовка голоса…";
@@ -71,23 +70,31 @@ public final class SpeechPlayer {
                 @Override public void onStart(String id) {}
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
                     handler.post(() -> {
-                        if (id != null && id.equals(articlePartId)) rememberRange(activeToken, start);
+                        if (isArticlePart(id)) rememberArticleRange(id, start);
                         else rememberRange(id, start);
                     });
                 }
                 @Override public void onDone(String id) {
                     handler.post(() -> {
                         if (id != null && id.startsWith("card:")) finishCardSpeech();
-                        else if (id != null && id.equals(articlePartId)) advanceArticlePart(id);
-                        else done(id);
+                        else if (isArticlePart(id)) {
+                            if (id.equals(articleLastId)) {
+                                String sentenceToken = activeToken;
+                                clearArticleParts();
+                                done(sentenceToken);
+                            }
+                            // All fragments were queued up front. Never wait for callbacks
+                            // between words: Android TTS advances through its own queue.
+                        } else done(id);
                     });
                 }
                 @Override public void onError(String id) {
                     handler.post(() -> {
                         if (id != null && id.startsWith("card:")) finishCardSpeech();
-                        else if (id != null && id.equals(articlePartId)) {
+                        else if (isArticlePart(id)) {
                             String originalToken = activeToken;
                             clearArticleParts();
+                            if (tts != null) tts.stop(); // Cancel remaining queued pieces.
                             failed(originalToken);
                         } else failed(id);
                     });
@@ -316,7 +323,7 @@ public final class SpeechPlayer {
         listener.changed();
     }
 
-    /** Only the special article-training copy uses segmented system TTS. */
+    /** This mode is shared by every Spanish story, independent of its title. */
     public void setSlowArticles(boolean enabled) {
         slowArticles = enabled;
     }
@@ -400,8 +407,7 @@ public final class SpeechPlayer {
             for (ArticleSlowSpeech.Part part : articleParts) if (part.slow()) { found = true; break; }
             if (found) {
                 articleFullOffset = utteranceBaseOffset;
-                articlePartIndex = 0;
-                speakArticlePart(token);
+                queueArticleSentence(token);
                 listener.changed();
                 return;
             }
@@ -412,41 +418,58 @@ public final class SpeechPlayer {
         listener.changed();
     }
 
-    private void speakArticlePart(String token) {
+    /**
+     * Queue the COMPLETE sentence before playback begins. The old implementation
+     * waited for each onDone callback and issued QUEUE_FLUSH per word; on some
+     * engines that created audible gaps even at a high normal speech rate.
+     * Android copies the requested rate into each utterance when enqueued.
+     */
+    private void queueArticleSentence(String token) {
         if (closed || !token.equals(activeToken)
                 || state.phase != PlaybackState.Phase.SPEAKING) return;
-        if (articlePartIndex >= articleParts.size()) {
-            clearArticleParts();
-            done(token); // Advance one sentence, not one TTS fragment.
-            return;
-        }
-        ArticleSlowSpeech.Part part = articleParts.get(articlePartIndex);
-        String original = part.text();
-        String spoken = RioplatensePronunciation.forSpeech(original, learningLanguage);
-        utteranceBaseOffset = articleFullOffset + part.start();
-        spokenTextChangesOffsets = !spoken.equals(original);
-        tts.setSpeechRate(part.slow() ? shortWordSpeed : speed);
-        articlePartId = token + ":article:" + articlePartIndex;
-        if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, articlePartId)
-                == TextToSpeech.ERROR) {
-            clearArticleParts();
-            failed(token);
+        for (int i = 0; i < articleParts.size(); i++) {
+            ArticleSlowSpeech.Part part = articleParts.get(i);
+            String spoken = RioplatensePronunciation.forSpeech(part.text(), learningLanguage).trim();
+            String id = token + ":article:" + i;
+            articleLastId = id;
+            // Every slow word is actually synthesized at the chosen slower rate;
+            // regular words are spoken at the main sentence speed.
+            tts.setSpeechRate(part.slow() ? shortWordSpeed : speed);
+            int queue = i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
+            if (spoken.isEmpty() || tts.speak(spoken, queue, null, id) == TextToSpeech.ERROR) {
+                clearArticleParts();
+                tts.stop();
+                failed(token);
+                return;
+            }
         }
     }
 
-    private void advanceArticlePart(String id) {
-        if (closed || !id.equals(articlePartId)
-                || state.phase != PlaybackState.Phase.SPEAKING) return;
-        String token = activeToken;
-        articlePartId = "";
-        articlePartIndex++;
-        speakArticlePart(token);
+    private boolean isArticlePart(String id) {
+        return id != null && !activeToken.isEmpty() && !articleParts.isEmpty()
+                && id.startsWith(activeToken + ":article:");
+    }
+
+    private void rememberArticleRange(String id, int start) {
+        if (closed || state.phase != PlaybackState.Phase.SPEAKING || !isArticlePart(id)) return;
+        try {
+            int position = Integer.parseInt(id.substring((activeToken + ":article:").length()));
+            if (position < 0 || position >= articleParts.size()) return;
+            ArticleSlowSpeech.Part part = articleParts.get(position);
+            // Keep original-string offsets intact for pause/resume.
+            if (!RioplatensePronunciation.forSpeech(part.text(), learningLanguage)
+                    .equals(part.text())) return;
+            String full = current();
+            resumeOffset = Math.max(0, Math.min(full.length(),
+                    articleFullOffset + part.start() + start));
+        } catch (NumberFormatException ignored) {
+            // Stale callbacks must never move the resume position.
+        }
     }
 
     private void clearArticleParts() {
-        articlePartId = "";
+        articleLastId = "";
         articleParts = List.of();
-        articlePartIndex = 0;
     }
 
     private void releaseHumanPlayer() {
