@@ -7,6 +7,7 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
@@ -401,7 +402,9 @@ public final class SpeechPlayer {
         // Do not mistake the spoken positions for positions in the displayed text.
         spokenTextChangesOffsets = !spoken.equals(originalSpeech);
         error = "";
-        if (slowArticles && "es".equals(learningLanguage)) {
+        // Equal rates need no segmentation; retain the original natural prosody.
+        if (slowArticles && "es".equals(learningLanguage)
+                && Math.abs(shortWordSpeed - speed) > 0.001f) {
             articleParts = ArticleSlowSpeech.split(originalSpeech);
             boolean found = false;
             for (ArticleSlowSpeech.Part part : articleParts) if (part.slow()) { found = true; break; }
@@ -434,9 +437,13 @@ public final class SpeechPlayer {
             articleLastId = id;
             // Every slow word is actually synthesized at the chosen slower rate;
             // regular words are spoken at the main sentence speed.
-            tts.setSpeechRate(part.slow() ? shortWordSpeed : speed);
+            float rate = part.slow() ? shortWordSpeed : speed;
+            // Bind each rate to its queued utterance, rather than relying on a
+            // mutable global speech rate that could affect later queued speech.
+            Bundle params = new Bundle();
+            params.putInt(TextToSpeech.Engine.KEY_PARAM_RATE, Math.round(rate * 100f));
             int queue = i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
-            if (spoken.isEmpty() || tts.speak(spoken, queue, null, id) == TextToSpeech.ERROR) {
+            if (spoken.isEmpty() || tts.speak(spoken, queue, params, id) == TextToSpeech.ERROR) {
                 clearArticleParts();
                 tts.stop();
                 failed(token);
