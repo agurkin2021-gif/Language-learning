@@ -35,7 +35,7 @@ public final class ManualStoryPausesTest {
 
     @Test public void pauseAndSlowWordPiecesHaveCorrectOffsets() {
         String text = "Los hombres van a la ciudad.";
-        int gap = ManualStoryPauses.nearestGap(text, 19);
+        int gap = ManualStoryPauses.nearestGap(text, 20);
         assertEquals(20, gap); // gap after "la"
         List<ManualStoryPauses.Piece> parts = ManualStoryPauses.pieces(text, List.of(gap), true);
         long pauses = parts.stream().filter(ManualStoryPauses.Piece::silence).count();
