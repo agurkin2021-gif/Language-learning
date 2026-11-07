@@ -17,19 +17,24 @@ final class SpokenGapMapper {
         List<Integer> mapped = new ArrayList<>();
         int previous = 0;
         for (int gap : gaps) {
-            if (gap < 1 || gap >= original.length()
-                    || !Character.isWhitespace(original.charAt(gap)) || gap <= previous)
+            if (!ManualStoryPauses.isGap(original, gap) || gap <= previous)
                 throw new IllegalArgumentException("Invalid pause position: " + gap);
             String normalizedPrefix = RioplatensePronunciation.forSpeech(
                     original.substring(0, gap), language);
-            if (normalizedPrefix == null || !spoken.startsWith(normalizedPrefix))
-                throw new IllegalArgumentException(
-                        "Speech normalization changed the chosen word boundary: " + gap);
-            int position = normalizedPrefix.length();
-            if (position < 1 || position >= spoken.length()
-                    || !Character.isWhitespace(spoken.charAt(position)))
-                throw new IllegalArgumentException(
-                        "The chosen word boundary is not present in speech: " + gap);
+            int position = normalizedPrefix == null ? -1 : normalizedPrefix.length();
+            if (normalizedPrefix == null || !spoken.startsWith(normalizedPrefix)
+                    || !ManualStoryPauses.isGap(spoken, position)) {
+                // Regexes may absorb punctuation across the chosen gap:
+                // "once - doce" becomes "once doce". An EXACT normalized suffix
+                // can anchor the same word boundary without estimating time.
+                String suffix = RioplatensePronunciation.forSpeech(
+                        original.substring(gap), language);
+                position = suffix == null || !spoken.endsWith(suffix)
+                        ? -1 : spoken.length() - suffix.length();
+                if (!ManualStoryPauses.isGap(spoken, position))
+                    throw new IllegalArgumentException(
+                            "Speech normalization changed the chosen word boundary: " + gap);
+            }
             if (!mapped.isEmpty() && position <= mapped.get(mapped.size() - 1))
                 throw new IllegalArgumentException("Overlapping speech pause positions");
             mapped.add(position);
