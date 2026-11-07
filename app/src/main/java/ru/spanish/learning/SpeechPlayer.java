@@ -76,6 +76,8 @@ public final class SpeechPlayer {
     private File prosodyInput, prosodyOutput, prosodyStableInput;
     private boolean prosodyPlayback;
     private final SharedPreferences pausePrefs;
+    private final StoryAudioPreparer storyPreparation;
+    private boolean preparationRequested;
     private String manualStoryKey = "";
     public boolean sentenceMode = true;
     public float speed = 0.85f;
@@ -89,6 +91,7 @@ public final class SpeechPlayer {
         prosodyCache = context.getCacheDir();
         sentenceAudioCache = new File(context.getFilesDir(), "story_sentence_auto_pause_wav");
         pausePrefs = context.getSharedPreferences("ui", Context.MODE_PRIVATE);
+        storyPreparation = new StoryAudioPreparer(context, handler, listener);
         voicePrefs = context.getSharedPreferences("tts_voice_settings", Context.MODE_PRIVATE);
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
@@ -104,15 +107,27 @@ public final class SpeechPlayer {
                 @Override public void onStart(String id) {}
                 @Override public void onBeginSynthesis(String id, int sampleRate,
                                                         int audioFormat, int channelCount) {
+                    if (StoryAudioPreparer.isPreparationId(id)) {
+                        storyPreparation.begin(id, sampleRate, audioFormat, channelCount);
+                        return;
+                    }
                     TimedStoryCapture capture = prosodyCapture;
                     if (capture != null && isProsodyId(id))
                         capture.begin(id, sampleRate, audioFormat, channelCount);
                 }
                 @Override public void onAudioAvailable(String id, byte[] audio) {
+                    if (StoryAudioPreparer.isPreparationId(id)) {
+                        storyPreparation.audio(id, audio);
+                        return;
+                    }
                     TimedStoryCapture capture = prosodyCapture;
                     if (capture != null && isProsodyId(id)) capture.append(id, audio);
                 }
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
+                    if (StoryAudioPreparer.isPreparationId(id)) {
+                        storyPreparation.range(id, start, end, frame);
+                        return;
+                    }
                     if (isProsodyId(id)) {
                         TimedStoryCapture capture = prosodyCapture;
                         if (capture != null) capture.range(id, start, end, frame);
@@ -125,7 +140,8 @@ public final class SpeechPlayer {
                 }
                 @Override public void onDone(String id) {
                     handler.post(() -> {
-                        if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        if (StoryAudioPreparer.isPreparationId(id)) storyPreparation.done(id);
+                        else if (id != null && id.startsWith("card:")) finishCardSpeech();
                         else if (isProsodyId(id)) finishProsodySynthesis(id);
                         else if (isArticlePart(id)) {
                             if (id.equals(articleLastId)) {
@@ -140,7 +156,8 @@ public final class SpeechPlayer {
                 }
                 @Override public void onError(String id) {
                     handler.post(() -> {
-                        if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        if (StoryAudioPreparer.isPreparationId(id)) storyPreparation.error(id);
+                        else if (id != null && id.startsWith("card:")) finishCardSpeech();
                         else if (isProsodyId(id)) {
                             String token = activeToken;
                             cleanupProsody();
@@ -154,6 +171,7 @@ public final class SpeechPlayer {
                     });
                 }
             });
+            if (preparationRequested) prepareWholeStory();
             listener.changed();
         }));
     }
@@ -365,7 +383,10 @@ public final class SpeechPlayer {
 
     public boolean humanAvailable() { return humanAudio != null && humanAudio.complete(); }
     public boolean humanSelected() { return humanSelected && humanAvailable(); }
-    public boolean canPlay() { return humanSelected() || googleSelected() || ready; }
+    public boolean canPlay() {
+        return manualPausesActive() ? ready && storyPreparation.isReady()
+                : humanSelected() || googleSelected() || ready;
+    }
 
     public void useHumanVoice(boolean enabled) {
         pause();
@@ -402,6 +423,21 @@ public final class SpeechPlayer {
         manualStoryKey = storyKey == null ? "" : storyKey;
     }
 
+    /** Generate every sentence, including ones without markers, BEFORE recording begins. */
+    public void prepareWholeStory() {
+        preparationRequested = manualPausesActive();
+        storyPreparation.start(ready ? tts : null, sentences, manualPositions,
+                manualPauseMs, manualStoryKey, learningLanguage, speed,
+                selectedVoiceNameForExport());
+        listener.changed();
+    }
+
+    public boolean storyAudioReady() {
+        return !manualPausesActive() || storyPreparation.isReady();
+    }
+
+    public String storyAudioStatus() { return storyPreparation.status(); }
+
     /** Identity includes story, sentence, speech rate and voice, not marker positions. */
     private String speechCacheKey(int sentenceIndex) {
         return manualStoryKey + ":auto-speech-v2:" + sentenceIndex
@@ -421,6 +457,8 @@ public final class SpeechPlayer {
 
     public void load(String body, int position) {
         pause();
+        storyPreparation.cancel();
+        preparationRequested = false;
         lastBackIndex = -1;
         resumeOffset = 0;
         humanResumeMs = 0;
@@ -468,7 +506,13 @@ public final class SpeechPlayer {
     }
 
     private void speakCurrent() {
-        if (closed || !canPlay() || state.phase == PlaybackState.Phase.SPEAKING) return;
+        if (closed || state.phase == PlaybackState.Phase.SPEAKING) return;
+        if (!canPlay()) {
+            if (manualPausesActive())
+                error = "Аудио рассказа ещё не готово. Подготовка выполняется заранее.";
+            listener.changed();
+            return;
+        }
         handler.removeCallbacks(autoPlay);
         boolean restart = state.phase == PlaybackState.Phase.FINISHED;
         if (restart) { resumeOffset = 0; humanResumeMs = 0; humanResumeIndex = -1; }
@@ -486,6 +530,18 @@ public final class SpeechPlayer {
         if (hasManualPauseHere()) resumeOffset = 0;
         utteranceBaseOffset = resumeOffset;
         activeToken = token;
+        if (manualPausesActive()) {
+            File alreadyPrepared = storyPreparation.audioAt(state.index);
+            if (alreadyPrepared == null) {
+                error = "Готовая озвучка предложения отсутствует.";
+                failed(token);
+                return;
+            }
+            error = "";
+            playProsodyFile(token, alreadyPrepared);
+            listener.changed();
+            return;
+        }
         String originalSpeech = full.substring(utteranceBaseOffset);
         String spoken = RioplatensePronunciation.forSpeech(originalSpeech, learningLanguage);
         // Expanding 11:26–28 into Russian words changes TTS range offsets.
@@ -539,7 +595,7 @@ public final class SpeechPlayer {
     }
 
     public boolean preparingTextPauses() {
-        return !prosodyId.isEmpty() && !prosodyPlayback;
+        return storyPreparation.isPreparing();
     }
 
     private boolean isProsodyId(String id) {
@@ -915,6 +971,12 @@ public final class SpeechPlayer {
     }
     public void pause() {
         handler.removeCallbacks(autoPlay);
+        // Stop any in-flight background TTS before accepting new settings.
+        // Prepared recordings remain available across ordinary Pause/Resume.
+        if (storyPreparation.isPreparing()) {
+            storyPreparation.cancel();
+            preparationRequested = manualPausesActive();
+        }
         PlaybackState.Phase previous = state.phase;
         if (humanPlayer != null && !prosodyPlayback
                 && previous == PlaybackState.Phase.SPEAKING) {
@@ -951,6 +1013,7 @@ public final class SpeechPlayer {
     }
     public void close() {
         pause(); closed = true;
+        storyPreparation.close();
         prosodyFiles.shutdownNow();
         if (tts != null) tts.shutdown();
     }
