@@ -538,6 +538,10 @@ public final class SpeechPlayer {
         listener.changed();
     }
 
+    public boolean preparingTextPauses() {
+        return !prosodyId.isEmpty() && !prosodyPlayback;
+    }
+
     private boolean isProsodyId(String id) {
         return id != null && !prosodyId.isEmpty() && id.equals(prosodyId);
     }
