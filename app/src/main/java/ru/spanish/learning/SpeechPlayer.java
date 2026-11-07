@@ -897,7 +897,8 @@ public final class SpeechPlayer {
             // User-marked pauses are the ONLY inserted waits in this mode.
             // The independent inter-sentence delay must not make a phantom
             // pause before the first word of the next sentence.
-            handler.postDelayed(autoPlay, manualPausesActive() ? 0 : pauseMs);
+            handler.postDelayed(autoPlay, StoryPausePolicy.betweenSentences(
+                    pauseMs, manualPausesActive()));
         }
     }
     private void failed(String token) {
