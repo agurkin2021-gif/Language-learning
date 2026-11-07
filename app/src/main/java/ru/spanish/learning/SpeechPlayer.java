@@ -58,7 +58,7 @@ public final class SpeechPlayer {
     private String articleLastId = "";
     private final File prosodyCache;
     private final ExecutorService prosodyFiles = Executors.newSingleThreadExecutor();
-    private String prosodyId = "";
+    private volatile String prosodyId = "";
     private String prosodySpoken = "";
     private List<Integer> prosodyGaps = List.of();
     private final List<ProsodyPauseAudio.WordTiming> prosodyTiming =
@@ -457,7 +457,21 @@ public final class SpeechPlayer {
         if (!gaps.isEmpty()) {
             // A manual pause is not punctuation: synthesize the entire sentence
             // before inserting digital silence so that the pitch is untouched.
-            beginProsodySynthesis(token, spoken, gaps);
+            // Word offsets belong to the displayed text. When Bible references
+            // are expanded for speech, remap each boundary into the TTS string.
+            List<Integer> spokenGaps = new ArrayList<>();
+            for (int originalGap : gaps) {
+                String prefix = RioplatensePronunciation.forSpeech(
+                        originalSpeech.substring(0, originalGap), learningLanguage);
+                int mapped = prefix.length();
+                if (mapped > 0 && mapped < spoken.length()) spokenGaps.add(mapped);
+            }
+            if (!spokenGaps.isEmpty()) beginProsodySynthesis(token, spoken, spokenGaps);
+            else {
+                tts.setSpeechRate(speed);
+                if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, token)
+                        == TextToSpeech.ERROR) failed(token);
+            }
             listener.changed();
             return;
         }
