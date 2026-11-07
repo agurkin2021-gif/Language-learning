@@ -18,6 +18,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.Collections;
 
 public final class SpeechPlayer {
     public interface Listener { void changed(); }
@@ -51,6 +56,15 @@ public final class SpeechPlayer {
     private int manualPauseMs;
     private int articleFullOffset;
     private String articleLastId = "";
+    private final File prosodyCache;
+    private final ExecutorService prosodyFiles = Executors.newSingleThreadExecutor();
+    private String prosodyId = "";
+    private String prosodySpoken = "";
+    private List<Integer> prosodyGaps = List.of();
+    private final List<ProsodyPauseAudio.WordTiming> prosodyTiming =
+            Collections.synchronizedList(new ArrayList<>());
+    private File prosodyInput, prosodyOutput;
+    private boolean prosodyPlayback;
     public boolean sentenceMode = true;
     public float speed = 0.85f;
     /** Separate rate for the six requested words in all Spanish stories. */
@@ -60,6 +74,7 @@ public final class SpeechPlayer {
     public String error = "";
     public SpeechPlayer(Context context, Listener listener) {
         this.listener = listener;
+        prosodyCache = context.getCacheDir();
         voicePrefs = context.getSharedPreferences("tts_voice_settings", Context.MODE_PRIVATE);
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
@@ -74,6 +89,10 @@ public final class SpeechPlayer {
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) {}
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
+                    if (isProsodyId(id)) {
+                        prosodyTiming.add(new ProsodyPauseAudio.WordTiming(start, end, frame));
+                        return;
+                    }
                     handler.post(() -> {
                         if (isArticlePart(id)) rememberArticleRange(id, start);
                         else rememberRange(id, start);
@@ -82,6 +101,7 @@ public final class SpeechPlayer {
                 @Override public void onDone(String id) {
                     handler.post(() -> {
                         if (id != null && id.startsWith("card:")) finishCardSpeech();
+                        else if (isProsodyId(id)) finishProsodySynthesis(id);
                         else if (isArticlePart(id)) {
                             if (id.equals(articleLastId)) {
                                 String sentenceToken = activeToken;
@@ -96,7 +116,11 @@ public final class SpeechPlayer {
                 @Override public void onError(String id) {
                     handler.post(() -> {
                         if (id != null && id.startsWith("card:")) finishCardSpeech();
-                        else if (isArticlePart(id)) {
+                        else if (isProsodyId(id)) {
+                            String token = activeToken;
+                            cleanupProsody();
+                            failed(token);
+                        } else if (isArticlePart(id)) {
                             String originalToken = activeToken;
                             clearArticleParts();
                             if (tts != null) tts.stop(); // Cancel remaining queued pieces.
@@ -430,8 +454,15 @@ public final class SpeechPlayer {
                 if (gap > utteranceBaseOffset && gap < full.length())
                     gaps.add(gap - utteranceBaseOffset);
         }
-        if (slowWords || !gaps.isEmpty()) {
-            articleParts = ManualStoryPauses.pieces(originalSpeech, gaps, slowWords);
+        if (!gaps.isEmpty()) {
+            // A manual pause is not punctuation: synthesize the entire sentence
+            // before inserting digital silence so that the pitch is untouched.
+            beginProsodySynthesis(token, spoken, gaps);
+            listener.changed();
+            return;
+        }
+        if (slowWords) {
+            articleParts = ManualStoryPauses.pieces(originalSpeech, List.of(), true);
             boolean segmented = false;
             for (ManualStoryPauses.Piece part : articleParts)
                 if (part.slow() || part.silence()) { segmented = true; break; }
@@ -614,7 +645,8 @@ public final class SpeechPlayer {
     public void pause() {
         handler.removeCallbacks(autoPlay);
         PlaybackState.Phase previous = state.phase;
-        if (humanPlayer != null && previous == PlaybackState.Phase.SPEAKING) {
+        if (humanPlayer != null && !prosodyPlayback
+                && previous == PlaybackState.Phase.SPEAKING) {
             try {
                 humanResumeMs = humanPlayer.getCurrentPosition();
                 humanResumeIndex = state.index;
@@ -626,6 +658,7 @@ public final class SpeechPlayer {
         state.pause();
         clearArticleParts();
         releaseHumanPlayer();
+        cleanupProsody();
         if (previous != PlaybackState.Phase.SPEAKING) {
             resumeOffset = 0;
             activeToken = "";
@@ -645,5 +678,9 @@ public final class SpeechPlayer {
         if (previous && state.index > 0) state.index--;
         state.repeat(); play();
     }
-    public void close() { pause(); closed = true; if (tts != null) tts.shutdown(); }
+    public void close() {
+        pause(); closed = true;
+        prosodyFiles.shutdownNow();
+        if (tts != null) tts.shutdown();
+    }
 }
