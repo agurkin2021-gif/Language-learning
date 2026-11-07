@@ -2446,14 +2446,6 @@ public final class MainActivity extends Activity {
         content.addView(repeat, rewindParams);
 
         text(selected.title(), 25);
-        if (!studyingEnglish() && !storyReadRussian) {
-            Button articleToggle = rowButton(shortWordToggleLabel(), null);
-            articleToggle.setTag("story-short-word-toggle");
-            ui.style(articleToggle, UiStyle.Tone.OUTLINE);
-            articleToggle.setOnClickListener(v -> setShortWordSpeed(
-                    player.shortWordSpeed > 0f ? 0f : rememberedShortWordSpeed()));
-            content.addView(articleToggle, spaced(8));
-        }
         storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
 
@@ -2554,7 +2546,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (player.slowArticlesEnabled()) {
-            Toast.makeText(this, "Замедление отключается кнопкой над текстом рассказа или в настройках.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Замедление los / las / del / el / la / les отключается в настройках (⚙).", Toast.LENGTH_LONG).show();
             return;
         }
         if (storyReadRussian) {
