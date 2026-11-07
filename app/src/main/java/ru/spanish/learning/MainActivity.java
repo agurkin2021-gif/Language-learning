@@ -405,6 +405,41 @@ public final class MainActivity extends Activity {
         if (screen.equals("cards")) cards(); else if (screen.equals("player")) storyPlayer(); else stories();
         rendering = false; remember(); updatePlayer();
     }
+    /** Last nonzero choice survives switching the global mode off and back on. */
+    private float rememberedShortWordSpeed() {
+        float saved = prefs.getFloat("lastShortWordSpeed", .45f);
+        return saved >= .3f && saved <= 1f ? saved : .45f;
+    }
+
+    private String shortWordToggleLabel() {
+        return player.shortWordSpeed > 0f
+                ? "ОТКЛЮЧИТЬ замедление (los, las, del, el, la, les)"
+                : "ВКЛЮЧИТЬ замедление (los, las, del, el, la, les)";
+    }
+
+    /** Reconfigure the current story immediately; do not require reopening it. */
+    private void setShortWordSpeed(float selected) {
+        player.pause();
+        player.shortWordSpeed = selected;
+        if (selected > 0f) prefs.edit().putFloat("lastShortWordSpeed", selected).apply();
+        if ("player".equals(screen) && storyId >= 0) {
+            boolean enabled = ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian, selected);
+            if (enabled) {
+                player.useHumanVoice(false);
+                player.useGoogleVoice(false);
+            } else if (!storyReadRussian) {
+                String source = prefs.getString(prefKey("narrationSource"),
+                        prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
+                player.useHumanVoice("human".equals(source));
+                player.useGoogleVoice("google".equals(source));
+            }
+            player.setSlowArticles(enabled);
+        }
+        remember();
+        if ("player".equals(screen)) render();
+        else updatePlayer();
+    }
+
     private void showSettings() {
         player.pause();
 
@@ -484,28 +519,37 @@ public final class MainActivity extends Activity {
                         }).show());
         box.addView(speed, spaced(10));
 
-        // One global rate for short words in every Spanish story. Disable to use saved audio.
+        // One global rate for the six target words in every Spanish story.
+        // Visible off switch below; saved audio is available when disabled.
         Button shortWordSpeed = rowButton(
-                "Скорость артиклей и коротких слов: "
+                "Скорость los / las / del / el / la / les: "
                         + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
                         + " (все рассказы)", null);
+        Button shortWordToggle = rowButton(shortWordToggleLabel(), null);
+        shortWordToggle.setTag("short-word-toggle");
+        shortWordToggle.setOnClickListener(v -> {
+            setShortWordSpeed(player.shortWordSpeed > 0f ? 0f : rememberedShortWordSpeed());
+            shortWordToggle.setText(shortWordToggleLabel());
+            shortWordSpeed.setText("Скорость los / las / del / el / la / les: "
+                    + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
+                    + " (все рассказы)");
+        });
         shortWordSpeed.setTag("short-word-speed");
         shortWordSpeed.setOnClickListener(v ->
                 new AlertDialog.Builder(this)
-                        .setTitle("Скорость коротких слов во всех испанских рассказах")
-                        .setItems(new String[]{"Выключено (для сохранённой озвучки)",
-                                "0.3×", "0.35×", "0.4×", "0.45×", "0.5×",
-                                "0.55×", "0.6×", "0.7×", "0.8×", "1.0×"}, (d, w) -> {
-                            player.pause();
-                            player.shortWordSpeed = new float[]{0f, .3f, .35f, .4f, .45f, .5f,
-                                    .55f, .6f, .7f, .8f, 1f}[w];
-                            shortWordSpeed.setText("Скорость артиклей и коротких слов: "
+                        .setTitle("Скорость los, las, del, el, la, les")
+                        .setItems(new String[]{"Отключить замедление", "0.3×", "0.35×",
+                                "0.4×", "0.45×", "0.5×", "0.55×", "0.6×",
+                                "0.7×", "0.8×", "1.0×"}, (d, w) -> {
+                            setShortWordSpeed(new float[]{0f, .3f, .35f, .4f, .45f, .5f,
+                                    .55f, .6f, .7f, .8f, 1f}[w]);
+                            shortWordSpeed.setText("Скорость los / las / del / el / la / les: "
                                     + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
                                     + " (все рассказы)");
-                            remember();
-                            updatePlayer();
+                            shortWordToggle.setText(shortWordToggleLabel());
                         }).show());
         box.addView(shortWordSpeed, spaced(10));
+        box.addView(shortWordToggle, spaced(10));
 
         Button pause = rowButton("Пауза между предложениями: " + player.pauseMs / 1000f + " с", () ->
                 new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
@@ -2262,6 +2306,14 @@ public final class MainActivity extends Activity {
         content.addView(repeat, rewindParams);
 
         text(selected.title(), 25);
+        if (!studyingEnglish() && !storyReadRussian) {
+            Button articleToggle = rowButton(shortWordToggleLabel(), null);
+            articleToggle.setTag("story-short-word-toggle");
+            ui.style(articleToggle, UiStyle.Tone.OUTLINE);
+            articleToggle.setOnClickListener(v -> setShortWordSpeed(
+                    player.shortWordSpeed > 0f ? 0f : rememberedShortWordSpeed()));
+            content.addView(articleToggle, spaced(8));
+        }
         storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
 
@@ -2340,14 +2392,14 @@ public final class MainActivity extends Activity {
     }
     private String narrationLabel() {
         if (storyReadRussian) return "Системный голос (русский)";
-        if (player.slowArticlesEnabled()) return "Системный голос (артикли медленно)";
+        if (player.slowArticlesEnabled()) return "Системный голос (шесть слов медленно)";
         return player.googleSelected() ? "Google (сохранённая запись)"
                 : player.humanSelected() ? "Живой голос" : "Системный голос";
     }
 
     private void chooseNarrationSource() {
         if (player.slowArticlesEnabled()) {
-            Toast.makeText(this, "Замедление коротких слов действует во всех испанских рассказах. Для записанного голоса отключите замедление в настройках.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Замедление отключается кнопкой над текстом рассказа или в настройках.", Toast.LENGTH_LONG).show();
             return;
         }
         if (storyReadRussian) {
