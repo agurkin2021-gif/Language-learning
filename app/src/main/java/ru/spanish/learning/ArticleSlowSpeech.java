@@ -6,14 +6,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Isolates Spanish articles for a slower TTS rate without editing the story.
- * The segments concatenate exactly to the original text. Covers contracted
- * articles al/del but not stressed pronoun "él" or parts of larger words.
+ * Isolates all Spanish one-, two-, and three-letter words, plus the
+ * four-letter articles "unos" and "unas", for a slower TTS rate.
+ * The segments concatenate exactly to the original story and do not match
+ * inside longer words. "él" is slowed as a short word, not as an article.
  */
 final class ArticleSlowSpeech {
     private static final String TITLE_SUFFIX = "— artículos lentos";
-    private static final Pattern ARTICLE = Pattern.compile(
-            "(?iu)(?<![\\p{L}\\p{M}])(?:el|la|los|las|un|una|unos|unas|al|del)(?![\\p{L}\\p{M}])");
+    private static final Pattern SHORT_WORD = Pattern.compile(
+            "(?iu)(?<![\\p{L}\\p{M}])(?:unos|unas|[\\p{L}]{1,3})(?![\\p{L}\\p{M}])");
 
     record Part(String text, boolean slow, int start) {}
 
@@ -25,7 +26,7 @@ final class ArticleSlowSpeech {
 
     static List<Part> split(String original) {
         List<Part> result = new ArrayList<>();
-        Matcher matcher = ARTICLE.matcher(original);
+        Matcher matcher = SHORT_WORD.matcher(original);
         int cursor = 0;
         while (matcher.find()) {
             String between = original.substring(cursor, matcher.start());
