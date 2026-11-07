@@ -26,6 +26,11 @@ import android.text.InputFilter;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
+import java.util.Map;
+import java.util.HashMap;
 import android.text.style.BackgroundColorSpan;
 import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
@@ -75,6 +80,7 @@ public final class MainActivity extends Activity {
     private int humanRecordIndex;
     private boolean syncingContent;
     private final AtomicBoolean manualVocabularySyncing = new AtomicBoolean();
+    private final AtomicBoolean familyTransferRunning = new AtomicBoolean();
     private boolean imageRepairRunning;
     private final AtomicBoolean imageRepairCancel = new AtomicBoolean();
     private String imageRepairMessage = "";
@@ -84,8 +90,10 @@ public final class MainActivity extends Activity {
     private SharedPreferences prefs;
     private LinearLayout content;
     private TextView sentence, sentenceRu, playbackStatus, cardVoiceStatus;
-    private Button toggle, repeat;
+    private Button toggle, repeat, storyAudioRetry;
     private List<String> storyTranslations = new java.util.ArrayList<>();
+    private List<String> storyOriginalSentences = new java.util.ArrayList<>();
+    private boolean storyReadRussian;
     private boolean darkTheme;
     private UiStyle ui;
     private int kind;
@@ -99,6 +107,11 @@ public final class MainActivity extends Activity {
     private Runnable pendingCardSpeech;
     private String screen = "cards";
     private long storyId = -1;
+    private Map<Integer, List<Integer>> manualStoryMarks = new HashMap<>();
+    private String manualStoryKey = "";
+    private int manualPauseMillis = 700;
+    // Rendering-only Bible markers. The story text and TTS input remain unmodified.
+    private boolean[] bibleRedChunks = new boolean[0];
     private boolean rendering;
     private AlertDialog cardDialog;
     private EditText draftSpanish, draftMeaning;
@@ -121,13 +134,17 @@ public final class MainActivity extends Activity {
         spanishStore = profileStore(activeProfile, false);
         if ("en".equals(studyLanguage)) englishStore = profileStore(activeProfile, true);
         store = "en".equals(studyLanguage) ? englishStore : spanishStore;
-        copyPapaPhrasesToPimenOnUpgrade();
         contentSync = new RemoteContentSync();
         personalStorySync = new PersonalStorySync();
         assistant = new ChatGptAssistant(this);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.setLearningLanguage(studyLanguage);
-        player.speed = prefs.getFloat(prefKey("speed"), .85f); player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
+        player.speed = prefs.getFloat(prefKey("speed"), .85f);
+        // One shared speed preference across profiles and languages; Papa ES legacy
+        // preference was already saved under this same unprefixed key.
+        player.shortWordSpeed = prefs.getFloat("shortWordSpeed", .45f);
+        manualPauseMillis = prefs.getInt("manualPauseMillis", 700);
+        player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         screen = prefs.getString(prefKey("screen"), "cards");
         kind = prefs.getInt(prefKey("kind"), 0);
         category = prefs.getInt(prefKey("category"), 0);
@@ -153,37 +170,6 @@ public final class MainActivity extends Activity {
         return StudyProfile.preferenceKey(activeProfile, studyLanguage, key);
     }
 
-    private int copyPapaPhrasesToPimen() {
-        int copied = 0;
-        for (boolean english : new boolean[]{false, true}) {
-            Store source = profileStore(StudyProfile.PAPA, english);
-            Store target = profileStore(StudyProfile.PIMEN, english);
-            copied += target.copyPhrasesFrom(source);
-        }
-        return copied;
-    }
-
-    /** One-time migration on the next APK launch, including Papa's mastered phrases. */
-    private void copyPapaPhrasesToPimenOnUpgrade() {
-        final String key = "pimen_papa_phrases_copied_v1";
-        if (prefs.getBoolean(key, false)) return;
-        // A deliberate local reset must not be undone by the upgrade.
-        if (profileStore(StudyProfile.PIMEN, false).personalStoriesDisabled()
-                || profileStore(StudyProfile.PIMEN, true).personalStoriesDisabled()) return;
-        try {
-            int count = copyPapaPhrasesToPimen();
-            int available = 0;
-            for (boolean english : new boolean[]{false, true}) {
-                for (Store.Card card : profileStore(StudyProfile.PAPA, english).vocabulary())
-                    if (card.kind() == 1) available++;
-            }
-            // If Papa has no phrases yet, retry after they arrive on this phone.
-            if (available > 0) prefs.edit().putBoolean(key, true).apply();
-        } catch (RuntimeException ignored) {
-            // Never block launch. The Settings copy button permits a retry.
-        }
-    }
-
     /** The only profile selector is inside Settings; no extra top-bar control. */
     private void chooseProfile(AlertDialog settingsDialog) {
         String[] choices = StudyProfile.LABELS;
@@ -193,7 +179,7 @@ public final class MainActivity extends Activity {
                     dialog.dismiss();
                     String next = StudyProfile.IDS[which];
                     if (next.equals(activeProfile)) return;
-                    if (imageRepairRunning || assistantRequestInFlight || storyWordRequestInFlight
+                    if (imageRepairRunning || familyTransferRunning.get() || assistantRequestInFlight || storyWordRequestInFlight
                             || assistantVoiceProcessing) {
                         Toast.makeText(this, "Завершите текущую операцию перед сменой профиля",
                                 Toast.LENGTH_LONG).show();
@@ -209,6 +195,7 @@ public final class MainActivity extends Activity {
         if (next.equals(activeProfile)) return;
         stopAssistantVoice();
         player.pause();
+        player.cancelWholeStoryPreparation();
         cancelCardSpeech();
         remember();
         if (cardDialog != null && cardDialog.isShowing()) cardDialog.dismiss();
@@ -240,6 +227,10 @@ public final class MainActivity extends Activity {
     private void selectStudyLanguage(String next) {
         if (!"en".equals(next) && !"es".equals(next)) return;
         if (next.equals(studyLanguage)) return;
+        if (familyTransferRunning.get()) {
+            Toast.makeText(this, "Дождитесь завершения переноса слов", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (imageRepairRunning) {
             Toast.makeText(this, "Сначала завершите или остановите создание картинок",
                     Toast.LENGTH_LONG).show();
@@ -357,7 +348,10 @@ public final class MainActivity extends Activity {
                 .remove(prefKey("archive")).putInt(prefKey("category"), category)
                 .putInt(prefKey("reviewIndex"), reviewIndex)
                 .putLong(prefKey("reviewStep"), reviewStep)
-                .putFloat(prefKey("speed"), player.speed).putInt(prefKey("pause"), player.pauseMs)
+                .putFloat(prefKey("speed"), player.speed)
+                .putFloat("shortWordSpeed", player.shortWordSpeed)
+                .putInt("manualPauseMillis", manualPauseMillis)
+                .putInt(prefKey("pause"), player.pauseMs)
                 .putBoolean(prefKey("sentenceMode"), player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
@@ -368,13 +362,18 @@ public final class MainActivity extends Activity {
                     Toast.LENGTH_LONG).show();
             return;
         }
-        player.pause(); remember(); storyId = -1; screen = next; render();
+        player.pause(); remember();
+        if ("player".equals(screen) && !"player".equals(next)) {
+            player.cancelWholeStoryPreparation();
+            player.setLearningLanguage(studyLanguage);
+        }
+        storyId = -1; screen = next; render();
     }
     private void render() {
         cancelCardSpeech();
         rendering = true; sentence = null; sentenceRu = null; playbackStatus = null;
         cardVoiceStatus = null; imageRepairStatus = null; imageRepairButton = null;
-        toggle = null; repeat = null; humanVoiceButton = null;
+        toggle = null; repeat = null; storyAudioRetry = null; humanVoiceButton = null;
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
@@ -419,6 +418,125 @@ public final class MainActivity extends Activity {
         if (screen.equals("cards")) cards(); else if (screen.equals("player")) storyPlayer(); else stories();
         rendering = false; remember(); updatePlayer();
     }
+    /** Last nonzero choice survives switching the global mode off and back on. */
+    private float rememberedShortWordSpeed() {
+        float saved = prefs.getFloat("lastShortWordSpeed", .45f);
+        return saved >= .3f && saved <= 1f ? saved : .45f;
+    }
+
+    private String shortWordToggleLabel() {
+        return player.shortWordSpeed > 0f
+                ? "ОТКЛЮЧИТЬ замедление (los, las, del, el, la, les)"
+                : "ВКЛЮЧИТЬ замедление (los, las, del, el, la, les)";
+    }
+
+    /** Reconfigure the current story immediately; do not require reopening it. */
+    private void setShortWordSpeed(float selected) {
+        player.pause();
+        player.shortWordSpeed = selected;
+        if (selected > 0f) prefs.edit().putFloat("lastShortWordSpeed", selected).apply();
+        if ("player".equals(screen) && storyId >= 0) {
+            boolean enabled = ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian, selected);
+            if (enabled || player.manualPausesActive()) {
+                player.useHumanVoice(false);
+                player.useGoogleVoice(false);
+            } else if (!storyReadRussian) {
+                String source = prefs.getString(prefKey("narrationSource"),
+                        prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
+                player.useHumanVoice("human".equals(source));
+                player.useGoogleVoice("google".equals(source));
+            }
+            player.setSlowArticles(enabled);
+            player.prepareWholeStory();
+        }
+        remember();
+        if ("player".equals(screen)) render();
+        else updatePlayer();
+    }
+
+    private void setManualPauseMillis(int millis) {
+        manualPauseMillis = Math.max(0, millis);
+        configureManualStoryPlayback();
+        remember();
+        if ("player".equals(screen)) render();
+        else updatePlayer();
+    }
+
+    private void configureManualStoryPlayback() {
+        player.pause();
+        player.setManualPauses(manualStoryMarks, manualPauseMillis);
+        if ("player".equals(screen) && storyId >= 0) {
+            boolean requiresTts = player.manualPausesActive()
+                    || ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian, player.shortWordSpeed);
+            if (requiresTts) {
+                player.useHumanVoice(false);
+                player.useGoogleVoice(false);
+            } else if (!storyReadRussian) {
+                String source = prefs.getString(prefKey("narrationSource"),
+                        prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
+                player.useHumanVoice("human".equals(source));
+                player.useGoogleVoice("google".equals(source));
+            }
+            player.prepareWholeStory();
+        }
+    }
+
+    private CharSequence markedSentenceText(String original, int sentenceIndex) {
+        List<Integer> gaps = ManualStoryPauses.forSentence(manualStoryMarks, sentenceIndex);
+        if (gaps.isEmpty()) return original;
+        SpannableStringBuilder result = new SpannableStringBuilder(
+                ManualStoryPauses.display(original, gaps));
+        int from = 0;
+        for (int gap : gaps) {
+            int start = gap + from + 1; // The symbol follows one leading display space.
+            int end = start + 1;
+            result.setSpan(new ForegroundColorSpan(darkTheme ? 0xFFFFC857 : 0xFFBB5200),
+                    start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            result.setSpan(new StyleSpan(Typeface.BOLD),
+                    start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            from += ManualStoryPauses.SYMBOL.length();
+        }
+        return result;
+    }
+
+    /** Never changes the stored story text; only the overlay of ⏸ symbols. */
+    private void attachManualPauseGesture(TextView label, String original, int sentenceIndex) {
+        label.setTextIsSelectable(false);
+        GestureDetector detector = new GestureDetector(this,
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override public boolean onDown(MotionEvent event) { return true; }
+                    @Override public void onLongPress(MotionEvent event) {
+                        // The main reading label is reused when playback advances; other
+                        // labels in "full text" keep their own fixed sentence index.
+                        int activeIndex = label == sentence ? player.state.index : sentenceIndex;
+                        String activeOriginal = label == sentence ? currentOriginalSentence() : original;
+                        Layout layout = label.getLayout();
+                        if (layout == null) return;
+                        float yy = event.getY() - label.getTotalPaddingTop() + label.getScrollY();
+                        if (yy < 0 || yy >= layout.getHeight()) return;
+                        int line = layout.getLineForVertical((int) yy);
+                        float xx = event.getX() - label.getTotalPaddingLeft() + label.getScrollX();
+                        if (xx < layout.getLineLeft(line) || xx > layout.getLineRight(line)) return;
+                        int displayOffset = layout.getOffsetForHorizontal(line, xx);
+                        int sourceOffset = ManualStoryPauses.originalOffset(displayOffset,
+                                ManualStoryPauses.forSentence(manualStoryMarks, activeIndex));
+                        int gap = ManualStoryPauses.nearestGap(activeOriginal, sourceOffset);
+                        if (gap < 1) return;
+                        label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                        ManualStoryPauses.toggle(manualStoryMarks, activeIndex, gap);
+                        prefs.edit().putString(manualStoryKey,
+                                ManualStoryPauses.encode(manualStoryMarks)).apply();
+                        configureManualStoryPlayback();
+                        label.setText(markedSentenceText(activeOriginal, activeIndex));
+                        updatePlayer();
+                    }
+                });
+        label.setOnTouchListener((view,event) -> {
+            detector.onTouchEvent(event);
+            return true; // Long press edits pauses; no word-save / Android selection.
+        });
+    }
+
     private void showSettings() {
         player.pause();
 
@@ -492,11 +610,74 @@ public final class MainActivity extends Activity {
                         .setItems(new String[]{"0.3×", "0.4×", "0.5×", "0.6×", "0.75×", "0.85×", "1.0×", "1.2×"}, (d,w) -> {
                             player.pause();
                             player.speed = new float[]{.3f,.4f,.5f,.6f,.75f,.85f,1f,1.2f}[w];
+                            if ("player".equals(screen) && storyId >= 0)
+                                player.prepareWholeStory();
                             speed.setText("Скорость речи: " + player.speed + "× (рассказы и карточки)");
                             remember();
                             updatePlayer();
                         }).show());
         box.addView(speed, spaced(10));
+
+        // One global rate for the six target words in every Spanish story.
+        // Visible off switch below; saved audio is available when disabled.
+        Button shortWordSpeed = rowButton(
+                "Скорость los / las / del / el / la / les: "
+                        + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
+                        + " (все рассказы)", null);
+        Button shortWordToggle = rowButton(shortWordToggleLabel(), null);
+        shortWordToggle.setTag("short-word-toggle");
+        shortWordToggle.setOnClickListener(v -> {
+            setShortWordSpeed(player.shortWordSpeed > 0f ? 0f : rememberedShortWordSpeed());
+            shortWordToggle.setText(shortWordToggleLabel());
+            shortWordSpeed.setText("Скорость los / las / del / el / la / les: "
+                    + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
+                    + " (все рассказы)");
+        });
+        shortWordSpeed.setTag("short-word-speed");
+        shortWordSpeed.setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Скорость los, las, del, el, la, les")
+                        .setItems(new String[]{"Отключить замедление", "0.3×", "0.35×",
+                                "0.4×", "0.45×", "0.5×", "0.55×", "0.6×",
+                                "0.7×", "0.8×", "1.0×"}, (d, w) -> {
+                            setShortWordSpeed(new float[]{0f, .3f, .35f, .4f, .45f, .5f,
+                                    .55f, .6f, .7f, .8f, 1f}[w]);
+                            shortWordSpeed.setText("Скорость los / las / del / el / la / les: "
+                                    + (player.shortWordSpeed == 0f ? "выкл." : player.shortWordSpeed + "×")
+                                    + " (все рассказы)");
+                            shortWordToggle.setText(shortWordToggleLabel());
+                        }).show());
+        box.addView(shortWordSpeed, spaced(10));
+        box.addView(shortWordToggle, spaced(10));
+
+        // Manual pause marks are stored per story; the duration is a global preference.
+        Button manualPauses = rowButton("Ручные паузы в тексте", null);
+        manualPauses.setTag("manual-story-pauses-settings");
+        TextView manualPauseStatus = textInto(box,
+                manualPauseMillis == 0 ? "Ручные паузы: выключены"
+                        : "Ручные паузы: " + manualPauseMillis / 1000f + " с · удержание между словами", 14);
+        manualPauseStatus.setTextColor(secondaryText());
+        manualPauses.setOnClickListener(v -> {
+            int[] durations = {0, 300, 500, 700, 1000, 1500, 2000, 3000};
+            int selected = 0;
+            for (int i = 0; i < durations.length; i++)
+                if (manualPauseMillis == durations[i]) selected = i;
+            new AlertDialog.Builder(this)
+                    .setTitle("Ручные паузы в тексте")
+                    .setSingleChoiceItems(new String[]{
+                            "Выключено", "0,3 секунды", "0,5 секунды", "0,7 секунды",
+                            "1 секунда", "1,5 секунды", "2 секунды", "3 секунды"
+                    }, selected, (dialog, which) -> {
+                        setManualPauseMillis(durations[which]);
+                        manualPauseStatus.setText(manualPauseMillis == 0
+                                ? "Ручные паузы: выключены"
+                                : "Ручные паузы: " + manualPauseMillis / 1000f
+                                        + " с · удержание между словами");
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton("Отмена", null).show();
+        });
+        box.addView(manualPauses, spaced(10));
 
         Button pause = rowButton("Пауза между предложениями: " + player.pauseMs / 1000f + " с", () ->
                 new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
@@ -510,23 +691,12 @@ public final class MainActivity extends Activity {
 
         Button profileButton = rowButton("Профиль: " + StudyProfile.name(activeProfile), null);
         box.addView(profileButton, spaced(10));
-        box.addView(rowButton("Скопировать все устойчивые выражения Папы → Пимен", () -> {
-            try {
-                int copied = copyPapaPhrasesToPimen();
-                if ("pimen".equals(activeProfile) && copied > 0) render();
-                new AlertDialog.Builder(this)
-                        .setTitle("Устойчивые выражения: Папа → Пимен")
-                        .setMessage("Добавлено: " + copied + ".\\n" +
-                                "Уже существующие и удалённые карточки не восстановлены. " +
-                                "Прогресс Папы сохранён. Копируются испанские и английские выражения " +
-                                "из словарей на этом телефоне.")
-                        .setPositiveButton("Закрыть", null).show();
-            } catch (Exception error) {
-                Toast.makeText(this, "Не удалось скопировать выражения",
-                        Toast.LENGTH_LONG).show();
-            }
-        }), spaced(10));
         box.addView(rowButton("Синхронизация", this::syncAllFamilyProfiles), spaced(10));
+        // The transfer button exists only for the selected recipient; Papa is source only.
+        if (!StudyProfile.isPapa(activeProfile)) {
+            box.addView(rowButton("Добавить слова Папы → " + StudyProfile.name(activeProfile),
+                    this::confirmFamilyTransfer), spaced(10));
+        }
         box.addView(rowButton("Google — сохранить озвучку всех рассказов",
                 this::startGoogleStoryRecording), spaced(10));
         box.addView(rowButton("Обновление", this::startUpdateNow), spaced(10));
@@ -559,6 +729,123 @@ public final class MainActivity extends Activity {
         dialog.show();
     }
 
+    /** Explicit local transfer from Papa's SQLite and private picture folders. */
+    private void confirmFamilyTransfer() {
+        if (StudyProfile.isPapa(activeProfile)) return;
+        if (familyTransferRunning.get() || manualVocabularySyncing.get() || imageRepairRunning
+                || assistantRequestInFlight || storyWordRequestInFlight) {
+            Toast.makeText(this, "Завершите текущую операцию", Toast.LENGTH_LONG).show();
+            return;
+        }
+        // Freeze recipient and language before opening either dialog.
+        final String targetProfile = activeProfile;
+        final boolean english = studyingEnglish();
+        new AlertDialog.Builder(this)
+                .setTitle("Слова Папы → " + StudyProfile.name(targetProfile))
+                .setItems(new String[]{
+                        "Указать количество вручную",
+                        "Добавить все отсутствующие слова"
+                }, (dialog, which) -> {
+                    if (which == 0) showFamilyTransferQuantity(targetProfile, english);
+                    else confirmFamilyTransferAll(targetProfile, english);
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showFamilyTransferQuantity(String targetProfile, boolean english) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), dp(8));
+        textInto(box, "Сколько новых слов Папы добавить в профиль "
+                + StudyProfile.name(targetProfile) + "? "
+                + "Выученные, изучаемые и ранее удалённые слова получателя пропускаются. "
+                + "Переводы и готовые картинки копируются. Другие профили не изменяются.", 16);
+        EditText amount = new EditText(this);
+        amount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        amount.setSingleLine(true);
+        amount.setHint("Количество, например 20");
+        amount.setText("20");
+        amount.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
+        ui.styleInput(amount);
+        box.addView(amount, spaced(8));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Слова Папы → " + StudyProfile.name(targetProfile))
+                .setView(box)
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Добавить", null)
+                .create();
+        dialog.setOnShowListener(d ->
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    int count;
+                    try {
+                        count = Integer.parseInt(amount.getText().toString().trim());
+                    } catch (NumberFormatException error) {
+                        amount.setError("Введите количество от 1 до 100000");
+                        return;
+                    }
+                    if (count < 1 || count > 100000) {
+                        amount.setError("Введите количество от 1 до 100000");
+                        return;
+                    }
+                    dialog.dismiss();
+                    runFamilyTransfer(targetProfile, count, english);
+                }));
+        dialog.show();
+    }
+
+    private void confirmFamilyTransferAll(String targetProfile, boolean english) {
+        new AlertDialog.Builder(this)
+                .setTitle("Добавить все отсутствующие слова?")
+                .setMessage("Профиль: " + StudyProfile.name(targetProfile)
+                        + ". Будут скопированы все слова Папы с переводами и готовыми "
+                        + "картинками, которых ещё нет в выученных и изучаемых карточках "
+                        + "этого профиля. Ранее удалённые слова не восстановятся. "
+                        + "Папа и другие профили останутся без изменений.")
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Добавить все", (dialog, which) ->
+                        runFamilyTransfer(targetProfile, Integer.MAX_VALUE, english))
+                .show();
+    }
+
+    private void runFamilyTransfer(String targetProfile, int maxWords, boolean english) {
+        if (!StudyProfile.MAMA.equals(targetProfile) && !StudyProfile.DIMA.equals(targetProfile))
+            return;
+        if (!familyTransferRunning.compareAndSet(false, true)) return;
+        new Thread(() -> {
+            FamilyVocabularyTransfer.Result result = null;
+            Exception failure = null;
+            try {
+                result = FamilyVocabularyTransfer.copyFromPapa(
+                        getApplicationContext(), targetProfile, maxWords, english);
+            } catch (Exception error) {
+                failure = error;
+            } finally {
+                familyTransferRunning.set(false);
+            }
+            final FamilyVocabularyTransfer.Result done = result;
+            final Exception error = failure;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (done == null) {
+                    new AlertDialog.Builder(this).setTitle("Копирование не завершено")
+                            .setMessage("Перенос остановлен: " + (error == null ? "неизвестная ошибка" : error.getMessage())
+                                    + ". Уже перенесённые данные сохранены; повторный запуск не создаст дублей.")
+                            .setPositiveButton("Закрыть", null).show();
+                } else {
+                    render();
+                    new AlertDialog.Builder(this).setTitle("Копирование завершено · " + (english ? "EN" : "ES"))
+                            .setMessage(StudyProfile.name(done.targetProfile())
+                                    + ": добавлено карточек " + done.cards()
+                                    + ", картинок " + done.pictures() + ".\n"
+                                    + "Папа и остальные профили без изменений. "
+                                    + "Существующие карточки и прогресс сохранены.")
+                            .setPositiveButton("Закрыть", null).show();
+                }
+            });
+        }, "family-vocabulary-transfer").start();
+    }
+
     /** One tap imports public vocabularies or performs full bidirectional sync when authorized. */
     private void syncAllFamilyProfiles() {
         if (!manualVocabularySyncing.compareAndSet(false, true)) {
@@ -567,8 +854,8 @@ public final class MainActivity extends Activity {
         }
         boolean twoWay = PrivateVocabularySync.isConfigured(this);
         Toast.makeText(this, twoWay
-                ? "Синхронизация: Папа, Мама, Дима, Пимен"
-                : "Загрузка словарей из GitHub: Папа, Мама, Дима, Пимен", Toast.LENGTH_SHORT).show();
+                ? "Синхронизация: Папа, Мама, Дима"
+                : "Загрузка словарей из GitHub: Папа, Мама, Дима", Toast.LENGTH_SHORT).show();
         java.util.function.Consumer<Boolean> completed = success -> {
             manualVocabularySyncing.set(false);
             if (isFinishing() || isDestroyed()) return;
@@ -583,7 +870,7 @@ public final class MainActivity extends Activity {
                             : "Синхронизация не выполнена")
                     .setMessage(success
                             ? twoWay
-                              ? "Папа, Мама, Дима, Пимен: оба языка синхронизированы с GitHub."
+                              ? "Папа, Мама, Дима: оба языка синхронизированы с GitHub."
                               : PrivateVocabularySync.status(this)
                                 + "\n\nЧтобы изменения с телефона тоже сохранялись в GitHub, "
                                 + "необходимо один раз предоставить разрешение на запись."
@@ -611,7 +898,7 @@ public final class MainActivity extends Activity {
         box.setPadding(dp(22), dp(12), dp(22), dp(6));
         TextView explanation = new TextView(this);
         explanation.setText("Единый репозиторий Language-learning: отдельные полные словари " +
-                "Папа / Мама / Дима / Пимен, слова и устойчивые выражения, освоенные карточки. " +
+                "Папа / Мама / Дима, слова и устойчивые выражения, освоенные карточки. " +
                 "Синхронизация в ОБЕ стороны выполняется после изменения слов и " +
                 "периодически при наличии сети. Удалённые карточки не восстанавливаются. " +
                 "Внешний ChatGPT должен проверять словарь профиля перед добавлением новых " +
@@ -746,26 +1033,57 @@ public final class MainActivity extends Activity {
                     openBrowser(url);
                 }).show();
     }
+    /**
+     * Prefer the distinct family updater v2 package, never the legacy updater.
+     * If not installed, use the built-in signed family-builds channel.
+     */
     private void startUpdateNow() {
         cancelCardSpeech();
         player.pause();
         remember();
-        Intent updateIntent = new Intent("ru.spanish.learning.updater.UPDATE")
-                .setPackage("ru.spanish.learning.updater");
+
+        // A dedicated, differently named family updater can be installed next to
+        // the legacy updater. Only the new package is eligible for this action.
+        Intent familyUpdater = new Intent("ru.spanish.learning.familyupdater.UPDATE")
+                .setPackage("ru.spanish.learning.familyupdater");
         if (BuildConfig.DEBUG) {
             String testPath = getIntent().getStringExtra("updater_test_path");
-            if (testPath != null && !testPath.isEmpty())
-                updateIntent.putExtra("test_apk_path", testPath);
+            if (testPath != null && !testPath.isEmpty()) {
+                familyUpdater.putExtra("test_apk_path", testPath);
+            }
         }
         try {
-            startActivity(updateIntent);
-        } catch (ActivityNotFoundException e) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Нужен Updater")
-                    .setMessage("Для обновлений установите приложение «Обновление испанского» один раз. После этого кнопка «Обновление» будет передавать установку ему.")
-                    .setPositiveButton("Понятно", null)
-                    .show();
+            // Android 11+ queries are declared in AndroidManifest.xml.
+            if (getPackageManager().resolveActivity(familyUpdater, 0) != null) {
+                startActivity(familyUpdater);
+                return;
+            }
+        } catch (ActivityNotFoundException ignored) {
+            // The signed in-app updater is the safe fallback.
         }
+
+        if (Build.VERSION.SDK_INT >= 26
+                && !getPackageManager().canRequestPackageInstalls()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Разрешение на обновление")
+                    .setMessage("Разрешите приложению «Изучение испанского» устанавливать обновления. " +
+                            "После возвращения нажмите «Обновление» ещё раз.")
+                    .setPositiveButton("Открыть настройки", (dialog, which) -> {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:" + getPackageName())));
+                        } catch (ActivityNotFoundException e) {
+                            Toast.makeText(this, "Разрешите установку из приложения в настройках Android",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    })
+                    .setNegativeButton("Отмена", null).show();
+            return;
+        }
+
+        // Fallback: check family-builds and verify the signed update directly.
+        AppUpdater.updateNow(this);
+        Toast.makeText(this, "Проверяю обновления семейной версии…", Toast.LENGTH_LONG).show();
     }
     private void openBrowser(String url) {
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
@@ -1385,10 +1703,22 @@ public final class MainActivity extends Activity {
         }
         content.addView(filters, spaced(10));
 
-        // All unmastered words remain available for bidirectional swiping.
-        // Marking a card known changes its status but never deletes it from the AI vocabulary.
-        List<Store.Card> cards = store.cards(false, kind, kind == 0 ? category : 0);
-        TextView count = text(cards.isEmpty() ? "Здесь пока нет карточек" : "Карточек: " + cards.size(), 16);
+        // Each profile/language/category or phrase type has a separate active window.
+        // The numeric control itself is rendered at the BOTTOM via showCardTools().
+        int studyLimit = Math.max(0,
+                prefs.getInt(prefKey(StudyBatch.preferenceKey(kind, kind == 0 ? category : 0)), 0));
+
+        // Query the ENTIRE unmastered pool, then show only the selected window.
+        // As soon as ✓ archives one of the window's words, the next waiting
+        // word joins automatically on render without resetting any other data.
+        List<Store.Card> unmastered = store.cards(false, kind, kind == 0 ? category : 0);
+        List<Store.Card> cards = StudyBatch.active(unmastered, studyLimit);
+        String countLabel = cards.isEmpty() ? "Здесь пока нет карточек"
+                : studyLimit > 0
+                    ? "В изучении: " + cards.size() + " / " + studyLimit
+                      + " · В резерве: " + (unmastered.size() - cards.size())
+                    : "Карточек: " + cards.size();
+        TextView count = text(countLabel, 16);
         count.setTextColor(secondaryText());
         count.setPadding(0, dp(2), 0, dp(10));
         if (cards.isEmpty()) {
@@ -1543,6 +1873,35 @@ public final class MainActivity extends Activity {
         strip.setTag("card-swipe-viewport");
         cardFrame.addView(strip, new FrameLayout.LayoutParams(-1, dp(315)));
 
+        // Edit the currently centered word or phrase without leaving the cards screen.
+        TextView more = new TextView(this);
+        more.setText("⋮");
+        more.setTextSize(29);
+        more.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        more.setTextColor(primaryText());
+        more.setGravity(Gravity.CENTER);
+        more.setTag("card-edit-menu");
+        more.setContentDescription("Изменить карточку");
+        // Plain three-dot glyph: no circle, border, ripple background or shadow.
+        more.setBackground(null);
+        more.setElevation(0f);
+        more.setPadding(0, 0, 0, 0);
+        more.setOnClickListener(v -> {
+            cancelCardSpeech();
+            player.pause();
+            android.widget.PopupMenu menu = new android.widget.PopupMenu(this, more);
+            menu.getMenu().add("Изменить карточку").setOnMenuItemClickListener(item -> {
+                editExistingCard(cards.get(reviewIndex));
+                return true;
+            });
+            menu.show();
+        });
+        FrameLayout.LayoutParams editParams =
+                new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.BOTTOM | Gravity.END);
+        editParams.bottomMargin = dp(10);
+        editParams.rightMargin = dp(10);
+        cardFrame.addView(more, editParams);
+
         FrameLayout.LayoutParams deleteParams =
                 new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP | Gravity.START);
         deleteParams.topMargin = dp(9);
@@ -1651,6 +2010,69 @@ public final class MainActivity extends Activity {
             ui.style(imageRepairButton, UiStyle.Tone.OUTLINE);
         }
 
+        // Lowest control on both the words and expressions screens.
+        showStudyBatchControl();
+    }
+
+    /** Choose an active study-set size without removing cards from the database. */
+    private void showStudyBatchControl() {
+        final int selectedKind = kind;
+        final int selectedCategory = selectedKind == 0 ? category : 0;
+        final String key = prefKey(StudyBatch.preferenceKey(selectedKind, selectedCategory));
+        int currentLimit = Math.max(0, prefs.getInt(key, 0));
+        String label = selectedKind == 1 ? "устойчивых выражений" : "слов";
+        TextView title = text("Взять для изучения — количество " + label + ":", 15);
+        title.setTextColor(secondaryText());
+
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER_VERTICAL);
+        EditText amount = new EditText(this);
+        amount.setTag("study-batch-amount");
+        amount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        amount.setSingleLine(true);
+        amount.setText(Integer.toString(currentLimit > 0 ? currentLimit : 10));
+        amount.setSelectAllOnFocus(true);
+        amount.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
+        amount.setContentDescription("Количество " + label + " для изучения");
+        ui.styleInput(amount);
+        controls.addView(amount, new LinearLayout.LayoutParams(0, dp(52), 1));
+
+        Button take = rowButton("Взять", () -> {
+            int requested;
+            try {
+                requested = Integer.parseInt(amount.getText().toString().trim());
+            } catch (NumberFormatException ignored) {
+                amount.setError("Введите число от 1 до 100000");
+                return;
+            }
+            if (requested < 1 || requested > 100000) {
+                amount.setError("Введите число от 1 до 100000");
+                return;
+            }
+            prefs.edit().putInt(key, requested).apply();
+            reviewIndex = 0;
+            cardRevealed = false;
+            render();
+        });
+        take.setTag("study-batch-apply");
+        LinearLayout.LayoutParams takeParams = new LinearLayout.LayoutParams(dp(105), dp(52));
+        takeParams.setMarginStart(dp(7));
+        controls.addView(take, takeParams);
+
+        if (currentLimit > 0) {
+            Button all = rowButton("Все", () -> {
+                prefs.edit().remove(key).apply();
+                reviewIndex = 0;
+                cardRevealed = false;
+                render();
+            });
+            all.setTag("study-batch-all");
+            LinearLayout.LayoutParams allParams = new LinearLayout.LayoutParams(dp(75), dp(52));
+            allParams.setMarginStart(dp(5));
+            controls.addView(all, allParams);
+        }
+        content.addView(controls, spaced(12));
     }
 
 
@@ -1727,6 +2149,64 @@ public final class MainActivity extends Activity {
                         });
                     }
                 });
+    }
+
+    /** Edit only the selected card; keep its ID, mastery state and review history. */
+    private void editExistingCard(Store.Card card) {
+        if (card == null || isFinishing() || isDestroyed()) return;
+        cancelCardSpeech();
+        player.pause();
+        LinearLayout box = form();
+        EditText original = field(box, studyingEnglish()
+                ? "Английское слово или выражение" : "Испанское слово или выражение", 500, false);
+        EditText translation = field(box, "Перевод на русский", 1000, true);
+        original.setText(card.spanish());
+        translation.setText(card.meaning());
+        original.setSelectAllOnFocus(true);
+        AlertDialog editDialog = new AlertDialog.Builder(this)
+                .setTitle(card.kind() == 1 ? "Изменить выражение" : "Изменить слово")
+                .setView(box)
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("Сохранить", null)
+                .create();
+        editDialog.setOnShowListener(d ->
+                editDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    String newText = original.getText().toString().trim();
+                    String newMeaning = translation.getText().toString().trim();
+                    if (newText.isEmpty()) {
+                        original.setError("Введите слово или выражение");
+                        return;
+                    }
+                    if (newMeaning.isEmpty()) {
+                        translation.setError("Введите перевод");
+                        return;
+                    }
+                    try {
+                        if (!store.editCard(card.id(), newText, newMeaning)) {
+                            Toast.makeText(this, "Карточка не найдена", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        boolean artCopied = true;
+                        if (!card.spanish().equals(newText)) {
+                            try {
+                                CardImageMigration.copyOnEdit(this, card.spanish(), newText, studyingEnglish());
+                            } catch (java.io.IOException pictureError) {
+                                artCopied = false;
+                            }
+                        }
+                        editDialog.dismiss();
+                        cardRevealed = false;
+                        render();
+                        if (!artCopied)
+                            Toast.makeText(this, "Карточка сохранена, но рисунок не удалось скопировать",
+                                    Toast.LENGTH_LONG).show();
+                    } catch (IllegalArgumentException invalid) {
+                        original.setError(invalid.getMessage());
+                    } catch (Exception error) {
+                        Toast.makeText(this, "Не удалось сохранить изменения", Toast.LENGTH_LONG).show();
+                    }
+                }));
+        editDialog.show();
     }
 
     private EditText field(LinearLayout box, String hint, int max, boolean multiline) {
@@ -1864,40 +2344,142 @@ public final class MainActivity extends Activity {
         player.pause();
         remember();
         storyId = story.id();
+        manualStoryKey = "manual-story-pauses:" + activeProfile + ":" + studyLanguage
+                + ":" + story.id() + ":" + story.body().hashCode();
+        storyOriginalSentences = Sentences.split(story.body());
+        manualStoryMarks = ManualStoryPauses.decode(
+                prefs.getString(manualStoryKey, ""), storyOriginalSentences);
+        player.setManualPauseStoryKey(manualStoryKey);
+        player.setManualPauses(manualStoryMarks, manualPauseMillis);
+        bibleRedChunks = BibleStoryHighlight.appliesTo(story.title())
+                ? BibleStoryHighlight.mark(story.body()) : new boolean[0];
         screen = "player";
+        storyOriginalSentences = Sentences.split(story.body());
+        storyTranslations = Sentences.split(story.translation());
+        // Never try to read a missing or non-aligned translation.
+        storyReadRussian = prefs.getBoolean(prefKey("storyReadRussian"), false)
+                && storyTranslations.size() == storyOriginalSentences.size()
+                && !storyTranslations.isEmpty();
+        player.setLearningLanguage(storyReadRussian ? "ru" : studyLanguage);
+        boolean shortSpeech = ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian,
+                player.shortWordSpeed);
         HumanStoryAudio recorded = new HumanStoryAudio(this, activeProfile, studyLanguage,
                 story.id(), story.body());
         GoogleStoryAudio google = new GoogleStoryAudio(this, activeProfile, studyLanguage,
                 story.id(), story.body());
         String source = prefs.getString(prefKey("narrationSource"),
                 prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
-        player.attachHumanStory(recorded, "human".equals(source));
-        player.attachGoogleStory(google, "google".equals(source));
-        player.load(story.body(), story.position());
+        boolean manualTts = !storyReadRussian && player.manualPausesActive();
+        player.attachHumanStory(recorded, !storyReadRussian && !shortSpeech
+                && !manualTts && "human".equals(source));
+        player.attachGoogleStory(google, !storyReadRussian && !shortSpeech
+                && !manualTts && "google".equals(source));
+        player.setSlowArticles(shortSpeech);
+        player.load(storyReadRussian ? story.translation() : story.body(), story.position());
+        player.prepareWholeStory();
         render();
     }
+
+    /** Switch only the spoken story text, not the language of study cards. */
+    boolean selectStoryPlaybackLanguage(boolean russian) {
+        Store.Story selected = null;
+        for (Store.Story story : store.stories()) if (story.id() == storyId) {
+            selected = story;
+            break;
+        }
+        if (selected == null || !"player".equals(screen)) return false;
+        List<String> original = Sentences.split(selected.body());
+        List<String> translated = Sentences.split(selected.translation());
+        if (russian && (translated.isEmpty() || original.size() != translated.size())) {
+            Toast.makeText(this, "Русская озвучка недоступна: перевод неполный или не совпадают предложения",
+                    Toast.LENGTH_LONG).show();
+            return false;
+        }
+        if (storyReadRussian == russian) return true;
+        int position = player.state.index;
+        player.pause();
+        storyOriginalSentences = original;
+        storyTranslations = translated;
+        storyReadRussian = russian;
+        prefs.edit().putBoolean(prefKey("storyReadRussian"), russian).apply();
+        player.setLearningLanguage(russian ? "ru" : studyLanguage);
+        boolean shortSpeech = ArticleSlowSpeech.appliesTo(studyLanguage, russian,
+                player.shortWordSpeed);
+        player.setSlowArticles(shortSpeech);
+        if (russian || shortSpeech || (!russian && player.manualPausesActive())) {
+            // Russian translation and marked pauses require system TTS.
+            player.useHumanVoice(false);
+            player.useGoogleVoice(false);
+        } else {
+            String source = prefs.getString(prefKey("narrationSource"), "tts");
+            player.useHumanVoice("human".equals(source));
+            player.useGoogleVoice("google".equals(source));
+        }
+        player.load(russian ? selected.translation() : selected.body(), position);
+        player.prepareWholeStory();
+        render();
+        return true;
+    }
+
+    private void chooseStoryPlaybackLanguage() {
+        new AlertDialog.Builder(this)
+                .setTitle("Язык озвучки рассказа")
+                .setSingleChoiceItems(new String[]{studyingEnglish() ? "Английский" : "Испанский",
+                        "Русский"}, storyReadRussian ? 1 : 0, (dialog, which) -> {
+                    if (selectStoryPlaybackLanguage(which == 1)) dialog.dismiss();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     private void storyPlayer() {
         Store.Story selected = null; for(Store.Story story : store.stories()) if(story.id() == storyId) selected = story;
         if(selected == null) { text("Рассказ не найден", 22); return; }
-        text(selected.title(), 25);
-        TextView source = text(selected.source(), 14);
-        source.setTextColor(secondaryText());
-        TextView hint = text(studyingEnglish() ? "Удерживайте незнакомое английское слово, чтобы добавить его в карточки." : "Удерживайте незнакомое испанское слово, чтобы добавить его в карточки.", 14);
-        hint.setTextColor(secondaryText());
-        hint.setPadding(0, dp(4), 0, dp(12));
+        // Single-handed navigation: immediately below the Cards/Stories tabs,
+        // left aligned and before the large reading panel.
+        repeat = rowButton("← Назад", player::backOneSentence);
+        repeat.setTag("story-back-sentence");
+        repeat.setContentDescription("Назад по предложениям: первое нажатие повторяет, каждое следующее — на одно предложение назад");
+        ui.style(repeat, UiStyle.Tone.OUTLINE);
+        LinearLayout.LayoutParams rewindParams = new LinearLayout.LayoutParams(dp(126), dp(50));
+        rewindParams.bottomMargin = dp(8);
+        content.addView(repeat, rewindParams);
 
+        text(selected.title(), 25);
+        storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
+
+        // Primary playback control is directly ABOVE the story reading panel.
+        toggle = button("Слушать", () -> {
+            if (player.state.phase == PlaybackState.Phase.SPEAKING ||
+                    (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
+                player.pause();
+            else player.play();
+        });
+        ui.style(toggle, UiStyle.Tone.PRIMARY);
+        toggle.setTextSize(20);
+        toggle.setMinHeight(dp(70));
+        toggle.setMinimumHeight(dp(70));
         LinearLayout readingPanel = new LinearLayout(this);
         readingPanel.setOrientation(LinearLayout.VERTICAL);
         readingPanel.setPadding(dp(18), dp(16), dp(18), dp(16));
         readingPanel.setBackground(ui.cardSurface());
         readingPanel.setElevation(dp(4));
-        content.addView(readingPanel, spaced(15));
+        content.addView(readingPanel, spaced(6));
 
-        sentence = textInto(readingPanel, player.current(), 26);
+        storyAudioRetry = rowButton("Повторить подготовку всего рассказа",
+                player::prepareWholeStory);
+        storyAudioRetry.setTag("story-preparation-retry");
+        ui.style(storyAudioRetry, UiStyle.Tone.OUTLINE);
+        storyAudioRetry.setVisibility(player.storyAudioFailed() ? View.VISIBLE : View.GONE);
+        content.addView(storyAudioRetry, spaced(4));
+
+        sentence = textInto(readingPanel, currentOriginalSentence(), 26);
+        sentence.setText(markedSentenceText(currentOriginalSentence(), player.state.index));
+        sentence.setTextColor(storyReadingTextColor(player.state.index));
         sentence.setLineSpacing(dp(5), 1.07f);
         sentence.setPadding(0, dp(3), 0, dp(13));
-        attachStoryWordGesture(sentence, this::currentTranslation);
+        attachManualPauseGesture(sentence, currentOriginalSentence(), player.state.index);
 
         View divider = new View(this);
         divider.setBackgroundColor(borderColor());
@@ -1918,35 +2500,59 @@ public final class MainActivity extends Activity {
 
         humanVoiceButton = button("Источник: " + narrationLabel(), this::chooseNarrationSource);
         ui.style(humanVoiceButton, UiStyle.Tone.OUTLINE);
+        humanVoiceButton.setEnabled(!storyReadRussian && !player.slowArticlesEnabled()
+                && !player.manualPausesActive());
         Button googleAudio = button("Google — озвучить все рассказы", this::startGoogleStoryRecording);
         ui.style(googleAudio, UiStyle.Tone.OUTLINE);
+        googleAudio.setEnabled(!storyReadRussian && !player.slowArticlesEnabled()
+                && !player.manualPausesActive());
         Button recordHuman = button("Записать живой голос", this::openHumanRecorder);
         ui.style(recordHuman, UiStyle.Tone.OUTLINE);
+        recordHuman.setEnabled(!storyReadRussian && !player.slowArticlesEnabled()
+                && !player.manualPausesActive());
 
-        toggle = button("Слушать", () -> {
-            if (player.state.phase == PlaybackState.Phase.SPEAKING ||
-                    (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING))
-                player.pause();
-            else player.play();
-        });
-        ui.style(toggle, UiStyle.Tone.PRIMARY);
-        toggle.setTextSize(20);
-        toggle.setMinHeight(dp(70));
-
-        repeat = button("Повторить предложение", player::repeat);
-        Button readAll = button("Читать весь рассказ", () -> { player.pause(); showFullStory(); });
+        Button readAll = button("Читать весь рассказ заново", player::playAllFromStart);
         ui.style(readAll, UiStyle.Tone.OUTLINE);
         Button share = button("Отправить аудио", this::shareCurrentStory);
         ui.style(share, UiStyle.Tone.OUTLINE);
         Button back = button("← Библиотека", () -> navigate("stories"));
         ui.style(back, UiStyle.Tone.OUTLINE);
+
+        // Less frequently used controls sit below the playback actions.
+        Button storySpeechLanguage = button("Язык озвучки: "
+                + (storyReadRussian ? "Русский" : studyingEnglish() ? "Английский" : "Испанский")
+                + " ▾", this::chooseStoryPlaybackLanguage);
+        storySpeechLanguage.setTag("story-speech-language");
+        ui.style(storySpeechLanguage, UiStyle.Tone.OUTLINE);
+        storySpeechLanguage.setTextSize(13);
+        storySpeechLanguage.setMinHeight(dp(48));
+
+        TextView source = text(selected.source(), 11);
+        source.setTag("story-source-footer");
+        source.setTextColor(secondaryText());
+        source.setPadding(0, dp(3), 0, dp(8));
     }
     private String narrationLabel() {
+        if (storyReadRussian) return "Системный голос (русский)";
+        if (player.manualPausesActive()) return "Системный голос (ручные паузы)";
+        if (player.slowArticlesEnabled()) return "Системный голос (шесть слов медленно)";
         return player.googleSelected() ? "Google (сохранённая запись)"
                 : player.humanSelected() ? "Живой голос" : "Системный голос";
     }
 
     private void chooseNarrationSource() {
+        if (player.manualPausesActive()) {
+            Toast.makeText(this, "Ручные паузы требуют системный голос. Режим отключается в настройках.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (player.slowArticlesEnabled()) {
+            Toast.makeText(this, "Замедление los / las / del / el / la / les отключается в настройках (⚙).", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (storyReadRussian) {
+            Toast.makeText(this, "Русский текст озвучивает системный русский голос", Toast.LENGTH_LONG).show();
+            return;
+        }
         new AlertDialog.Builder(this)
                 .setTitle("Источник озвучки")
                 .setItems(new String[]{"Системный голос", "Google (сохранённая запись)",
@@ -2018,7 +2624,7 @@ public final class MainActivity extends Activity {
                             if (story.id() != storyId) continue;
                             GoogleStoryAudio archived = new GoogleStoryAudio(MainActivity.this,
                                     activeProfile, studyLanguage, story.id(), story.body());
-                            if (archived.complete()) {
+                            if (!storyReadRussian && archived.complete()) {
                                 player.attachGoogleStory(archived, true);
                                 prefs.edit().putString(prefKey("narrationSource"), "google")
                                         .putBoolean(prefKey("humanVoice"), false).apply();
@@ -2121,7 +2727,7 @@ public final class MainActivity extends Activity {
                 try { session.stop(false); } catch (Exception ignored) {}
             }
             if (humanRecording == session) {
-                if (session.complete()) {
+                if (!storyReadRussian && session.complete()) {
                     player.useHumanVoice(true);
                     prefs.edit().putString(prefKey("narrationSource"), "human")
                             .putBoolean(prefKey("humanVoice"), true).apply();
@@ -2206,7 +2812,9 @@ public final class MainActivity extends Activity {
         for (Store.Story story : store.stories()) {
             if (story.id() == storyId) { selected = story; break; }
         }
-        if (selected == null || selected.body().trim().isEmpty()) {
+        String exportBody = selected == null ? "" :
+                storyReadRussian ? selected.translation() : selected.body();
+        if (exportBody.trim().isEmpty()) {
             Toast.makeText(this, "Нет текста для озвучивания", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -2217,8 +2825,8 @@ public final class MainActivity extends Activity {
         }
         player.pause();
         final String title = selected.title();
-        StoryAudioExporter exporter = new StoryAudioExporter(this, title, selected.body(),
-                studyLanguage, player.selectedVoiceNameForExport(), player.speed,
+        StoryAudioExporter exporter = new StoryAudioExporter(this, title, exportBody,
+                storyReadRussian ? "ru" : studyLanguage, player.selectedVoiceNameForExport(), player.speed,
                 new StoryAudioExporter.Listener() {
                     @Override public void progress(int done, int total) {
                         if (audioExporter == null || audioExportDialog == null
@@ -2271,93 +2879,6 @@ public final class MainActivity extends Activity {
         audioExportDialog.show();
         exporter.start();
     }
-    private interface TranslationText { String get(); }
-
-    private void attachStoryWordGesture(TextView label, TranslationText translation) {
-        label.setTextIsSelectable(false);
-        GestureDetector gesture = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
-            @Override public boolean onDown(MotionEvent event) { return true; }
-            @Override public void onLongPress(MotionEvent event) {
-                captureStoryWord(label, translation.get(), event.getX(), event.getY());
-            }
-        });
-        label.setOnTouchListener((view, event) -> {
-            gesture.onTouchEvent(event);
-            return true; // no Android selection/copy handles; parent ScrollView still handles scroll
-        });
-    }
-
-    private void captureStoryWord(TextView label, String russian, float x, float y) {
-        Layout layout = label.getLayout();
-        if (layout == null || label.getText() == null) return;
-        String source = label.getText().toString();
-        float insideY = y - label.getTotalPaddingTop() + label.getScrollY();
-        if (insideY < 0 || insideY >= layout.getHeight()) return;
-        int line = layout.getLineForVertical((int) insideY);
-        float insideX = x - label.getTotalPaddingLeft() + label.getScrollX();
-        if (insideX < layout.getLineLeft(line) || insideX > layout.getLineRight(line)) return;
-        int position = layout.getOffsetForHorizontal(line, insideX);
-        StoryWordPicker.Match match = StoryWordPicker.at(source, position);
-        if (match == null) return;
-        if (storyWordRequestInFlight) {
-            Toast.makeText(this, "Дождитесь проверки предыдущего слова", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try {
-            Store targetStore = store;
-            Store.StoryWordSave known = StoryVocabulary.existing(targetStore, match.word());
-            if (known != null) {
-                Toast.makeText(this, known == Store.StoryWordSave.RESTORED
-                        ? "Снова в изучении: " + match.word()
-                        : "Уже в карточках: " + match.word(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!assistant.isConnected()) {
-                Toast.makeText(this, "Для точного перевода подключите ChatGPT в разделе «Рассказы»",
-                        Toast.LENGTH_LONG).show();
-                return;
-            }
-            label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            SpannableString highlighted = new SpannableString(source);
-            highlighted.setSpan(new BackgroundColorSpan(darkTheme ? 0xFF526A66 : 0xFFFFE39A),
-                    match.start(), match.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            label.setText(highlighted);
-            cardSpeechHandler.postDelayed(() -> {
-                if (label.getText() == highlighted) label.setText(source);
-            }, 600);
-
-            storyWordRequestInFlight = true;
-            AtomicBoolean cancelled = new AtomicBoolean(false);
-            AlertDialog dialog = new AlertDialog.Builder(this)
-                    .setTitle("Перевод: " + match.word())
-                    .setMessage("Проверяю значение и грамматику…")
-                    .setNegativeButton("Отмена", (d, w) -> cancelled.set(true))
-                    .setCancelable(false).create();
-            dialog.show();
-            assistant.translateStoryWord(targetStore, match.word(), source, russian,
-                    cancelled::get, new ChatGptAssistant.StoryWordUpdates() {
-                @Override public void progress(String stage) {
-                    runOnUiThread(() -> {
-                        if (!cancelled.get() && dialog.isShowing() && !isFinishing())
-                            dialog.setMessage(stage);
-                    });
-                }
-                @Override public void finished(boolean ok, String message) {
-                    runOnUiThread(() -> {
-                        storyWordRequestInFlight = false;
-                        if (dialog.isShowing()) dialog.dismiss();
-                        if (!cancelled.get() && !isFinishing())
-                            Toast.makeText(MainActivity.this, message,
-                                    Toast.LENGTH_LONG).show();
-                    });
-                }
-            });
-        } catch (Exception e) {
-            storyWordRequestInFlight = false;
-            Toast.makeText(this, "Не удалось проверить перевод слова", Toast.LENGTH_LONG).show();
-        }
-    }
-
     private void showFullStory() {
         Store.Story selected = null;
         for (Store.Story story : store.stories()) if (story.id() == storyId) selected = story;
@@ -2368,12 +2889,14 @@ public final class MainActivity extends Activity {
         lines.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(lines);
         TextView hint = new TextView(this);
-        hint.setText(studyingEnglish() ? "Удерживайте английское слово для добавления в карточки." : "Удерживайте испанское слово для добавления в карточки.");
+        hint.setText("Удерживайте место между словами: ⏸ добавить или убрать паузу. Длительность — в настройках.");
         hint.setTextSize(14);
         hint.setTextColor(secondaryText());
         lines.addView(hint);
         List<String> spanish = Sentences.split(selected.body());
         List<String> russian = Sentences.split(selected.translation());
+        boolean[] redChunks = BibleStoryHighlight.appliesTo(selected.title())
+                ? BibleStoryHighlight.mark(selected.body()) : new boolean[0];
         for (int index = 0; index < spanish.size(); index++) {
             String es = spanish.get(index);
             String ru = index < russian.size() ? russian.get(index) : "";
@@ -2383,12 +2906,13 @@ public final class MainActivity extends Activity {
             paragraph.setBackground(ui.rounded(ui.surface, 16, ui.outline));
             lines.addView(paragraph, spaced(10));
             TextView original = new TextView(this);
-            original.setText(es);
+            original.setText(markedSentenceText(es, index));
             original.setTextSize(22);
-            original.setTextColor(primaryText());
+            original.setTextColor(index < redChunks.length && redChunks[index]
+                    ? bibleTextRed() : primaryText());
             original.setLineSpacing(dp(3), 1.06f);
             original.setPadding(0, dp(6), 0, dp(5));
-            attachStoryWordGesture(original, () -> ru);
+            attachManualPauseGesture(original, es, index);
             paragraph.addView(original, new LinearLayout.LayoutParams(-1, -2));
             TextView translated = new TextView(this);
             translated.setText(ru);
@@ -2403,6 +2927,11 @@ public final class MainActivity extends Activity {
     }
 
     private String findBody() { for(Store.Story s : store.stories()) if(s.id() == storyId) return s.body(); return ""; }
+    private String currentOriginalSentence() {
+        if (storyOriginalSentences.isEmpty()) return "";
+        int i = Math.max(0, Math.min(player.state.index, storyOriginalSentences.size() - 1));
+        return storyOriginalSentences.get(i);
+    }
     private String currentTranslation() {
         if (storyTranslations.isEmpty()) return "";
         int i = Math.max(0, Math.min(player.state.index, storyTranslations.size() - 1));
@@ -2423,19 +2952,39 @@ public final class MainActivity extends Activity {
         }
         return "";
     }
+    private int bibleTextRed() {
+        // Readable red on both light and dark story backgrounds.
+        return darkTheme ? 0xFFFF7777 : 0xFFB71C1C;
+    }
+
+    private int storyReadingTextColor(int index) {
+        return index >= 0 && index < bibleRedChunks.length && bibleRedChunks[index]
+                ? bibleTextRed() : primaryText();
+    }
+
     private void updatePlayer() {
         if (player == null || rendering) return;
         if (cardVoiceStatus != null) cardVoiceStatus.setText(player.voiceDescription);
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
         if (sentence == null) return;
-        sentence.setText(player.current()); if (sentenceRu != null) sentenceRu.setText(currentTranslation());
+        sentence.setText(markedSentenceText(currentOriginalSentence(), player.state.index));
+        sentence.setTextColor(storyReadingTextColor(player.state.index));
+        if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
-        toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
+        toggle.setText(player.preparingTextPauses() ? "Подготовка всего рассказа…"
+                : active ? "Ⅱ Пауза"
+                : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
+        if (storyAudioRetry != null)
+            storyAudioRetry.setVisibility(player.storyAudioFailed() ? View.VISIBLE : View.GONE);
         if (humanVoiceButton != null)
             humanVoiceButton.setText("Источник: " + narrationLabel());
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
-        playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status + (player.error.isEmpty() ? "" : "\n" + player.error));
+        if (player.preparingTextPauses()) status = "Подготовка до начала чтения";
+        playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status
+                + (player.storyAudioStatus().isEmpty() ? "" : "\n" + player.storyAudioStatus())
+                + (player.error.isEmpty() ? "" : "\n" + player.error)
+                + (!player.canPlay() ? "\n" + player.voiceDescription : ""));
     }
     private void syncContent() {
         if (personalStorySync == null || syncingContent) return;

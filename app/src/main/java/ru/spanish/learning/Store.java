@@ -40,7 +40,7 @@ public final class Store extends SQLiteOpenHelper {
         return new Store(context, dbName, english, StudyProfile.normalized(id));
     }
     private Store(Context context, String databaseName, boolean english, String profileId) {
-        super(context, databaseName, null, 11);
+        super(context, databaseName, null, 12);
         this.context = context.getApplicationContext();
         this.english = english;
         this.profileId = profileId;
@@ -73,6 +73,7 @@ public final class Store extends SQLiteOpenHelper {
                 BeginnerCards.seed(db);
                 setAppFlag(db, "beginner_700_seeded");
                 FamilyStory.seed(db);
+                if (!StudyProfile.PIMEN.equals(profileId)) GarageCarStory.seed(db);
                 if (StudyProfile.DIMA.equals(profileId)) {
                     DimaExtraCards.seed(db);
                     setAppFlag(db, "dima_extra_300_seeded");
@@ -87,6 +88,7 @@ public final class Store extends SQLiteOpenHelper {
         v.put("source", "Встроенный пример • написан заранее, не ИИ-генерация по архиву");
         db.insertOrThrow("stories", null, v);
         DefaultCards.seed(db);
+        GarageCarStory.seed(db);
     }
 
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
@@ -133,6 +135,9 @@ public final class Store extends SQLiteOpenHelper {
             if (appFlag(db,"personal_story_reset")) setAppStateTime(db,"vocabulary_sync_reset_ms",
                     System.currentTimeMillis());
         }
+        // Add only to the three family profiles, without modifying Pimen\'s data.
+        if (oldVersion < 12 && !english && !StudyProfile.PIMEN.equals(profileId))
+            GarageCarStory.seed(db);
     }
 
     // Existing Dima profiles receive the pack once. Never reseed after a deliberate reset.
@@ -283,13 +288,14 @@ public final class Store extends SQLiteOpenHelper {
                         db.insertOrThrow("cards",null,v);
                         changedAny = true;
                     } else if (!card.meaning().equals(e.meaning())
+                            || !card.spanish().equals(e.spanish())
                             || card.mastered()!=e.mastered()
                             || card.lastResult()!=e.lastResult()
                             || card.reviewCount()!=e.reviewCount()
                             || card.nextDue()!=e.nextDue()
                             || card.category()!=e.category()) {
                         ContentValues v = new ContentValues();
-                        v.put("meaning",e.meaning()); v.put("mastered",e.mastered()?1:0);
+                        v.put("spanish",e.spanish()); v.put("meaning",e.meaning()); v.put("mastered",e.mastered()?1:0);
                         v.put("last_result",e.lastResult());v.put("review_count",e.reviewCount());
                         v.put("next_due",e.nextDue());v.put("category",e.category());
                         db.update("cards",v,"id=?",new String[]{Long.toString(card.id())});
@@ -461,6 +467,104 @@ public final class Store extends SQLiteOpenHelper {
         return added;
     }
 
+    /**
+     * Explicitly copy Papa's translated cards into Mama or Dima, for the same language.
+     * Both unlearned and mastered Papa words/phrases arrive as new study cards.
+     * Target cards, their progress, translations and deletion tombstones are untouched.
+     */
+    int copyTranslatedVocabularyFrom(Store source) {
+        if (source == null || source == this || this.english != source.english
+                || !StudyProfile.PAPA.equals(source.profileId)
+                || (!StudyProfile.MAMA.equals(this.profileId)
+                    && !StudyProfile.DIMA.equals(this.profileId)))
+            throw new IllegalArgumentException("Only Papa to Mama/Dima, same language");
+        java.util.Set<String> known = new java.util.HashSet<>();
+        for (SyncEntry entry : vocabularyForSync())
+            known.add(syncKey(entry.kind(), entry.spanish()));
+        int added = 0;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (Card card : source.vocabulary()) {
+                if (card.spanish() == null || card.spanish().isBlank()
+                        || card.meaning() == null || card.meaning().isBlank()
+                        || (card.kind() != 0 && card.kind() != 1)) continue;
+                String key = syncKey(card.kind(), card.spanish());
+                if (known.contains(key)) continue;
+                ContentValues values = new ContentValues();
+                values.put("spanish", card.spanish());
+                values.put("meaning", card.meaning());
+                values.put("kind", card.kind());
+                values.put("category", card.kind() == 1 ? 0 : card.category());
+                values.put("mastered", 0);
+                values.put("last_result", 0);
+                values.put("review_count", 0);
+                values.put("next_due", 0);
+                db.insertOrThrow("cards", null, values);
+                trackLocal(db, card.spanish(), card.kind(), false);
+                known.add(key);
+                added++;
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        if (added > 0) changed();
+        return added;
+    }
+
+    /**
+     * Import up to maxWords NEW Papa words, not expressions, into one target profile.
+     * All existing target cards count as present (studying AND mastered). Deletion
+     * tombstones also count as present, so a manual removal stays permanent.
+     * Newly copied cards begin unmastered; target progress and translations stay intact.
+     * Returns the actual source cards copied, for matching picture transfer.
+     */
+    List<Card> copyMissingWordsFrom(Store source, int maxWords) {
+        if (source == null || source == this || this.english != source.english
+                || !StudyProfile.PAPA.equals(source.profileId)
+                || (!StudyProfile.MAMA.equals(this.profileId)
+                    && !StudyProfile.DIMA.equals(this.profileId)))
+            throw new IllegalArgumentException("Only Papa to Mama/Dima, same language");
+        if (maxWords < 1) throw new IllegalArgumentException("maxWords must be positive");
+
+        java.util.Set<String> known = new java.util.HashSet<>();
+        // Includes studied, mastered and previously deleted cards.
+        for (SyncEntry entry : vocabularyForSync())
+            known.add(syncKey(entry.kind(), entry.spanish()));
+
+        List<Card> copied = new ArrayList<>();
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (Card card : source.vocabulary()) {
+                if (copied.size() >= maxWords) break;
+                if (card.kind() != 0 || card.spanish() == null || card.spanish().isBlank()
+                        || card.meaning() == null || card.meaning().isBlank()) continue;
+                String key = syncKey(0, card.spanish());
+                if (known.contains(key)) continue;
+                ContentValues values = new ContentValues();
+                values.put("spanish", card.spanish());
+                values.put("meaning", card.meaning());
+                values.put("kind", 0);
+                values.put("category", card.category());
+                values.put("mastered", 0);
+                values.put("last_result", 0);
+                values.put("review_count", 0);
+                values.put("next_due", 0);
+                db.insertOrThrow("cards", null, values);
+                trackLocal(db, card.spanish(), 0, false);
+                known.add(key);
+                copied.add(card);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        if (!copied.isEmpty()) changed();
+        return copied;
+    }
+
     public void addCard(String spanish, String meaning, int kind) {
         addCard(spanish, meaning, kind, kind == 0 ? 1 : 0);
     }
@@ -482,6 +586,49 @@ public final class Store extends SQLiteOpenHelper {
             db.setTransactionSuccessful();
         } finally { db.endTransaction(); }
         changed();
+    }
+
+    /**
+     * Edit the same card row, retaining its ID, category and all study progress.
+     * A changed source spelling needs a tombstone for the old sync identity
+     * and a new local revision, so an old GitHub snapshot cannot restore it.
+     */
+    public boolean editCard(long id, String text, String meaning) {
+        if (id <= 0) return false;
+        String cleanText = text == null ? "" : text.trim();
+        String cleanMeaning = meaning == null ? "" : meaning.trim();
+        if (cleanText.isEmpty() || cleanMeaning.isEmpty())
+            throw new IllegalArgumentException("Заполните оба поля");
+        if (cleanText.length() > 500 || cleanMeaning.length() > 1000)
+            throw new IllegalArgumentException("Слишком длинный текст");
+        Card existing = null;
+        for (Card card : vocabulary()) if (card.id() == id) { existing = card; break; }
+        if (existing == null) return false;
+        String oldKey = syncKey(existing.kind(), existing.spanish());
+        String newKey = syncKey(existing.kind(), cleanText);
+        for (Card card : vocabulary()) {
+            if (card.id() != id && syncKey(card.kind(), card.spanish()).equals(newKey))
+                throw new IllegalArgumentException("Такая карточка уже есть в словаре");
+        }
+        if (existing.spanish().equals(cleanText) && existing.meaning().equals(cleanMeaning))
+            return true;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        int updated;
+        try {
+            ContentValues v = new ContentValues();
+            v.put("spanish", cleanText);
+            v.put("meaning", cleanMeaning);
+            updated = db.update("cards", v, "id=?", new String[]{Long.toString(id)});
+            if (updated == 1) {
+                if (!oldKey.equals(newKey))
+                    trackLocal(db, existing.spanish(), existing.kind(), true);
+                trackLocal(db, cleanText, existing.kind(), false);
+            }
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+        if (updated == 1) changed();
+        return updated == 1;
     }
 
     /** Keep the exact inflected form, including irregular verbs, as a separate learning card. */
@@ -771,26 +918,64 @@ public final class Store extends SQLiteOpenHelper {
         if (!cleanTranslation.isEmpty() && Sentences.split(body).size() != Sentences.split(cleanTranslation).size())
             throw new IllegalArgumentException("Количество предложений в переводе не совпадает");
         SQLiteDatabase db = getWritableDatabase();
+        boolean modified = false;
         db.beginTransaction();
         try {
-            if ((privateFeed ? personalStoriesDisabled(db) : sharedContentDisabled(db))
-                    || remoteImported(db, externalId)) {
+            if (privateFeed ? personalStoriesDisabled(db) : sharedContentDisabled(db)) {
                 db.setTransactionSuccessful();
                 return false;
             }
-            ContentValues v = new ContentValues();
-            v.put("title", title.trim());
-            v.put("body", body.trim());
-            v.put("translation", cleanTranslation);
-            v.put("source", "ChatGPT • синхронизировано");
-            long localId = db.insertOrThrow("stories", null, v);
-            markRemoteImported(db, externalId, "story", localId);
+
+            // A STORY INBOX correction keeps the same external ID. Update only an
+            // existing imported story in place, preserving its position and row ID.
+            // Deleted stories have a remote_items tombstone but no local row and
+            // must NEVER be recreated by a subsequent correction.
+            long knownLocalId = -1;
+            try (Cursor remote = db.rawQuery(
+                    "SELECT local_id FROM remote_items WHERE external_id=? AND item_type='story' LIMIT 1",
+                    new String[]{externalId})) {
+                if (remote.moveToFirst()) knownLocalId = remote.getLong(0);
+            }
+            if (knownLocalId >= 0) {
+                String id = Long.toString(knownLocalId);
+                try (Cursor local = db.query("stories", new String[]{"title", "body", "translation"},
+                        "id=?", new String[]{id}, null, null, null, "1")) {
+                    if (!local.moveToFirst()) {
+                        db.setTransactionSuccessful();
+                        return false; // Deliberately deleted; preserve the tombstone.
+                    }
+                    if (title.trim().equals(local.getString(0))
+                            && body.trim().equals(local.getString(1))
+                            && cleanTranslation.equals(local.getString(2))) {
+                        db.setTransactionSuccessful();
+                        return false; // Already synchronized, no duplicate.
+                    }
+                }
+                ContentValues correction = new ContentValues();
+                correction.put("title", title.trim());
+                correction.put("body", body.trim());
+                correction.put("translation", cleanTranslation);
+                modified = db.update("stories", correction, "id=?", new String[]{id}) == 1;
+            } else {
+                if (remoteImported(db, externalId)) {
+                    db.setTransactionSuccessful();
+                    return false; // External ID already belongs to another item.
+                }
+                ContentValues v = new ContentValues();
+                v.put("title", title.trim());
+                v.put("body", body.trim());
+                v.put("translation", cleanTranslation);
+                v.put("source", "ChatGPT • синхронизировано");
+                long localId = db.insertOrThrow("stories", null, v);
+                markRemoteImported(db, externalId, "story", localId);
+                modified = true;
+            }
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
         }
-        changed();
-        return true;
+        if (modified) changed();
+        return modified;
     }
 
     /** Retain remote_items tombstones to prevent restoration by the next sync. */

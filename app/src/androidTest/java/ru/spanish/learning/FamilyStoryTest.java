@@ -20,12 +20,12 @@ public final class FamilyStoryTest extends AndroidTestCase {
              Store mama = Store.forProfileTest(getContext(), mamaDb, "mama", false);
              Store dima = Store.forProfileTest(getContext(), dimaDb, "dima", false);
              Store en = Store.forProfileTest(getContext(), englishDb, "mama", true)) {
-            assertEquals(1, papa.stories().size());
-            assertFalse(FamilyStory.TITLE.equals(papa.stories().get(0).title()));
+            assertEquals(2, papa.stories().size());
+            assertEquals(GarageCarStory.TITLE, papa.stories().get(0).title());
             assertEquals(0, en.stories().size());
-            assertEquals(1, mama.stories().size());
-            assertEquals(1, dima.stories().size());
-            Store.Story story = mama.stories().get(0);
+            assertEquals(2, mama.stories().size());
+            assertEquals(2, dima.stories().size());
+            Store.Story story = mama.stories().stream().filter(x -> FamilyStory.TITLE.equals(x.title())).findFirst().orElseThrow();
             assertEquals(FamilyStory.TITLE, story.title());
             assertEquals(FamilyStory.BODY.strip(), story.body());
             assertEquals(FamilyStory.RUSSIAN.strip(), story.translation());
@@ -35,7 +35,7 @@ public final class FamilyStoryTest extends AndroidTestCase {
             assertTrue(story.body().contains("Baksik corrió"));
             assertTrue(story.body().contains("Mañana voy a caminar"));
             assertTrue(story.body().contains("¡Mañana, no este sábado!"));
-            assertEquals(story.body(), dima.stories().get(0).body());
+            assertTrue(dima.stories().stream().anyMatch(x -> story.body().equals(x.body())));
             assertEquals(700, mama.vocabulary().size());
             assertEquals(1000, dima.vocabulary().size());
         } finally {
@@ -78,7 +78,7 @@ public final class FamilyStoryTest extends AndroidTestCase {
         getContext().deleteDatabase(dbName);
         try {
             try (Store dima = Store.forProfileTest(getContext(), dbName, "dima", false)) {
-                assertTrue(dima.deleteStory(dima.stories().get(0).id()));
+                for (Store.Story story : dima.stories()) assertTrue(dima.deleteStory(story.id()));
                 assertEquals(0, dima.stories().size());
                 dima.getWritableDatabase().setVersion(8);
             }

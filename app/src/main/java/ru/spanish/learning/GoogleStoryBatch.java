@@ -125,10 +125,20 @@ final class GoogleStoryBatch {
                         .contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
             candidates.add(voice);
         }
-        candidates.sort(Comparator.comparingInt((Voice v) -> regionRank(v, language))
-                .thenComparingInt(v -> -v.getQuality())
-                .thenComparingInt(v -> v.isNetworkConnectionRequired() ? 0 : 1)
-                .thenComparing(Voice::getName));
+        candidates.sort((first, second) -> {
+            int order = "es".equals(language)
+                    ? SpanishVoicePreference.compareQualityFirst(
+                            first.getQuality(), first.getLocale(),
+                            second.getQuality(), second.getLocale())
+                    : Integer.compare(regionRank(first, language),
+                            regionRank(second, language));
+            if (order != 0) return order;
+            order = Integer.compare(second.getQuality(), first.getQuality());
+            if (order != 0) return order;
+            order = Boolean.compare(second.isNetworkConnectionRequired(),
+                    first.isNetworkConnectionRequired());
+            return order != 0 ? order : first.getName().compareTo(second.getName());
+        });
         for (Voice voice : candidates) {
             try {
                 if (tts.setVoice(voice) == TextToSpeech.SUCCESS &&
@@ -164,7 +174,8 @@ final class GoogleStoryBatch {
                 return;
             }
             currentToken = "google:" + index + ":" + System.nanoTime();
-            String speech = clip.audio().sentence(clip.sentence());
+            String speech = RioplatensePronunciation.forSpeech(
+                    clip.audio().sentence(clip.sentence()), clip.language());
             if (tts.synthesizeToFile(speech, new Bundle(), pending, currentToken)
                     != TextToSpeech.SUCCESS) {
                 fail("Сервис Google отказался создавать аудиозапись.");

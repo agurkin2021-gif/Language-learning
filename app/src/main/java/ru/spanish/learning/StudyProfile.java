@@ -8,8 +8,8 @@ public final class StudyProfile {
     public static final String MAMA = "mama";
     public static final String DIMA = "dima";
     public static final String PIMEN = "pimen";
-    public static final String[] IDS = {PAPA, MAMA, DIMA, PIMEN};
-    public static final String[] LABELS = {"Папа", "Мама", "Дима", "Пимен"};
+    public static final String[] IDS = {PAPA, MAMA, DIMA};
+    public static final String[] LABELS = {"Папа", "Мама", "Дима"};
 
     private StudyProfile() {}
 
@@ -18,8 +18,10 @@ public final class StudyProfile {
     }
 
     public static String active(Context context) {
-        return normalized(context.getSharedPreferences("ui", Context.MODE_PRIVATE)
+        String selected = normalized(context.getSharedPreferences("ui", Context.MODE_PRIVATE)
                 .getString("activeProfile", PAPA));
+        // Keep legacy Pimen data on disk, but never expose that profile in family builds.
+        return PIMEN.equals(selected) ? PAPA : selected;
     }
 
     public static boolean isPapa(String id) { return PAPA.equals(normalized(id)); }
