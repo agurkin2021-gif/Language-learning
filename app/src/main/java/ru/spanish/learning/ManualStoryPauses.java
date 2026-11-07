@@ -16,23 +16,33 @@ final class ManualStoryPauses {
         int nearest = -1;
         int distance = Integer.MAX_VALUE;
         for (int i = 1; i < source.length(); i++) {
-            if (!Character.isWhitespace(source.charAt(i))
-                    || Character.isWhitespace(source.charAt(i - 1))) continue;
+            if (!isGap(source, i)) continue;
             int next = i;
             while (next < source.length() && Character.isWhitespace(source.charAt(next))) next++;
-            if (next == source.length()) continue;
-            if (!Character.isLetterOrDigit(source.charAt(i - 1))
-                    && !isPunctuation(source.charAt(i - 1))) continue;
-            if (!Character.isLetterOrDigit(source.charAt(next))
-                    && !Character.isLetter(source.charAt(next))) continue;
             int gapDistance = offset < i ? i - offset : offset > next ? offset - next : 0;
             if (gapDistance < distance) { distance = gapDistance; nearest = i; }
         }
         return nearest;
     }
 
+    /** A word boundary may be a space OR immediately after a comma/dash. */
+    static boolean isGap(String source, int gap) {
+        if (source == null || gap < 1 || gap >= source.length()) return false;
+        if (Character.isWhitespace(source.charAt(gap))) {
+            if (Character.isWhitespace(source.charAt(gap - 1))) return false;
+            int next = gap;
+            while (next < source.length() && Character.isWhitespace(source.charAt(next))) next++;
+            if (next >= source.length() || !Character.isLetterOrDigit(source.charAt(next)))
+                return false;
+            return Character.isLetterOrDigit(source.charAt(gap - 1))
+                    || isPunctuation(source.charAt(gap - 1));
+        }
+        return Character.isLetterOrDigit(source.charAt(gap))
+                && isPunctuation(source.charAt(gap - 1));
+    }
+
     private static boolean isPunctuation(char ch) {
-        return ",.;:!?»”'".indexOf(ch) >= 0;
+        return ",.;:!?»”'\\\"-–—−)".indexOf(ch) >= 0;
     }
 
     static void toggle(Map<Integer, List<Integer>> marks, int sentence, int gap) {
@@ -66,7 +76,7 @@ final class ManualStoryPauses {
                 int gap = Integer.parseInt(fields[1]);
                 if (sentence < 0 || sentence >= sentences.size()) continue;
                 String text = sentences.get(sentence);
-                if (gap < 1 || gap >= text.length() || !Character.isWhitespace(text.charAt(gap))) continue;
+                if (!isGap(text, gap)) continue;
                 List<Integer> places = result.computeIfAbsent(sentence, k -> new ArrayList<>());
                 if (!places.contains(gap)) places.add(gap);
             } catch (NumberFormatException ignored) {}
@@ -108,8 +118,7 @@ final class ManualStoryPauses {
         List<Piece> output = new ArrayList<>();
         int previous = 0;
         for (int gap : gaps) {
-            if (gap <= previous || gap >= original.length()
-                    || !Character.isWhitespace(original.charAt(gap))) continue;
+            if (gap <= previous || !isGap(original, gap)) continue;
             addWords(output, original.substring(previous, gap), previous, slowWords);
             output.add(new Piece("", false, gap, true));
             previous = gap;
