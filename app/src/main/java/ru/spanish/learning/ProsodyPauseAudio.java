@@ -27,19 +27,32 @@ final class ProsodyPauseAudio {
                                   int silenceMs) throws IOException {
         if (silenceMs <= 0 || momentsMs == null || momentsMs.isEmpty())
             throw new IOException("No manual pause timing");
-        splice(input, output, "", List.of(), List.of(), silenceMs, momentsMs);
+        splice(input, output, "", List.of(), List.of(), silenceMs, momentsMs, false);
     }
 
     static void insertSilence(File input, File output, String spoken,
                               List<Integer> gaps, List<WordTiming> timing,
                               int silenceMs) throws IOException {
         if (silenceMs <= 0 || gaps.isEmpty()) throw new IOException("No manual pauses");
-        splice(input, output, spoken, gaps, timing, silenceMs, null);
+        splice(input, output, spoken, gaps, timing, silenceMs, null, false);
+    }
+
+    /**
+     * Strict alignment for automatically placed text markers. Only use engine-
+     * reported word frames from the very same TTS PCM request. If the chosen
+     * voice omitted a marker, fail rather than cutting at an estimated point.
+     */
+    static void insertSilenceExact(File input, File output, String spoken,
+                                   List<Integer> gaps, List<WordTiming> timing,
+                                   int silenceMs) throws IOException {
+        if (silenceMs <= 0 || gaps.isEmpty()) throw new IOException("No pause markers");
+        splice(input, output, spoken, gaps, timing, silenceMs, null, true);
     }
 
     private static void splice(File input, File output, String spoken,
                                List<Integer> gaps, List<WordTiming> timing,
-                               int silenceMs, List<Integer> momentsMs) throws IOException {
+                               int silenceMs, List<Integer> momentsMs,
+                               boolean requireWordFrames) throws IOException {
         try (RandomAccessFile wav = new RandomAccessFile(input, "r")) {
             if (wav.length() < 44 || !"RIFF".equals(readAscii(wav))
                     || readInt(wav) < 36 || !"WAVE".equals(readAscii(wav)))
@@ -103,6 +116,9 @@ final class ProsodyPauseAudio {
                 if (next >= spoken.length())
                     throw new IOException("No word after the pause marker");
                 long frame = findExactWordStart(spoken, next, timing, totalFrames, sampleRate);
+                if (frame < 0 && requireWordFrames)
+                    throw new IOException("Selected voice did not provide a word frame at marker "
+                            + gap);
                 if (frame < 0) {
                     // Screenshot regression: some Android voices never call
                     // onRangeStart for synthesizeToFile. Do NOT stop playback.
