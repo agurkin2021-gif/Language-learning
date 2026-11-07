@@ -2969,6 +2969,7 @@ public final class MainActivity extends Activity {
         if (humanVoiceButton != null)
             humanVoiceButton.setText("Источник: " + narrationLabel());
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
+        if (player.preparingTextPauses()) status = "Подготовка точных пауз";
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status
                 + (player.error.isEmpty() ? "" : "\n" + player.error)
                 + (!player.canPlay() ? "\n" + player.voiceDescription : ""));
