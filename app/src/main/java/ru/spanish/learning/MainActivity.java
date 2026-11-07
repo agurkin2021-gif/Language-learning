@@ -195,6 +195,7 @@ public final class MainActivity extends Activity {
         if (next.equals(activeProfile)) return;
         stopAssistantVoice();
         player.pause();
+        player.cancelWholeStoryPreparation();
         cancelCardSpeech();
         remember();
         if (cardDialog != null && cardDialog.isShowing()) cardDialog.dismiss();
@@ -362,15 +363,17 @@ public final class MainActivity extends Activity {
             return;
         }
         player.pause(); remember();
-        if ("player".equals(screen) && !"player".equals(next))
+        if ("player".equals(screen) && !"player".equals(next)) {
+            player.cancelWholeStoryPreparation();
             player.setLearningLanguage(studyLanguage);
+        }
         storyId = -1; screen = next; render();
     }
     private void render() {
         cancelCardSpeech();
         rendering = true; sentence = null; sentenceRu = null; playbackStatus = null;
         cardVoiceStatus = null; imageRepairStatus = null; imageRepairButton = null;
-        toggle = null; repeat = null; humanVoiceButton = null;
+        toggle = null; repeat = null; storyAudioRetry = null; humanVoiceButton = null;
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(pageBg());
         root.setOnApplyWindowInsetsListener((v, insets) -> { v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets; });
         LinearLayout tabs = new LinearLayout(this);
