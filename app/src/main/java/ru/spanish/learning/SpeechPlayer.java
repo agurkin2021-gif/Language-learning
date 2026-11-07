@@ -479,6 +479,127 @@ public final class SpeechPlayer {
         listener.changed();
     }
 
+    private boolean isProsodyId(String id) {
+        return id != null && !prosodyId.isEmpty() && id.equals(prosodyId);
+    }
+
+    private void beginProsodySynthesis(String token, String spoken, List<Integer> gaps) {
+        try {
+            cleanupProsody();
+            prosodyInput = File.createTempFile("prosody-original-", ".wav", prosodyCache);
+            prosodyOutput = File.createTempFile("prosody-paused-", ".wav", prosodyCache);
+            prosodySpoken = spoken;
+            prosodyGaps = List.copyOf(gaps);
+            prosodyTiming.clear();
+            prosodyId = token + ":prosody";
+            tts.setSpeechRate(speed);
+            if (tts.synthesizeToFile(spoken, new Bundle(), prosodyInput, prosodyId)
+                    == TextToSpeech.ERROR) {
+                cleanupProsody();
+                error = "Голос не поддерживает цельную озвучку с ручными паузами.";
+                failed(token);
+            }
+        } catch (IOException | RuntimeException failure) {
+            cleanupProsody();
+            error = "Не удалось подготовить цельную озвучку.";
+            failed(token);
+        }
+    }
+
+    private void finishProsodySynthesis(String id) {
+        if (!isProsodyId(id) || closed
+                || state.phase != PlaybackState.Phase.SPEAKING) return;
+        final String token = activeToken;
+        final File input = prosodyInput;
+        final File output = prosodyOutput;
+        final String text = prosodySpoken;
+        final List<Integer> gaps = prosodyGaps;
+        final int duration = manualPauseMs;
+        final List<ProsodyPauseAudio.WordTiming> timings;
+        synchronized (prosodyTiming) { timings = List.copyOf(prosodyTiming); }
+        prosodyFiles.execute(() -> {
+            String problem = null;
+            try {
+                ProsodyPauseAudio.insertSilence(input, output, text, gaps, timings, duration);
+            } catch (Exception failure) {
+                problem = failure.getMessage();
+            }
+            final String failureReason = problem;
+            handler.post(() -> {
+                if (!isProsodyId(id) || closed
+                        || state.phase != PlaybackState.Phase.SPEAKING
+                        || !token.equals(activeToken)) {
+                    output.delete();
+                    return;
+                }
+                if (failureReason != null) {
+                    cleanupProsody();
+                    error = "Не удалось вставить паузу без изменения интонации: " + failureReason;
+                    failed(token);
+                } else {
+                    // File plays at 1x: main rate was already applied by TTS.
+                    playProsodyFile(token, output);
+                }
+            });
+        });
+    }
+
+    private void playProsodyFile(String token, File file) {
+        releaseHumanPlayer();
+        MediaPlayer mp = new MediaPlayer();
+        humanPlayer = mp;
+        prosodyPlayback = true;
+        try {
+            mp.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            mp.setDataSource(file.getAbsolutePath());
+            mp.setOnPreparedListener(prepared -> {
+                if (closed || prepared != humanPlayer || !token.equals(activeToken)
+                        || state.phase != PlaybackState.Phase.SPEAKING) return;
+                try {
+                    prepared.start();
+                } catch (RuntimeException failure) {
+                    releaseHumanPlayer();
+                    cleanupProsody();
+                    failed(token);
+                }
+                listener.changed();
+            });
+            mp.setOnCompletionListener(completed -> {
+                if (completed != humanPlayer || !token.equals(activeToken)) return;
+                releaseHumanPlayer();
+                cleanupProsody();
+                done(token);
+            });
+            mp.setOnErrorListener((bad, what, extra) -> {
+                if (bad == humanPlayer) {
+                    releaseHumanPlayer();
+                    cleanupProsody();
+                    failed(token);
+                }
+                return true;
+            });
+            mp.prepareAsync();
+        } catch (Exception failure) {
+            releaseHumanPlayer();
+            cleanupProsody();
+            failed(token);
+        }
+    }
+
+    private void cleanupProsody() {
+        prosodyId = "";
+        prosodySpoken = "";
+        prosodyGaps = List.of();
+        prosodyTiming.clear();
+        prosodyPlayback = false;
+        if (prosodyInput != null) prosodyInput.delete();
+        if (prosodyOutput != null) prosodyOutput.delete();
+        prosodyInput = null;
+        prosodyOutput = null;
+    }
+
     /**
      * Queue the COMPLETE sentence before playback begins. The old implementation
      * waited for each onDone callback and issued QUEUE_FLUSH per word; on some
