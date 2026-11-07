@@ -42,7 +42,7 @@ final class ManualStoryPauses {
     }
 
     private static boolean isPunctuation(char ch) {
-        return ",.;:!?»”'\\\"-–—−)".indexOf(ch) >= 0;
+        return ",.;:!?»”'-–—−)".indexOf(ch) >= 0;
     }
 
     static void toggle(Map<Integer, List<Integer>> marks, int sentence, int gap) {
