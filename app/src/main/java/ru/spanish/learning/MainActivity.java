@@ -2232,7 +2232,7 @@ public final class MainActivity extends Activity {
 
         text(selected.title(), 25);
         if (ArticleSlowSpeech.appliesTo(selected.title())) {
-            TextView articleNotice = text("Артикли: медленнее · остальной текст: обычная скорость", 14);
+            TextView articleNotice = text("Артикли и короткие слова (1–3 буквы): медленнее. Остальные слова: обычная скорость.", 14);
             articleNotice.setTextColor(secondaryText());
         }
         storyOriginalSentences = Sentences.split(selected.body());
