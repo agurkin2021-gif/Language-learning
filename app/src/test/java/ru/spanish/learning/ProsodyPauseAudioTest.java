@@ -67,7 +67,7 @@ public final class ProsodyPauseAudioTest {
             for(int i=0;i<40;i++) assertEquals(original[44+i],marked[44+i]);
             for(int i=40;i<240;i++) assertEquals(0,marked[44+i]);
             for(int i=40;i<140;i++) assertEquals(original[44+i],marked[44+i+200]);
-            for(int i=240;i<440;i++) assertEquals(0,marked[44+i]);
+            for(int i=340;i<540;i++) assertEquals(0,marked[44+i]);
             for(int i=140;i<200;i++) assertEquals(original[44+i],marked[44+i+400]);
         } finally { input.delete(); output.delete(); }
     }
