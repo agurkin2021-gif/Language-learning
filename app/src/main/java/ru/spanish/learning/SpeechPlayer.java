@@ -65,6 +65,7 @@ public final class SpeechPlayer {
     private final File sentenceAudioCache;
     private final ExecutorService prosodyFiles = Executors.newSingleThreadExecutor();
     private volatile String prosodyId = "";
+    private volatile TimedStoryCapture prosodyCapture;
     private String prosodySpoken = "";
     private List<Integer> prosodyGaps = List.of();
     private final List<ProsodyPauseAudio.WordTiming> prosodyTiming =
@@ -98,9 +99,20 @@ public final class SpeechPlayer {
             chooseVoice();
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String id) {}
+                @Override public void onBeginSynthesis(String id, int sampleRate,
+                                                        int audioFormat, int channelCount) {
+                    TimedStoryCapture capture = prosodyCapture;
+                    if (capture != null && isProsodyId(id))
+                        capture.begin(id, sampleRate, audioFormat, channelCount);
+                }
+                @Override public void onAudioAvailable(String id, byte[] audio) {
+                    TimedStoryCapture capture = prosodyCapture;
+                    if (capture != null && isProsodyId(id)) capture.append(id, audio);
+                }
                 @Override public void onRangeStart(String id, int start, int end, int frame) {
                     if (isProsodyId(id)) {
-                        prosodyTiming.add(new ProsodyPauseAudio.WordTiming(start, end, frame));
+                        TimedStoryCapture capture = prosodyCapture;
+                        if (capture != null) capture.range(id, start, end, frame);
                         return;
                     }
                     handler.post(() -> {
@@ -556,15 +568,19 @@ public final class SpeechPlayer {
                 finishProsodySynthesis(prosodyId);
                 return;
             }
-            // A newly synthesized waveform must never inherit old frame coordinates.
+            // synthesizeToFile does not deliver onRangeStart for the AOSP
+            // file-synthesis route. Collect both PCM and timing from one muted
+            // speak() request, then play that exact WAV with inserted silence.
             pausePrefs.edit().remove(rangeCacheKey(prosodyStableInput)).apply();
             if (prosodyStableInput.exists()) prosodyStableInput.delete();
-            prosodyInput = File.createTempFile("prosody-original-", ".wav", prosodyCache);
+            prosodyCapture = new TimedStoryCapture(prosodyId);
             tts.setSpeechRate(speed);
-            if (tts.synthesizeToFile(spoken, new Bundle(), prosodyInput, prosodyId)
+            Bundle muted = new Bundle();
+            muted.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0f);
+            if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, muted, prosodyId)
                     == TextToSpeech.ERROR) {
                 cleanupProsody();
-                error = "Голос не поддерживает цельную озвучку с ручными паузами.";
+                error = "Голос не поддерживает получение аудио с координатами слов.";
                 failed(token);
             }
         } catch (IOException | RuntimeException failure) {
@@ -577,29 +593,47 @@ public final class SpeechPlayer {
     private void finishProsodySynthesis(String id) {
         if (!isProsodyId(id) || closed
                 || state.phase != PlaybackState.Phase.SPEAKING) return;
-        boolean freshlySynthesized = prosodyInput != null && prosodyStableInput != null
-                && !prosodyInput.equals(prosodyStableInput);
-        if (freshlySynthesized) {
+
+        // The muted speak request yields both PCM and onRangeStart frames.
+        // Capture is cleared only after onDone, never when individual chunks arrive.
+        TimedStoryCapture capture = prosodyCapture;
+        if (capture != null) {
+            prosodyCapture = null;
             try {
-                Files.move(prosodyInput.toPath(), prosodyStableInput.toPath(),
+                TimedStoryCapture.Snapshot snapshot = capture.snapshot();
+                if (prosodyStableInput == null)
+                    throw new IOException("No persistent original WAV path");
+                File pending = File.createTempFile("speech-captured-", ".wav", prosodyCache);
+                prosodyInput = pending;
+                snapshot.save(pending);
+                Files.move(pending.toPath(), prosodyStableInput.toPath(),
                         StandardCopyOption.REPLACE_EXISTING);
                 prosodyInput = prosodyStableInput;
-            } catch (IOException failure) {
+                prosodyTiming.clear();
+                prosodyTiming.addAll(snapshot.ranges());
+                // Both audio and word frames are from the SAME synthesis request.
+                pausePrefs.edit().putString(rangeCacheKey(prosodyStableInput),
+                        ProsodyTimingCache.encode(snapshot.ranges())).apply();
+            } catch (IOException | RuntimeException failure) {
+                // Do not silently resume at a guessed or wrong word boundary.
+                // Fall back to natural continuous speech when audio capture is
+                // unavailable on a particular Android voice.
+                String original = prosodySpoken;
                 String token = activeToken;
                 cleanupProsody();
-                error = "Не удалось сохранить цельную озвучку.";
-                failed(token);
+                error = "Точный тайминг слов недоступен для этого голоса: "
+                        + failure.getMessage();
+                tts.setSpeechRate(speed);
+                if (tts.speak(original, TextToSpeech.QUEUE_FLUSH, null, token)
+                        == TextToSpeech.ERROR) failed(token);
+                listener.changed();
                 return;
             }
         }
+
         final List<ProsodyPauseAudio.WordTiming> wordFrames;
         synchronized (prosodyTiming) {
             wordFrames = List.copyOf(prosodyTiming);
-        }
-        if (freshlySynthesized) {
-            // Persist frame positions from onRangeStart with the exact source WAV.
-            pausePrefs.edit().putString(rangeCacheKey(prosodyStableInput),
-                    ProsodyTimingCache.encode(wordFrames)).apply();
         }
         final String token = activeToken;
         final File input = prosodyInput;
@@ -607,25 +641,24 @@ public final class SpeechPlayer {
         final String text = prosodySpoken;
         final List<Integer> gaps = prosodyGaps;
         final int duration = manualPauseMs;
-        // One text gesture defines each pause. No tap while audio is playing.
-        // Prefer TTS word frames; the existing acoustic aligner is a fallback
-        // when a particular Android voice omits those events.
+        // Strict: each visible marker must match an actual onRangeStart frame.
+        // Never use text-proportional or acoustic-gap estimates.
         prosodyFiles.execute(() -> {
-            String failureReason = null;
+            String problem = null;
             try {
-                ProsodyPauseAudio.insertSilence(input, output, text, gaps, wordFrames, duration);
+                ProsodyPauseAudio.insertSilenceExact(
+                        input, output, text, gaps, wordFrames, duration);
             } catch (Exception failure) {
-                failureReason = failure.getMessage();
+                problem = failure.getMessage();
             }
-            final String problem = failureReason;
+            final String failureReason = problem;
             handler.post(() -> {
                 if (!isProsodyId(id) || closed
                         || state.phase != PlaybackState.Phase.SPEAKING
                         || !token.equals(activeToken)) return;
-                if (problem != null) {
-                    // Never invent a cut at the beginning or end of the sentence.
-                    // Keep the original audio usable and report that alignment failed.
-                    error = "Не удалось сопоставить паузу с границей слов: " + problem;
+                if (failureReason != null) {
+                    error = "Этот голос не дал точной границы слова. "
+                            + "Пауза не вставлена: " + failureReason;
                     playProsodyFile(token, input);
                 } else {
                     playProsodyFile(token, output);
@@ -680,6 +713,7 @@ public final class SpeechPlayer {
 
     private void cleanupProsody() {
         prosodyId = "";
+        prosodyCapture = null;
         prosodySpoken = "";
         prosodyGaps = List.of();
         prosodyTiming.clear();
