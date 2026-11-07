@@ -2468,19 +2468,19 @@ public final class MainActivity extends Activity {
         toggle.setTextSize(20);
         toggle.setMinHeight(dp(70));
         toggle.setMinimumHeight(dp(70));
-        storyAudioRetry = rowButton("Повторить подготовку всего рассказа",
-                player::prepareWholeStory);
-        storyAudioRetry.setTag("story-preparation-retry");
-        ui.style(storyAudioRetry, UiStyle.Tone.OUTLINE);
-        storyAudioRetry.setVisibility(player.storyAudioFailed() ? View.VISIBLE : View.GONE);
-        content.addView(storyAudioRetry, spaced(4));
-
         LinearLayout readingPanel = new LinearLayout(this);
         readingPanel.setOrientation(LinearLayout.VERTICAL);
         readingPanel.setPadding(dp(18), dp(16), dp(18), dp(16));
         readingPanel.setBackground(ui.cardSurface());
         readingPanel.setElevation(dp(4));
         content.addView(readingPanel, spaced(6));
+
+        storyAudioRetry = rowButton("Повторить подготовку всего рассказа",
+                player::prepareWholeStory);
+        storyAudioRetry.setTag("story-preparation-retry");
+        ui.style(storyAudioRetry, UiStyle.Tone.OUTLINE);
+        storyAudioRetry.setVisibility(player.storyAudioFailed() ? View.VISIBLE : View.GONE);
+        content.addView(storyAudioRetry, spaced(4));
 
         sentence = textInto(readingPanel, currentOriginalSentence(), 26);
         sentence.setText(markedSentenceText(currentOriginalSentence(), player.state.index));
