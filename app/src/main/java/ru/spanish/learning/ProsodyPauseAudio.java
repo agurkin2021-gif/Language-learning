@@ -55,7 +55,10 @@ final class ProsodyPauseAudio {
             if (dataSize % frameBytes != 0) throw new IOException("Misaligned PCM data");
             long totalFrames = dataSize / frameBytes;
             List<Cut> cuts = new ArrayList<>();
+            List<Long> acousticFallback = null;
+            int gapIndex = -1;
             for (int gap : gaps) {
+                gapIndex++;
                 if (gap < 1 || gap >= spoken.length()) continue;
                 int next = gap;
                 while (next < spoken.length() && Character.isWhitespace(spoken.charAt(next))) next++;
@@ -69,6 +72,17 @@ final class ProsodyPauseAudio {
                 if (next >= spoken.length())
                     throw new IOException("No word after the pause marker");
                 long frame = findExactWordStart(spoken, next, timing, totalFrames, sampleRate);
+                if (frame < 0) {
+                    // Screenshot regression: some Android voices never call
+                    // onRangeStart for synthesizeToFile. Do NOT stop playback.
+                    // Find a low-energy internal word transition in the same
+                    // uninterrupted speech recording, never at a block edge.
+                    if (acousticFallback == null)
+                        acousticFallback = ProsodyGapAligner.estimate(
+                                wav, dataPos, channels, bits, sampleRate,
+                                totalFrames, spoken, gaps);
+                    frame = acousticFallback.get(gapIndex);
+                }
                 cuts.add(new Cut(frame, silenceMs));
             }
             if (cuts.isEmpty()) throw new IOException("No valid pause positions");
@@ -135,8 +149,8 @@ final class ProsodyPauseAudio {
                 throw new IOException("Conflicting TTS word timestamps");
             result = frame;
         }
-        if (result == -1)
-            throw new IOException("Голос Android не передал точное время слова после метки ⏸");
+        // Missing/inaccurate word events are normal on some Android TTS
+        // engines. Return a sentinel for acoustic alignment, not an error.
         return result;
     }
 
