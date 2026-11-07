@@ -22,13 +22,26 @@ public final class SpokenGapMapperTest {
         assertTrue(positions.get(0) > chosen);
     }
 
-    @Test public void rejectsGapsWhoseNormalizationRemovesTheBoundary() {
+    @Test public void mapsPunctuationAndRewrittenWordRangesWithoutGuesswork() {
+        String punctuation = "Hola,amigo";
+        int gap = punctuation.indexOf("amigo");
+        assertEquals(gap, ManualStoryPauses.nearestGap(punctuation, gap));
+        assertEquals(List.of(gap), SpokenGapMapper.map(
+                punctuation, punctuation, List.of(gap), "es"));
+
         String original = "once - doce";
         String speech = RioplatensePronunciation.forSpeech(original, "es");
         assertEquals("once doce", speech);
+        assertEquals(List.of(4), SpokenGapMapper.map(
+                original, speech, List.of(original.indexOf(" doce")), "es"));
+    }
+
+    @Test public void rejectsCrossTokenBibleReferenceInsteadOfMovingPause() {
+        String original = "Juan 11: 26 y siguió.";
+        String speech = RioplatensePronunciation.forSpeech(original, "es");
         try {
-            SpokenGapMapper.map(original, speech, List.of(original.indexOf(" doce")), "es");
-            fail("Removed punctuation cannot silently shift a requested pause");
+            SpokenGapMapper.map(original, speech, List.of(original.indexOf(" 26")), "es");
+            fail("Internal scripture digits are one spoken reference, not two words");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("normalization"));
         }
