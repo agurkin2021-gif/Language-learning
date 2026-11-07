@@ -49,6 +49,8 @@ public final class SpeechPlayer {
     private String articlePartId = "";
     public boolean sentenceMode = true;
     public float speed = 0.85f;
+    /** Independent speed for short words in the dedicated article-training story. */
+    public float shortWordSpeed = 0.45f;
     public int pauseMs = 1500;
     public String voiceDescription = "Подготовка голоса…";
     public String error = "";
@@ -423,7 +425,7 @@ public final class SpeechPlayer {
         String spoken = RioplatensePronunciation.forSpeech(original, learningLanguage);
         utteranceBaseOffset = articleFullOffset + part.start();
         spokenTextChangesOffsets = !spoken.equals(original);
-        tts.setSpeechRate(part.slow() ? Math.max(0.3f, speed * 0.55f) : speed);
+        tts.setSpeechRate(part.slow() ? shortWordSpeed : speed);
         articlePartId = token + ":article:" + articlePartIndex;
         if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, articlePartId)
                 == TextToSpeech.ERROR) {

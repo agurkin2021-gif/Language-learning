@@ -131,7 +131,9 @@ public final class MainActivity extends Activity {
         assistant = new ChatGptAssistant(this);
         player = new SpeechPlayer(this, this::updatePlayer);
         player.setLearningLanguage(studyLanguage);
-        player.speed = prefs.getFloat(prefKey("speed"), .85f); player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
+        player.speed = prefs.getFloat(prefKey("speed"), .85f);
+        player.shortWordSpeed = prefs.getFloat(prefKey("shortWordSpeed"), .45f);
+        player.pauseMs = prefs.getInt(prefKey("pause"), 1500); player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         screen = prefs.getString(prefKey("screen"), "cards");
         kind = prefs.getInt(prefKey("kind"), 0);
         category = prefs.getInt(prefKey("category"), 0);
@@ -196,6 +198,7 @@ public final class MainActivity extends Activity {
         store = studyingEnglish() ? englishStore : spanishStore;
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f);
+        player.shortWordSpeed = prefs.getFloat(prefKey("shortWordSpeed"), .45f);
         player.pauseMs = prefs.getInt(prefKey("pause"), 1500);
         player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         kind = prefs.getInt(prefKey("kind"), 0);
@@ -241,6 +244,7 @@ public final class MainActivity extends Activity {
         store = studyingEnglish() ? englishStore : spanishStore;
         player.setLearningLanguage(studyLanguage);
         player.speed = prefs.getFloat(prefKey("speed"), .85f);
+        player.shortWordSpeed = prefs.getFloat(prefKey("shortWordSpeed"), .45f);
         player.pauseMs = prefs.getInt(prefKey("pause"), 1500);
         player.sentenceMode = prefs.getBoolean(prefKey("sentenceMode"), true);
         kind = prefs.getInt(prefKey("kind"), 0);
@@ -334,7 +338,9 @@ public final class MainActivity extends Activity {
                 .remove(prefKey("archive")).putInt(prefKey("category"), category)
                 .putInt(prefKey("reviewIndex"), reviewIndex)
                 .putLong(prefKey("reviewStep"), reviewStep)
-                .putFloat(prefKey("speed"), player.speed).putInt(prefKey("pause"), player.pauseMs)
+                .putFloat(prefKey("speed"), player.speed)
+                .putFloat(prefKey("shortWordSpeed"), player.shortWordSpeed)
+                .putInt(prefKey("pause"), player.pauseMs)
                 .putBoolean(prefKey("sentenceMode"), player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
@@ -477,6 +483,25 @@ public final class MainActivity extends Activity {
                             updatePlayer();
                         }).show());
         box.addView(speed, spaced(10));
+
+        // Separate absolute TTS rate: only short words in the "artículos lentos" story.
+        Button shortWordSpeed = rowButton(
+                "Скорость артиклей и коротких слов: " + player.shortWordSpeed + "×", null);
+        shortWordSpeed.setTag("short-word-speed");
+        shortWordSpeed.setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Скорость артиклей и коротких слов (1–3 буквы)")
+                        .setItems(new String[]{"0.3×", "0.35×", "0.4×", "0.45×", "0.5×",
+                                "0.55×", "0.6×", "0.7×", "0.8×", "1.0×"}, (d, w) -> {
+                            player.pause();
+                            player.shortWordSpeed = new float[]{.3f, .35f, .4f, .45f, .5f,
+                                    .55f, .6f, .7f, .8f, 1f}[w];
+                            shortWordSpeed.setText("Скорость артиклей и коротких слов: "
+                                    + player.shortWordSpeed + "×");
+                            remember();
+                            updatePlayer();
+                        }).show());
+        box.addView(shortWordSpeed, spaced(10));
 
         Button pause = rowButton("Пауза между предложениями: " + player.pauseMs / 1000f + " с", () ->
                 new AlertDialog.Builder(this).setTitle("Пауза в непрерывном режиме")
