@@ -60,21 +60,22 @@ final class ProsodyPauseAudio {
                 int next = gap;
                 while (next < spoken.length() && Character.isWhitespace(spoken.charAt(next))) next++;
                 if (next >= spoken.length()) continue;
-                long frame = -1;
-                for (WordTiming t : timing) {
-                    if (t.start() >= next && (frame == -1 || t.frame() < frame))
-                        frame = Math.max(0, t.frame());
-                }
-                if (frame < 0) {
-                    // Some installed voices do not emit word-range events.
-                    // Keep the utterance intact and estimate the word boundary.
-                    frame = Math.round(totalFrames * (double) next / spoken.length());
-                }
-                frame = Math.max(0, Math.min(totalFrames, frame));
+                // TTS may report just one range for an entire sentence, return
+                // -1/zero for every frame, or use a timebase incompatible with
+                // this WAV file. Never clamp those values to the start/end of
+                // the block: that moves the user's pause to the wrong place.
+                while (next < spoken.length()
+                        && !Character.isLetterOrDigit(spoken.charAt(next))) next++;
+                if (next >= spoken.length())
+                    throw new IOException("No word after the pause marker");
+                long frame = findExactWordStart(spoken, next, timing, totalFrames, sampleRate);
                 cuts.add(new Cut(frame, silenceMs));
             }
             if (cuts.isEmpty()) throw new IOException("No valid pause positions");
             cuts.sort(Comparator.comparingLong(Cut::frame));
+            for (int i = 1; i < cuts.size(); i++)
+                if (cuts.get(i).frame() <= cuts.get(i-1).frame())
+                    throw new IOException("TTS word timestamps are duplicated or unordered");
             long silenceFrames = (long) sampleRate * silenceMs / 1000;
             long addedBytes = cuts.size() * silenceFrames * frameBytes;
             if (dataSize + addedBytes > Integer.MAX_VALUE - 44)
@@ -108,6 +109,34 @@ final class ProsodyPauseAudio {
                 writeInt(dest, (int) (dataSize + addedBytes));
             }
         }
+    }
+
+    /**
+     * Return the exact start of the FIRST spoken word after the visible marker.
+     * The only reliable alignment is onRangeStart with a matching UTF-16 word
+     * offset AND a valid PCM frame. Character/time proportion is not alignment.
+     */
+    private static long findExactWordStart(String spoken, int nextWord,
+                                           List<WordTiming> timing,
+                                           long totalFrames, int sampleRate) throws IOException {
+        long result = -1;
+        for (WordTiming t : timing) {
+            if (t.start() < 0 || t.end() <= t.start() || t.end() > spoken.length())
+                continue;
+            if (t.start() != nextWord) continue;
+            long frame = t.frame();
+            // Zero/-1, an end-of-file position and a frame from a different
+            // clock are not usable boundaries. 20 ms also avoids edge clicks.
+            long edge = Math.max(1, sampleRate / 50);
+            if (frame <= edge || frame >= totalFrames - edge)
+                continue;
+            if (result >= 0 && result != frame)
+                throw new IOException("Conflicting TTS word timestamps");
+            result = frame;
+        }
+        if (result == -1)
+            throw new IOException("Голос Android не передал точное время слова после метки ⏸");
+        return result;
     }
 
     private static void copy(RandomAccessFile from, RandomAccessFile to, long bytes)
