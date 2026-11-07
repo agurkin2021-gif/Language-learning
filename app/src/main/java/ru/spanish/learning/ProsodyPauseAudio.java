@@ -138,27 +138,39 @@ final class ProsodyPauseAudio {
             for (int i = 1; i < cuts.size(); i++)
                 if (cuts.get(i).frame() <= cuts.get(i-1).frame())
                     throw new IOException("TTS word timestamps are duplicated or unordered");
+
+            // Some engines put a conspicuous block of DIGITAL silence before
+            // the first spoken word. This is not a user marker. Remove only
+            // verified silent PCM frames; keep 10 ms of pre-roll, and translate
+            // every engine word coordinate into the shortened WAV timeline.
+            long leadingFrames = silentLeadingFrames(
+                    wav, dataPos, totalFrames, sampleRate, frameBytes, bits);
+            for (Cut cut : cuts) {
+                if (cut.frame() <= leadingFrames)
+                    throw new IOException("Pause frame falls inside leading silence");
+            }
+            long audibleBytes = dataSize - leadingFrames * frameBytes;
             long silenceFrames = (long) sampleRate * silenceMs / 1000;
             long addedBytes = cuts.size() * silenceFrames * frameBytes;
-            if (dataSize + addedBytes > Integer.MAX_VALUE - 44)
+            if (audibleBytes + addedBytes > Integer.MAX_VALUE - 44)
                 throw new IOException("Audio too long");
             try (RandomAccessFile dest = new RandomAccessFile(output, "rw")) {
                 dest.setLength(0);
                 dest.write(new byte[44]);
-                wav.seek(dataPos);
+                wav.seek(dataPos + leadingFrames * frameBytes);
                 long position = 0;
                 for (Cut cut : cuts) {
-                    long upto = cut.frame() * frameBytes;
+                    long upto = (cut.frame() - leadingFrames) * frameBytes;
                     if (upto > position) {
                         copy(wav, dest, upto - position);
                         position = upto;
                     }
                     writeSilence(dest, silenceFrames * frameBytes, bits == 8 ? 0x80 : 0);
                 }
-                if (position < dataSize) copy(wav, dest, dataSize - position);
+                if (position < audibleBytes) copy(wav, dest, audibleBytes - position);
                 dest.seek(0);
                 dest.writeBytes("RIFF");
-                writeInt(dest, (int) (36 + dataSize + addedBytes));
+                writeInt(dest, (int) (36 + audibleBytes + addedBytes));
                 dest.writeBytes("WAVEfmt ");
                 writeInt(dest, 16);
                 writeShort(dest, 1);
@@ -168,7 +180,7 @@ final class ProsodyPauseAudio {
                 writeShort(dest, frameBytes);
                 writeShort(dest, bits);
                 dest.writeBytes("data");
-                writeInt(dest, (int) (dataSize + addedBytes));
+                writeInt(dest, (int) (audibleBytes + addedBytes));
             }
         }
     }
@@ -200,6 +212,38 @@ final class ProsodyPauseAudio {
         // Missing/inaccurate word events are normal on some Android TTS
         // engines. Return a sentinel for acoustic alignment, not an error.
         return result;
+    }
+
+    /**
+     * Drop only a long run of PCM frames that contain the exact digital zero
+     * value (unsigned PCM8 uses 0x80). Speech consonants and normal low-level
+     * breathing/noise are retained. Never trim a wholly silent WAV.
+     */
+    private static long silentLeadingFrames(RandomAccessFile wav, long start,
+                                            long totalFrames, int sampleRate,
+                                            int frameBytes, int bits) throws IOException {
+        long scanFrames = Math.min(totalFrames, sampleRate * 2L);
+        if (scanFrames <= sampleRate / 20) return 0;
+        wav.seek(start);
+        byte[] frame = new byte[frameBytes];
+        int silence = bits == 8 ? 0x80 : 0;
+        long firstSoundFrame = -1;
+        for (long index = 0; index < scanFrames; index++) {
+            wav.readFully(frame);
+            boolean allSilent = true;
+            for (byte sample : frame) {
+                if ((sample & 255) != silence) {
+                    allSilent = false;
+                    break;
+                }
+            }
+            if (!allSilent) {
+                firstSoundFrame = index;
+                break;
+            }
+        }
+        if (firstSoundFrame < sampleRate / 20) return 0;
+        return Math.max(0, firstSoundFrame - sampleRate / 100);
     }
 
     private static void copy(RandomAccessFile from, RandomAccessFile to, long bytes)
