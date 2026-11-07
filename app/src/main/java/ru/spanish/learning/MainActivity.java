@@ -434,7 +434,7 @@ public final class MainActivity extends Activity {
         if (selected > 0f) prefs.edit().putFloat("lastShortWordSpeed", selected).apply();
         if ("player".equals(screen) && storyId >= 0) {
             boolean enabled = ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian, selected);
-            if (enabled) {
+            if (enabled || player.manualPausesActive()) {
                 player.useHumanVoice(false);
                 player.useGoogleVoice(false);
             } else if (!storyReadRussian) {
