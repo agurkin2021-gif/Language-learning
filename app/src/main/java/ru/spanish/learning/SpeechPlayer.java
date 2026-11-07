@@ -65,6 +65,12 @@ public final class SpeechPlayer {
             Collections.synchronizedList(new ArrayList<>());
     private File prosodyInput, prosodyOutput;
     private boolean prosodyPlayback;
+    private final SharedPreferences manualTimePrefs;
+    private String manualStoryKey = "";
+    private boolean manualCalibrating;
+    private List<Integer> calibrationGaps = List.of();
+    private int calibrationNext;
+    private boolean calibrationSilentHold;
     public boolean sentenceMode = true;
     public float speed = 0.85f;
     /** Separate rate for the six requested words in all Spanish stories. */
@@ -75,6 +81,7 @@ public final class SpeechPlayer {
     public SpeechPlayer(Context context, Listener listener) {
         this.listener = listener;
         prosodyCache = context.getCacheDir();
+        manualTimePrefs = context.getSharedPreferences("ui", Context.MODE_PRIVATE);
         voicePrefs = context.getSharedPreferences("tts_voice_settings", Context.MODE_PRIVATE);
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
@@ -373,6 +380,102 @@ public final class SpeechPlayer {
                 && !"ru".equals(learningLanguage);
     }
 
+    public void setManualPauseStoryKey(String storyKey) {
+        manualStoryKey = storyKey == null ? "" : storyKey;
+    }
+
+    private String calibrationKey(int sentenceIndex) {
+        return manualStoryKey + ":precise-timing:" + sentenceIndex
+                + ":speed:" + Float.floatToIntBits(speed)
+                + ":voice:" + selectedVoiceNameForExport();
+    }
+
+    public boolean hasManualPauseHere() {
+        return manualPauseMs > 0
+                && !manualPositions.getOrDefault(state.index, List.of()).isEmpty()
+                && !"ru".equals(learningLanguage);
+    }
+
+    public boolean canMarkPauseNow() {
+        if (!manualCalibrating || !prosodyPlayback || calibrationSilentHold
+                || humanPlayer == null || calibrationNext >= calibrationGaps.size()
+                || state.phase != PlaybackState.Phase.SPEAKING) return false;
+        try { return humanPlayer.isPlaying(); }
+        catch (RuntimeException ignored) { return false; }
+    }
+
+    public String calibrationButtonLabel() {
+        int count = manualPositions.getOrDefault(state.index, List.of()).size();
+        if (count == 0) return "⏸ Ручные паузы";
+        if (manualCalibrating && calibrationNext < calibrationGaps.size())
+            return "⏸ Зафиксировать момент паузы " + (calibrationNext + 1)
+                    + " из " + calibrationGaps.size();
+        return "⏸ Тайминги пауз сохранены (" + count + ")";
+    }
+
+    /**
+     * Real manual Pause/Continue on a continuous WAV. One tap records the
+     * exact playback timestamp and pauses the MediaPlayer, not the TTS.
+     */
+    public boolean markPauseNow() {
+        if (!canMarkPauseNow()) return false;
+        final MediaPlayer mp = humanPlayer;
+        final String token = activeToken;
+        try {
+            int ms = mp.getCurrentPosition();
+            int duration = mp.getDuration();
+            if (ms < 1 || ms >= duration - 10) return false;
+            int marker = calibrationGaps.get(calibrationNext);
+            String key = calibrationKey(state.index);
+            Map<Integer,Integer> timings = ManualPauseTimings.decode(
+                    manualTimePrefs.getString(key, ""), calibrationGaps);
+            if (calibrationNext > 0) {
+                int previousMs = timings.getOrDefault(calibrationGaps.get(calibrationNext - 1), 0);
+                if (ms <= previousMs) {
+                    error = "Тайминг должен быть позже предыдущей метки.";
+                    listener.changed();
+                    return false;
+                }
+            }
+            mp.pause();
+            calibrationSilentHold = true;
+            timings.put(marker, ms);
+            manualTimePrefs.edit().putString(key, ManualPauseTimings.encode(timings)).apply();
+            calibrationNext++;
+            error = "";
+            listener.changed();
+            handler.postDelayed(() -> {
+                if (closed || mp != humanPlayer || !token.equals(activeToken)
+                        || state.phase != PlaybackState.Phase.SPEAKING) return;
+                calibrationSilentHold = false;
+                try { mp.start(); }
+                catch (RuntimeException failure) {
+                    releaseHumanPlayer();
+                    cleanupProsody();
+                    failed(token);
+                }
+                listener.changed();
+            }, Math.max(0, manualPauseMs));
+            return true;
+        } catch (RuntimeException failure) {
+            error = "Не удалось зафиксировать время нажатия.";
+            listener.changed();
+            return false;
+        }
+    }
+
+    /** A removed/new marker must not inherit timing from an old word. */
+    public void forgetManualPauseTiming(int sentenceIndex) {
+        if (manualStoryKey.isEmpty()) return;
+        manualTimePrefs.edit().remove(calibrationKey(sentenceIndex)).apply();
+    }
+
+    public void resetManualPauseTimingHere() {
+        pause();
+        forgetManualPauseTiming(state.index);
+        listener.changed();
+    }
+
     public void load(String body, int position) {
         pause();
         lastBackIndex = -1;
@@ -436,6 +539,9 @@ public final class SpeechPlayer {
         }
         String full = current();
         if (resumeOffset < 0 || resumeOffset >= full.length()) resumeOffset = 0;
+        // Manual timing is calibrated against the whole original sentence WAV.
+        // Never reuse a partial TTS resume offset for this audio timeline.
+        if (hasManualPauseHere()) resumeOffset = 0;
         utteranceBaseOffset = resumeOffset;
         activeToken = token;
         String originalSpeech = full.substring(utteranceBaseOffset);
@@ -529,40 +635,56 @@ public final class SpeechPlayer {
         final String text = prosodySpoken;
         final List<Integer> gaps = prosodyGaps;
         final int duration = manualPauseMs;
-        final List<ProsodyPauseAudio.WordTiming> timings;
-        synchronized (prosodyTiming) { timings = List.copyOf(prosodyTiming); }
+        // Require manually CAPTURED playback times for every marked gap.
+        // Do not use text length, waveform energy or unreliable TTS ranges.
+        final List<Integer> originalMarkers =
+                manualPositions.getOrDefault(state.index, List.of());
+        final String key = calibrationKey(state.index);
+        Map<Integer,Integer> saved = ManualPauseTimings.decode(
+                manualTimePrefs.getString(key, ""), originalMarkers);
+        final List<Integer> exactTimes = ManualPauseTimings.orderedTimes(saved, originalMarkers);
+        final boolean calibrated = !exactTimes.isEmpty()
+                && exactTimes.size() == gaps.size();
+        if (!calibrated) {
+            // Play the unmodified, continuous sentence; the on-screen
+            // calibration button records precise MediaPlayer timestamps.
+            playProsodyFile(token, input, true);
+            return;
+        }
         prosodyFiles.execute(() -> {
-            String problem = null;
+            String failureReason = null;
             try {
-                ProsodyPauseAudio.insertSilence(input, output, text, gaps, timings, duration);
+                ProsodyPauseAudio.insertSilenceAtMs(input, output, exactTimes, duration);
             } catch (Exception failure) {
-                problem = failure.getMessage();
+                failureReason = failure.getMessage();
             }
-            final String failureReason = problem;
+            final String problem = failureReason;
             handler.post(() -> {
                 if (!isProsodyId(id) || closed
                         || state.phase != PlaybackState.Phase.SPEAKING
-                        || !token.equals(activeToken)) {
-                    output.delete();
-                    return;
-                }
-                if (failureReason != null) {
-                    cleanupProsody();
-                    error = "Не удалось вставить паузу без изменения интонации: " + failureReason;
-                    failed(token);
+                        || !token.equals(activeToken)) return;
+                if (problem != null) {
+                    // The voice or speed changed the waveform length. Never
+                    // invent a replacement position. Recalibrate by ear.
+                    manualTimePrefs.edit().remove(key).apply();
+                    playProsodyFile(token, input, true);
                 } else {
-                    // File plays at 1x: main rate was already applied by TTS.
-                    playProsodyFile(token, output);
+                    playProsodyFile(token, output, false);
                 }
             });
         });
     }
 
-    private void playProsodyFile(String token, File file) {
+    private void playProsodyFile(String token, File file, boolean calibration) {
         releaseHumanPlayer();
         MediaPlayer mp = new MediaPlayer();
         humanPlayer = mp;
         prosodyPlayback = true;
+        manualCalibrating = calibration;
+        calibrationSilentHold = false;
+        calibrationGaps = calibration
+                ? List.copyOf(manualPositions.getOrDefault(state.index, List.of())) : List.of();
+        calibrationNext = 0;
         try {
             mp.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -608,6 +730,10 @@ public final class SpeechPlayer {
         prosodyGaps = List.of();
         prosodyTiming.clear();
         prosodyPlayback = false;
+        manualCalibrating = false;
+        calibrationSilentHold = false;
+        calibrationGaps = List.of();
+        calibrationNext = 0;
         if (prosodyInput != null) prosodyInput.delete();
         if (prosodyOutput != null) prosodyOutput.delete();
         prosodyInput = null;
