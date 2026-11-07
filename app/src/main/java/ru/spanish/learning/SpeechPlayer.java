@@ -405,12 +405,18 @@ public final class SpeechPlayer {
     }
 
     public String calibrationButtonLabel() {
-        int count = manualPositions.getOrDefault(state.index, List.of()).size();
-        if (count == 0) return "⏸ Ручные паузы";
+        List<Integer> marks = manualPositions.getOrDefault(state.index, List.of());
+        if (marks.isEmpty()) return "⏸ Ручные паузы";
         if (manualCalibrating && calibrationNext < calibrationGaps.size())
-            return "⏸ Зафиксировать момент паузы " + (calibrationNext + 1)
+            return "⏸ Зафиксировать паузу " + (calibrationNext + 1)
                     + " из " + calibrationGaps.size();
-        return "⏸ Тайминги пауз сохранены (" + count + ")";
+        if (manualCalibrating) return "⏸ Тайминги записаны. Прослушай до конца";
+        List<Integer> saved = ManualPauseTimings.orderedTimes(
+                ManualPauseTimings.decode(
+                        manualTimePrefs.getString(calibrationKey(state.index), ""), marks), marks);
+        if (saved.size() == marks.size())
+            return "⏸ Тайминги пауз сохранены (" + marks.size() + ")";
+        return "⏸ Запусти речь, затем фиксируй паузы по слуху";
     }
 
     /**
