@@ -90,7 +90,7 @@ public final class MainActivity extends Activity {
     private SharedPreferences prefs;
     private LinearLayout content;
     private TextView sentence, sentenceRu, playbackStatus, cardVoiceStatus;
-    private Button toggle, repeat;
+    private Button toggle, repeat, storyAudioRetry;
     private List<String> storyTranslations = new java.util.ArrayList<>();
     private List<String> storyOriginalSentences = new java.util.ArrayList<>();
     private boolean storyReadRussian;
@@ -2465,6 +2465,12 @@ public final class MainActivity extends Activity {
         toggle.setTextSize(20);
         toggle.setMinHeight(dp(70));
         toggle.setMinimumHeight(dp(70));
+        storyAudioRetry = rowButton("Повторить подготовку всего рассказа",
+                player::prepareWholeStory);
+        storyAudioRetry.setTag("story-preparation-retry");
+        ui.style(storyAudioRetry, UiStyle.Tone.OUTLINE);
+        storyAudioRetry.setVisibility(player.storyAudioFailed() ? View.VISIBLE : View.GONE);
+        content.addView(storyAudioRetry, spaced(4));
 
         LinearLayout readingPanel = new LinearLayout(this);
         readingPanel.setOrientation(LinearLayout.VERTICAL);
@@ -2974,6 +2980,8 @@ public final class MainActivity extends Activity {
                 : active ? "Ⅱ Пауза"
                 : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
         toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
+        if (storyAudioRetry != null)
+            storyAudioRetry.setVisibility(player.storyAudioFailed() ? View.VISIBLE : View.GONE);
         if (humanVoiceButton != null)
             humanVoiceButton.setText("Источник: " + narrationLabel());
         String status = switch(player.state.phase) { case SPEAKING -> "Звучит"; case WAITING -> player.sentenceMode ? "Нажмите «Продолжить»" : "Пауза между предложениями"; case FINISHED -> "Рассказ закончен"; case PAUSED -> "Остановлено"; };
