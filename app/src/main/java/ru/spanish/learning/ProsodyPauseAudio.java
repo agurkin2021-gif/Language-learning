@@ -75,11 +75,15 @@ final class ProsodyPauseAudio {
             long totalFrames = dataSize / frameBytes;
             List<Cut> cuts = new ArrayList<>();
             if (momentsMs != null) {
+                long previousFrame = -1;
                 for (int ms : momentsMs) {
                     long frame = Math.round(sampleRate * (ms / 1000.0));
                     if (ms <= 0 || frame <= 0 || frame >= totalFrames)
                         throw new IOException("Manual timestamp outside audio");
+                    if (frame <= previousFrame)
+                        throw new IOException("Manual timestamps are not in text order");
                     cuts.add(new Cut(frame, silenceMs));
+                    previousFrame = frame;
                 }
             } else {
             List<Long> acousticFallback = null;
