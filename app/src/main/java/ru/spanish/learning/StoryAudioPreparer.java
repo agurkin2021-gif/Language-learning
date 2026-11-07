@@ -46,7 +46,7 @@ final class StoryAudioPreparer {
     private String storyKey = "", language = "es", voice = "";
     private float speed;
     private int pauseMs;
-    private int generation;
+    private volatile int generation;
     private int nextIndex;
     private int completed;
     private boolean required, preparing, ready;
@@ -190,7 +190,7 @@ final class StoryAudioPreparer {
             if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, muted, utterance)
                     == TextToSpeech.ERROR)
                 fail("Голос не смог подготовить предложение " + (index + 1));
-        } catch (IllegalArgumentException | RuntimeException e) {
+        } catch (RuntimeException e) {
             fail("Предложение " + (index + 1) + ": " + e.getMessage());
         }
     }
