@@ -30,8 +30,7 @@ final class ProsodyTimingCache {
             return false;
         int previousFrame = -1;
         for (int gap : gaps) {
-            if (gap <= 0 || gap >= spoken.length()
-                    || !Character.isWhitespace(spoken.charAt(gap))) return false;
+            if (!ManualStoryPauses.isGap(spoken, gap)) return false;
             int next = gap;
             while (next < spoken.length() && Character.isWhitespace(spoken.charAt(next))) next++;
             while (next < spoken.length() && !Character.isLetterOrDigit(spoken.charAt(next))) next++;
