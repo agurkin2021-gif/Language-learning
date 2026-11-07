@@ -2469,7 +2469,7 @@ public final class MainActivity extends Activity {
         manualPauseCapture = null;
         manualPauseRecalibrate = null;
         if (!storyReadRussian) {
-            manualPauseCapture = button("⏸ Зафиксировать момент паузы",
+            manualPauseCapture = rowButton("⏸ Зафиксировать момент паузы",
                     () -> {
                         if (!player.markPauseNow()) {
                             Toast.makeText(this,
@@ -2481,8 +2481,9 @@ public final class MainActivity extends Activity {
             ui.style(manualPauseCapture, UiStyle.Tone.PRIMARY);
             manualPauseCapture.setTextSize(16);
             manualPauseCapture.setMinHeight(dp(56));
-            manualPauseCapture.setLayoutParams(spaced(6));
-            manualPauseRecalibrate = button("↻ Перезаписать тайминги пауз", () -> {
+            // Attached inside the reading card below; never between Play
+            // and the card, which must remain adjacent.
+            manualPauseRecalibrate = rowButton("↻ Перезаписать тайминги пауз", () -> {
                 player.resetManualPauseTimingHere();
                 Toast.makeText(this,
                         "Тайминги сброшены. Нажми «Продолжить» и фиксируй паузы во время речи.",
@@ -2490,7 +2491,7 @@ public final class MainActivity extends Activity {
             });
             manualPauseRecalibrate.setTag("story-pause-reset-timestamps");
             ui.style(manualPauseRecalibrate, UiStyle.Tone.OUTLINE);
-            manualPauseRecalibrate.setLayoutParams(spaced(5));
+            // Calibration buttons appear with their relevant sentence.
         }
 
         LinearLayout readingPanel = new LinearLayout(this);
@@ -2506,6 +2507,10 @@ public final class MainActivity extends Activity {
         sentence.setLineSpacing(dp(5), 1.07f);
         sentence.setPadding(0, dp(3), 0, dp(13));
         attachManualPauseGesture(sentence, currentOriginalSentence(), player.state.index);
+        if (manualPauseCapture != null) {
+            readingPanel.addView(manualPauseCapture, spaced(6));
+            readingPanel.addView(manualPauseRecalibrate, spaced(5));
+        }
 
         View divider = new View(this);
         divider.setBackgroundColor(borderColor());
