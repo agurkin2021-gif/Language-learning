@@ -40,7 +40,85 @@ public final class ProsodyPauseAudioTest {
             input.delete(); output.delete();
         }
     }
-    @Test public void fallsBackWhenVoiceHasNoRangeTiming() throws Exception {
+    @Test public void insertsMultiplePausesAtTheirExactInteriorFrames() throws Exception {
+        File input = File.createTempFile("manual-pause-full-", ".wav");
+        File output = File.createTempFile("manual-pause-spliced-", ".wav");
+        try {
+            try (RandomAccessFile wav = new RandomAccessFile(input, "rw")) {
+                wav.setLength(0);
+                wav.writeBytes("RIFF"); little(wav, 36 + 200, 4);
+                wav.writeBytes("WAVEfmt "); little(wav,16,4); little(wav,1,2);
+                little(wav,1,2); little(wav,1000,4); little(wav,2000,4);
+                little(wav,2,2); little(wav,16,2);
+                wav.writeBytes("data"); little(wav,200,4);
+                for(int i=0;i<100;i++) little(wav, 501+i,2);
+            }
+            String story="Uno dos tres cuatro";
+            int first=story.indexOf(" dos");
+            int second=story.indexOf(" cuatro");
+            ProsodyPauseAudio.insertSilence(input,output,story,
+                    List.of(first,second),
+                    List.of(new ProsodyPauseAudio.WordTiming(4,7,20),
+                            new ProsodyPauseAudio.WordTiming(13,19,70)), 100);
+            byte[] original=Files.readAllBytes(input.toPath());
+            byte[] marked=Files.readAllBytes(output.toPath());
+            assertEquals(44+200+400,marked.length);
+            // First pause at frame 20, second at frame 70 (not either edge).
+            for(int i=0;i<40;i++) assertEquals(original[44+i],marked[44+i]);
+            for(int i=40;i<240;i++) assertEquals(0,marked[44+i]);
+            for(int i=40;i<140;i++) assertEquals(original[44+i],marked[44+i+200]);
+            for(int i=240;i<440;i++) assertEquals(0,marked[44+i]);
+            for(int i=140;i<200;i++) assertEquals(original[44+i],marked[44+i+400]);
+        } finally { input.delete(); output.delete(); }
+    }
+
+    @Test public void zeroOrOutOfRangeFramesCannotPlacePausesAtEdges() throws Exception {
+        for(int invalidFrame: new int[]{-1,0,1,100,10000}) {
+            File input=File.createTempFile("bad-frame-",".wav");
+            File output=File.createTempFile("bad-result-",".wav");
+            try {
+                try (RandomAccessFile wav=new RandomAccessFile(input,"rw")) {
+                    wav.setLength(0); wav.writeBytes("RIFF"); little(wav,236,4);
+                    wav.writeBytes("WAVEfmt "); little(wav,16,4); little(wav,1,2);
+                    little(wav,1,2); little(wav,1000,4); little(wav,2000,4);
+                    little(wav,2,2); little(wav,16,2);
+                    wav.writeBytes("data"); little(wav,200,4);
+                    for(int i=0;i<100;i++) little(wav, i+10,2);
+                }
+                try {
+                    ProsodyPauseAudio.insertSilence(input,output,"Uno dos",List.of(3),
+                            List.of(new ProsodyPauseAudio.WordTiming(4,7,invalidFrame)),200);
+                    fail("Frame "+invalidFrame+" must be rejected");
+                } catch (java.io.IOException expected) {
+                    assertTrue(expected.getMessage().contains("время слова"));
+                }
+            } finally {input.delete();output.delete();}
+        }
+    }
+
+    @Test public void cannotUseTimingOfLaterWordAsPauseAtEndOfBlock() throws Exception {
+        File input=File.createTempFile("wrong-word-",".wav");
+        File output=File.createTempFile("wrong-result-",".wav");
+        try {
+            try (RandomAccessFile wav=new RandomAccessFile(input,"rw")) {
+                wav.setLength(0); wav.writeBytes("RIFF"); little(wav,236,4);
+                wav.writeBytes("WAVEfmt "); little(wav,16,4); little(wav,1,2);
+                little(wav,1,2); little(wav,1000,4); little(wav,2000,4);
+                little(wav,2,2); little(wav,16,2);
+                wav.writeBytes("data"); little(wav,200,4);
+                for(int i=0;i<100;i++) little(wav, i+20,2);
+            }
+            try {
+                ProsodyPauseAudio.insertSilence(input,output,"Uno dos tres",List.of(3),
+                        List.of(new ProsodyPauseAudio.WordTiming(8,12,70)),100);
+                fail("Must require exact next word timing, not whichever comes later");
+            } catch(java.io.IOException expected) {
+                assertTrue(expected.getMessage().contains("время слова"));
+            }
+        } finally {input.delete();output.delete();}
+    }
+
+    @Test public void refusesMissingTimestampsRatherThanAddingPauseAtBlockEdges() throws Exception {
         File input = File.createTempFile("native-voice-", ".wav");
         File output = File.createTempFile("native-voice-marked-", ".wav");
         try {
@@ -52,8 +130,13 @@ public final class ProsodyPauseAudioTest {
                 f.writeBytes("data"); little(f, 20, 4);
                 for(int i=0;i<10;i++) little(f, 123, 2);
             }
-            ProsodyPauseAudio.insertSilence(input,output,"La luz",List.of(2),List.of(),500);
-            assertEquals(44+20+1000,output.length());
+            try {
+                ProsodyPauseAudio.insertSilence(input,output,"La luz",List.of(2),List.of(),500);
+                fail("Must not replace unknown word timing with character ratio");
+            } catch (java.io.IOException expected) {
+                assertTrue(expected.getMessage().contains("время слова"));
+            }
+            assertEquals(0L, output.length());
         } finally { input.delete();output.delete(); }
     }
 }
