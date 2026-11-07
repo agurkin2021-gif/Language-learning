@@ -102,6 +102,8 @@ public final class MainActivity extends Activity {
     private Runnable pendingCardSpeech;
     private String screen = "cards";
     private long storyId = -1;
+    // Rendering-only Bible markers. The story text and TTS input remain unmodified.
+    private boolean[] bibleRedChunks = new boolean[0];
     private boolean rendering;
     private AlertDialog cardDialog;
     private EditText draftSpanish, draftMeaning;
@@ -2141,6 +2143,8 @@ public final class MainActivity extends Activity {
         player.pause();
         remember();
         storyId = story.id();
+        bibleRedChunks = BibleStoryHighlight.appliesTo(story.title())
+                ? BibleStoryHighlight.mark(story.body()) : new boolean[0];
         screen = "player";
         storyOriginalSentences = Sentences.split(story.body());
         storyTranslations = Sentences.split(story.translation());
@@ -2246,6 +2250,7 @@ public final class MainActivity extends Activity {
         content.addView(readingPanel, spaced(6));
 
         sentence = textInto(readingPanel, currentOriginalSentence(), 26);
+        sentence.setTextColor(storyReadingTextColor(player.state.index));
         sentence.setLineSpacing(dp(5), 1.07f);
         sentence.setPadding(0, dp(3), 0, dp(13));
         attachStoryWordGesture(sentence, this::currentTranslation);
@@ -2738,6 +2743,8 @@ public final class MainActivity extends Activity {
         lines.addView(hint);
         List<String> spanish = Sentences.split(selected.body());
         List<String> russian = Sentences.split(selected.translation());
+        boolean[] redChunks = BibleStoryHighlight.appliesTo(selected.title())
+                ? BibleStoryHighlight.mark(selected.body()) : new boolean[0];
         for (int index = 0; index < spanish.size(); index++) {
             String es = spanish.get(index);
             String ru = index < russian.size() ? russian.get(index) : "";
@@ -2749,7 +2756,8 @@ public final class MainActivity extends Activity {
             TextView original = new TextView(this);
             original.setText(es);
             original.setTextSize(22);
-            original.setTextColor(primaryText());
+            original.setTextColor(index < redChunks.length && redChunks[index]
+                    ? bibleTextRed() : primaryText());
             original.setLineSpacing(dp(3), 1.06f);
             original.setPadding(0, dp(6), 0, dp(5));
             attachStoryWordGesture(original, () -> ru);
@@ -2792,12 +2800,23 @@ public final class MainActivity extends Activity {
         }
         return "";
     }
+    private int bibleTextRed() {
+        // Readable red on both light and dark story backgrounds.
+        return darkTheme ? 0xFFFF7777 : 0xFFB71C1C;
+    }
+
+    private int storyReadingTextColor(int index) {
+        return index >= 0 && index < bibleRedChunks.length && bibleRedChunks[index]
+                ? bibleTextRed() : primaryText();
+    }
+
     private void updatePlayer() {
         if (player == null || rendering) return;
         if (cardVoiceStatus != null) cardVoiceStatus.setText(player.voiceDescription);
         if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
         if (sentence == null) return;
         sentence.setText(currentOriginalSentence());
+        sentence.setTextColor(storyReadingTextColor(player.state.index));
         if (sentenceRu != null) sentenceRu.setText(currentTranslation());
         boolean active = player.state.phase == PlaybackState.Phase.SPEAKING || (!player.sentenceMode && player.state.phase == PlaybackState.Phase.WAITING);
         toggle.setText(active ? "Ⅱ Пауза" : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
