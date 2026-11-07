@@ -319,6 +319,7 @@ public final class SpeechPlayer {
             pause();
             if (!activateVoice(voice)) return false;
             voicePrefs.edit().putString("selected_es_voice", voiceName).apply();
+            if (preparationRequested) prepareWholeStory();
             return true;
         }
         return false;
@@ -973,10 +974,7 @@ public final class SpeechPlayer {
         handler.removeCallbacks(autoPlay);
         // Stop any in-flight background TTS before accepting new settings.
         // Prepared recordings remain available across ordinary Pause/Resume.
-        if (storyPreparation.isPreparing()) {
-            storyPreparation.cancel();
-            preparationRequested = manualPausesActive();
-        }
+        boolean preparingInBackground = storyPreparation.isPreparing();
         PlaybackState.Phase previous = state.phase;
         if (humanPlayer != null && !prosodyPlayback
                 && previous == PlaybackState.Phase.SPEAKING) {
@@ -996,7 +994,9 @@ public final class SpeechPlayer {
             resumeOffset = 0;
             activeToken = "";
         }
-        if (tts != null) tts.stop();
+        // A user pause or settings dialog must NOT interrupt full-story
+        // pre-generation. It may be running while no audio is audible.
+        if (tts != null && !preparingInBackground) tts.stop();
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
     }
@@ -1014,6 +1014,7 @@ public final class SpeechPlayer {
     public void close() {
         pause(); closed = true;
         storyPreparation.close();
+        if (tts != null) tts.stop();
         prosodyFiles.shutdownNow();
         if (tts != null) tts.shutdown();
     }
