@@ -893,7 +893,12 @@ public final class SpeechPlayer {
         activeToken = "";
         audio.abandonAudioFocusRequest(focus);
         listener.changed();
-        if (!sentenceMode && state.phase == PlaybackState.Phase.WAITING) handler.postDelayed(autoPlay, pauseMs);
+        if (!sentenceMode && state.phase == PlaybackState.Phase.WAITING) {
+            // User-marked pauses are the ONLY inserted waits in this mode.
+            // The independent inter-sentence delay must not make a phantom
+            // pause before the first word of the next sentence.
+            handler.postDelayed(autoPlay, manualPausesActive() ? 0 : pauseMs);
+        }
     }
     private void failed(String token) {
         if (closed || !state.complete(token)) return;
