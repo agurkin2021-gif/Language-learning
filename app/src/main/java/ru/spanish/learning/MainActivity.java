@@ -2143,6 +2143,7 @@ public final class MainActivity extends Activity {
         player.pause();
         remember();
         storyId = story.id();
+        boolean articleTraining = ArticleSlowSpeech.appliesTo(story.title());
         bibleRedChunks = BibleStoryHighlight.appliesTo(story.title())
                 ? BibleStoryHighlight.mark(story.body()) : new boolean[0];
         screen = "player";
@@ -2159,8 +2160,9 @@ public final class MainActivity extends Activity {
                 story.id(), story.body());
         String source = prefs.getString(prefKey("narrationSource"),
                 prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
-        player.attachHumanStory(recorded, !storyReadRussian && "human".equals(source));
-        player.attachGoogleStory(google, !storyReadRussian && "google".equals(source));
+        player.attachHumanStory(recorded, !storyReadRussian && !articleTraining && "human".equals(source));
+        player.attachGoogleStory(google, !storyReadRussian && !articleTraining && "google".equals(source));
+        player.setSlowArticles(articleTraining && !storyReadRussian);
         player.load(storyReadRussian ? story.translation() : story.body(), story.position());
         render();
     }
@@ -2188,7 +2190,9 @@ public final class MainActivity extends Activity {
         storyReadRussian = russian;
         prefs.edit().putBoolean(prefKey("storyReadRussian"), russian).apply();
         player.setLearningLanguage(russian ? "ru" : studyLanguage);
-        if (russian) {
+        boolean articleTraining = ArticleSlowSpeech.appliesTo(selected.title());
+        player.setSlowArticles(articleTraining && !russian);
+        if (russian || articleTraining) {
             // Stored Spanish/English recordings must NEVER play over Russian text.
             player.useHumanVoice(false);
             player.useGoogleVoice(false);
@@ -2227,6 +2231,10 @@ public final class MainActivity extends Activity {
         content.addView(repeat, rewindParams);
 
         text(selected.title(), 25);
+        if (ArticleSlowSpeech.appliesTo(selected.title())) {
+            TextView articleNotice = text("Артикли: медленнее · остальной текст: обычная скорость", 14);
+            articleNotice.setTextColor(secondaryText());
+        }
         storyOriginalSentences = Sentences.split(selected.body());
         storyTranslations = Sentences.split(selected.translation());
 
@@ -2274,13 +2282,13 @@ public final class MainActivity extends Activity {
 
         humanVoiceButton = button("Источник: " + narrationLabel(), this::chooseNarrationSource);
         ui.style(humanVoiceButton, UiStyle.Tone.OUTLINE);
-        humanVoiceButton.setEnabled(!storyReadRussian);
+        humanVoiceButton.setEnabled(!storyReadRussian && !player.slowArticlesEnabled());
         Button googleAudio = button("Google — озвучить все рассказы", this::startGoogleStoryRecording);
         ui.style(googleAudio, UiStyle.Tone.OUTLINE);
-        googleAudio.setEnabled(!storyReadRussian);
+        googleAudio.setEnabled(!storyReadRussian && !player.slowArticlesEnabled());
         Button recordHuman = button("Записать живой голос", this::openHumanRecorder);
         ui.style(recordHuman, UiStyle.Tone.OUTLINE);
-        recordHuman.setEnabled(!storyReadRussian);
+        recordHuman.setEnabled(!storyReadRussian && !player.slowArticlesEnabled());
 
         Button readAll = button("Читать весь рассказ заново", player::playAllFromStart);
         ui.style(readAll, UiStyle.Tone.OUTLINE);
@@ -2305,11 +2313,16 @@ public final class MainActivity extends Activity {
     }
     private String narrationLabel() {
         if (storyReadRussian) return "Системный голос (русский)";
+        if (player.slowArticlesEnabled()) return "Системный голос (артикли медленно)";
         return player.googleSelected() ? "Google (сохранённая запись)"
                 : player.humanSelected() ? "Живой голос" : "Системный голос";
     }
 
     private void chooseNarrationSource() {
+        if (player.slowArticlesEnabled()) {
+            Toast.makeText(this, "Для медленных артиклей используется системный голос", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (storyReadRussian) {
             Toast.makeText(this, "Русский текст озвучивает системный русский голос", Toast.LENGTH_LONG).show();
             return;
