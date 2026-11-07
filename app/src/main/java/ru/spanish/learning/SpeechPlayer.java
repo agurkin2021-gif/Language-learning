@@ -438,10 +438,12 @@ public final class SpeechPlayer {
             // Every slow word is actually synthesized at the chosen slower rate;
             // regular words are spoken at the main sentence speed.
             float rate = part.slow() ? shortWordSpeed : speed;
-            // Bind each rate to its queued utterance, rather than relying on a
-            // mutable global speech rate that could affect later queued speech.
+            // Android copies the current per-utterance TTS parameters when a
+            // nonempty Bundle is passed. setSpeechRate() sets mParams["rate"];
+            // a documented volume param forces a snapshot for each queued item.
+            tts.setSpeechRate(rate);
             Bundle params = new Bundle();
-            params.putInt(TextToSpeech.Engine.KEY_PARAM_RATE, Math.round(rate * 100f));
+            params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
             int queue = i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD;
             if (spoken.isEmpty() || tts.speak(spoken, queue, params, id) == TextToSpeech.ERROR) {
                 clearArticleParts();
