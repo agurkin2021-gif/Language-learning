@@ -501,7 +501,7 @@ public final class SpeechPlayer {
                     .equals(part.text())) return;
             String full = current();
             resumeOffset = Math.max(0, Math.min(full.length(),
-                    articleFullOffset + part.start() + start));
+                    articleFullOffset + part.sourceStart() + start));
         } catch (NumberFormatException ignored) {
             // Stale callbacks must never move the resume position.
         }
