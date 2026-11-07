@@ -91,7 +91,7 @@ public final class SpeechPlayer {
         prosodyCache = context.getCacheDir();
         sentenceAudioCache = new File(context.getFilesDir(), "story_sentence_auto_pause_wav");
         pausePrefs = context.getSharedPreferences("ui", Context.MODE_PRIVATE);
-        storyPreparation = new StoryAudioPreparer(context, handler, listener);
+        storyPreparation = new StoryAudioPreparer(context, handler, listener::changed);
         voicePrefs = context.getSharedPreferences("tts_voice_settings", Context.MODE_PRIVATE);
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
