@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <queries>
         <package android:name="ru.spanish.learning.updater" />
+        <package android:name="ru.spanish.learning.familyupdater" />
         <package android:name="com.google.android.tts" />
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent><action android:name="android.speech.RecognitionService" /></intent>

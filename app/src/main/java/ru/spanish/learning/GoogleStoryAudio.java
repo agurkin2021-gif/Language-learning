@@ -18,12 +18,14 @@ import java.util.Locale;
 final class GoogleStoryAudio {
     private final File directory;
     private final List<String> sentences;
+    private final String language;
 
     GoogleStoryAudio(Context context, String profile, String language, long id, String body) {
         if (id < 0) throw new IllegalArgumentException("Missing story ID");
         sentences = Sentences.split(body == null ? "" : body);
         String member = StudyProfile.normalized(profile);
         String lang = "en".equals(language) ? "en" : "es";
+        this.language = lang;
         directory = new File(new File(new File(new File(context.getFilesDir(),
                 "google-story-audio"), member), lang),
                 id + "-" + digest(body == null ? "" : body));
@@ -46,7 +48,13 @@ final class GoogleStoryAudio {
 
     File segment(int index) {
         if (index < 0 || index >= sentences.size()) throw new IndexOutOfBoundsException();
-        return new File(directory, String.format(Locale.ROOT, "sentence-%05d.wav", index));
+        // Reuse existing clips unless their spoken form changed. Verse references
+        // were previously recorded with clock/time/dash pronunciation; those
+        // clips must be regenerated rather than replayed from the old cache.
+        String raw = sentences.get(index);
+        String normalized = RioplatensePronunciation.forSpeech(raw, language);
+        String suffix = normalized.equals(raw) ? "" : "-speech-normalized-v4";
+        return new File(directory, String.format(Locale.ROOT, "sentence-%05d%s.wav", index, suffix));
     }
 
     boolean recorded(int index) {

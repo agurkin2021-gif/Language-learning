@@ -81,19 +81,148 @@ public class SmokeTest extends ActivityInstrumentationTestCase2<MainActivity> {
             assertNull(find(root, "Обновление"));
             assertNotNull(find(root, "⚙"));
         });
-        // The full-story view is a separate Dialog window, not Activity.getWindow().
-        // Its individually touchable words are exercised by StoryWordPickerTest and StoreTest.
-        tap("Читать весь рассказ");
-        getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
+        // The full-story button restarts audio from sentence one without a text dialog.
+        getInstrumentation().runOnMainSync(() -> {
+            MainActivity activity = getActivity();
+            View button = find(activity.getWindow().getDecorView(), "Читать весь рассказ заново");
+            assertNotNull("Full story audio button", button);
+            try {
+                java.lang.reflect.Field field = MainActivity.class.getDeclaredField("player");
+                field.setAccessible(true);
+                SpeechPlayer player = (SpeechPlayer) field.get(activity);
+                assertTrue("Sample has multiple sentences", player.state.count > 2);
+                player.pause();
+                player.state.load(player.state.count, 2);
+                player.sentenceMode = true;
+                button.performClick();
+                assertEquals("Restart reading at the first sentence", 0, player.state.index);
+                assertFalse("Whole-story narration must continue automatically", player.sentenceMode);
+                assertEquals("Lucía vive en una casa pequeña.", player.current());
+            } catch (ReflectiveOperationException error) {
+                throw new AssertionError(error);
+            }
+        });
         getInstrumentation().waitForIdleSync();
         tap("⚙");
         getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
         getInstrumentation().waitForIdleSync();
-        for(int i=0;i<8;i++) tap("Повторить предложение");
+        for(int i=0;i<8;i++) tap("← Назад");
         tap("Карточки"); tap("Рассказы"); openSampleStory();
         getInstrumentation().runOnMainSync(() -> assertNotNull(find(getActivity().getWindow().getDecorView(),"← Библиотека")));
         tap("← Библиотека");
     }
+    public void testBackControlRewindsOneSentencePerTapAndMovesAuxiliaryControlsDown() {
+        getActivity();
+        tap("Рассказы");
+        openSampleStory();
+        getInstrumentation().runOnMainSync(() -> {
+            MainActivity activity = getActivity();
+            View root = activity.getWindow().getDecorView();
+            View back = find(root, "← Назад");
+            View original = find(root, "Lucía vive en una casa pequeña.");
+            View language = find(root, "Язык озвучки: Испанский ▾");
+            View attribution = find(root, "Встроенный пример • написан заранее, не ИИ-генерация по архиву");
+            assertNotNull("Back button must be visible", back);
+            assertNotNull("Original story sentence", original);
+            assertNotNull("Narration selector", language);
+            assertNotNull("Source in footer", attribution);
+            try {
+                java.lang.reflect.Field toggleField = MainActivity.class.getDeclaredField("toggle");
+                java.lang.reflect.Field statusField = MainActivity.class.getDeclaredField("playbackStatus");
+                toggleField.setAccessible(true);
+                statusField.setAccessible(true);
+                View primary = (View) toggleField.get(activity);
+                View status = (View) statusField.get(activity);
+                View panel = (View) original.getParent();
+                assertNotNull("Main Continue/Pause button", primary);
+                assertNotNull("Playback status", status);
+                ViewGroup container = (ViewGroup) panel.getParent();
+                assertSame("Main player button shares the story content layout", container, primary.getParent());
+                assertEquals("Continue/Pause must be directly above the reading panel",
+                        container.indexOfChild(primary) + 1, container.indexOfChild(panel));
+                assertTrue("Status follows the primary button",
+                        container.indexOfChild(status) > container.indexOfChild(primary));
+                assertTrue("Footer language follows the primary button",
+                        container.indexOfChild(language) > container.indexOfChild(primary));
+                assertTrue("Main audio control remains a large tap target",
+                        primary.getMinimumHeight() >= Math.round(70 *
+                                activity.getResources().getDisplayMetrics().density));
+            } catch (ReflectiveOperationException reflection) {
+                throw new AssertionError(reflection);
+            }
+            assertNull("Old repeat button is removed", find(root, "Повторить предложение"));
+            assertNull("Word-holding hint is removed",
+                    find(root, "Удерживайте незнакомое испанское слово, чтобы добавить его в карточки."));
+            int[] backXY = new int[2], textXY = new int[2], languageXY = new int[2], sourceXY = new int[2];
+            back.getLocationOnScreen(backXY);
+            original.getLocationOnScreen(textXY);
+            language.getLocationOnScreen(languageXY);
+            attribution.getLocationOnScreen(sourceXY);
+            assertTrue("Back button is above the story text", backXY[1] < textXY[1]);
+            assertTrue("Narration selector is below the story text", languageXY[1] > textXY[1]);
+            assertTrue("Attribution is below narration selector", sourceXY[1] > languageXY[1]);
+            assertTrue("Back button is left aligned", backXY[0] <= original.getResources()
+                    .getDisplayMetrics().widthPixels / 3);
+            assertEquals("Narration selector uses compact text", 13f,
+                    ((TextView) language).getTextSize() /
+                            activity.getResources().getDisplayMetrics().scaledDensity, 0.2f);
+
+            try {
+                java.lang.reflect.Field field = MainActivity.class.getDeclaredField("player");
+                field.setAccessible(true);
+                SpeechPlayer player = (SpeechPlayer) field.get(activity);
+                assertTrue(player.state.count > 5);
+                player.pause();
+                player.state.load(player.state.count, 5);
+                back.performClick();
+                assertEquals("First tap repeats current phrase", 5, player.state.index);
+                back.performClick();
+                assertEquals("Second tap goes back one", 4, player.state.index);
+                back.performClick();
+                assertEquals("Third tap goes back two", 3, player.state.index);
+                for (int i = 0; i < 10; i++) back.performClick();
+                assertEquals("Rewind never goes below zero", 0, player.state.index);
+                player.pause();
+            } catch (ReflectiveOperationException exception) {
+                throw new AssertionError(exception);
+            }
+        });
+        getInstrumentation().waitForIdleSync();
+    }
+
+    public void testStoryCanSwitchSpanishAndRussianNarrationWithoutChangingDisplayedText() {
+        getActivity();
+        tap("Рассказы");
+        openSampleStory();
+        getInstrumentation().runOnMainSync(() -> {
+            MainActivity activity = getActivity();
+            View root = activity.getWindow().getDecorView();
+            assertNotNull("Narration language button must be visible", find(root,
+                    "Язык озвучки: Испанский ▾"));
+            assertTrue("Russian translation can be selected", activity.selectStoryPlaybackLanguage(true));
+            root = activity.getWindow().getDecorView();
+            assertNotNull(find(root, "Язык озвучки: Русский ▾"));
+            assertNotNull("Original Spanish is still readable",
+                    find(root, "Lucía vive en una casa pequeña."));
+            assertNotNull("Russian translation is visible",
+                    find(root, "Лусия живёт в маленьком доме."));
+            try {
+                java.lang.reflect.Field field = MainActivity.class.getDeclaredField("player");
+                field.setAccessible(true);
+                SpeechPlayer player = (SpeechPlayer) field.get(activity);
+                assertEquals("ru", player.learningLanguage());
+                assertEquals("Лусия живёт в маленьком доме.", player.current());
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError(e);
+            }
+            assertTrue(activity.selectStoryPlaybackLanguage(false));
+            root = activity.getWindow().getDecorView();
+            assertNotNull(find(root, "Язык озвучки: Испанский ▾"));
+            assertNotNull(find(root, "Lucía vive en una casa pequeña."));
+        });
+        getInstrumentation().waitForIdleSync();
+    }
+
     public void testChatGptSendShowsVisibleProgressAndDisablesDuplicates() throws Exception {
         getActivity();
         tap("Рассказы");

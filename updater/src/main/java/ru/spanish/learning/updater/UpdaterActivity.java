@@ -40,10 +40,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 public final class UpdaterActivity extends Activity {
-    public static final String ACTION_UPDATE = "ru.spanish.learning.updater.UPDATE";
+    public static final String ACTION_UPDATE = "ru.spanish.learning.familyupdater.UPDATE";
     private static final String TARGET = "ru.spanish.learning";
     private static final String REPOSITORY = "agurkin2021-gif/Language-learning";
-    private static final String BASE = "https://raw.githubusercontent.com/" + REPOSITORY + "/refs/heads/phone-builds/";
+    private static final String BASE = "https://raw.githubusercontent.com/" + REPOSITORY + "/refs/heads/family-builds/";
     private static final String RELEASE_CERT = "ea5402c00a64b4a6e1940624743c58c38593a12b15ca6c85e955b05ba5ac641d";
     private static final String CALLBACK_SESSION = "session_id";
     private static final long MAX_APK_BYTES = 200L * 1024 * 1024;
@@ -103,27 +103,43 @@ public final class UpdaterActivity extends Activity {
             show("Обновление уже выполняется.");
             return;
         }
-        show("Проверяю новую версию…");
+        show("Семейный обновлятор · family-builds\nПроверяю новую версию…");
         WORKER.execute(() -> {
             boolean committed = false;
             try {
-                Candidate candidate = loadCandidate();
-                if (candidate == null) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Установлена актуальная версия", Toast.LENGTH_SHORT).show();
-                        finish();
-                    });
-                    return;
-                }
+                Candidate candidate = loadCandidateWithNetworkRetry();
+                if (candidate == null) return; // Installed and available versions remain visible.
                 install(candidate);
                 committed = true;
             } catch (Exception error) {
                 Log.e("SpanishUpdater", "Update failed", error);
-                fail("Обновление не выполнено.");
+                if (error instanceof IOException) {
+                    fail("Не удалось загрузить обновление. Проверьте интернет и повторите.");
+                } else {
+                    fail("Обновление не выполнено.");
+                }
             } finally {
                 if (!committed) RUNNING.set(false);
             }
         });
+    }
+
+    /** Retry only transient transport failures, never signature or metadata errors. */
+    private Candidate loadCandidateWithNetworkRetry() throws Exception {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return loadCandidate();
+            } catch (java.net.UnknownHostException | java.net.SocketTimeoutException
+                     | java.net.ConnectException error) {
+                if (attempt >= 4) throw error;
+                showFromWorker("Проверяю соединение… повтор " + attempt + " из 3");
+                Thread.sleep(2000L * attempt);
+            } catch (java.net.SocketException error) {
+                if (attempt >= 4) throw error;
+                showFromWorker("Сеть временно недоступна… повтор " + attempt + " из 3");
+                Thread.sleep(2000L * attempt);
+            }
+        }
     }
 
     private Candidate loadCandidate() throws Exception {
@@ -142,12 +158,17 @@ public final class UpdaterActivity extends Activity {
         JSONObject metadata = new JSONObject(new String(readUrl(BASE + "build-info.json", 16 * 1024), StandardCharsets.UTF_8));
         if (!TARGET.equals(metadata.optString("application_id"))
                 || !REPOSITORY.equals(metadata.optString("repository"))
-                || !"phone-builds".equals(metadata.optString("channel"))
+                || !"family-builds".equals(metadata.optString("channel"))
                 || !RELEASE_CERT.equalsIgnoreCase(metadata.optString("certificate_sha256")))
             throw new IOException("Bad metadata");
         long expectedVersion = metadata.getLong("version_code");
         PackageInfo installed = installedPackage();
-        if (version(installed) >= expectedVersion) return null;
+        long installedCode = version(installed);
+        showFromWorker("Семейный канал · family-builds\n" +
+                "Установлено: №" + Math.max(0, installedCode - 100L) +
+                " · Доступно: №" + Math.max(0, expectedVersion - 100L) +
+                (installedCode >= expectedVersion ? "\nОбновление не требуется." : "\nНайдено обновление."));
+        if (installedCode >= expectedVersion) return null;
         String expectedSha = metadata.getString("apk_sha256").toLowerCase(Locale.ROOT);
         if (!expectedSha.matches("[0-9a-f]{64}")) throw new IOException("Bad digest");
 

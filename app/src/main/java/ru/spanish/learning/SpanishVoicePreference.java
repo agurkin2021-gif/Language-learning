@@ -34,6 +34,18 @@ final class SpanishVoicePreference {
         };
     }
 
+    /**
+     * TTS advertised quality takes precedence over locale when the goal is
+     * intelligible pronunciation. Region is only a tie-breaker; the Android
+     * rating does not certify that every individual stressed syllable is right.
+     */
+    static int compareQualityFirst(int firstQuality, Locale firstLocale,
+                                   int secondQuality, Locale secondLocale) {
+        int byQuality = Integer.compare(secondQuality, firstQuality);
+        return byQuality != 0 ? byQuality
+                : Integer.compare(regionRank(firstLocale), regionRank(secondLocale));
+    }
+
     static String regionLabel(Locale locale) {
         return switch (locale.getCountry()) {
             case "AR" -> "Аргентина";

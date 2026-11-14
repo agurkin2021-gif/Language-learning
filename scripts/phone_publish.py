@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 import zipfile
 
-CHANNEL = "phone-builds"
+CHANNEL = "family-builds"
 APK_NAME = "SpanishLearning.apk"
 FILES = (APK_NAME, "SHA256SUMS.txt", "build-info.json")
 
@@ -94,8 +94,8 @@ def trusted_source(repository, revision):
     if os.environ.get("GITHUB_EVENT_NAME") == "pull_request":
         head = event.get("pull_request", {}).get("head", {})
         if (head.get("repo", {}).get("full_name") == repository
-                and head.get("ref") == "codex/android-v1" and head.get("sha") == revision):
-            return "codex/android-v1"
+                and head.get("ref") == "family-android-v2" and head.get("sha") == revision):
+            return "family-android-v2"
     elif (os.environ.get("GITHUB_EVENT_NAME") == "push"
           and os.environ.get("GITHUB_REF") == "refs/heads/main" and event.get("after") == revision):
         return "main"
@@ -118,7 +118,7 @@ def read_channel(github):
     entries = {entry["path"]: entry for entry in tree["tree"]}
     if tree.get("truncated") or set(entries) != set(FILES) or any(
             entry["type"] != "blob" or entry["mode"] != "100644" for entry in entries.values()):
-        raise PublishError("Ветка phone-builds содержит неожиданные файлы; они не изменены")
+        raise PublishError("Ветка family-builds содержит неожиданные файлы; они не изменены")
     metadata = json.loads(github.blob(entries["build-info.json"]["sha"]))
     return {"head": head, "entries": entries, "metadata": metadata}
 
@@ -281,8 +281,8 @@ def main():
         if (current["head"] if current else None) != previous:
             raise Superseded("Ветка для APK уже обновлена, чужие файлы не изменены.")
         git("push", "--quiet", "origin", "HEAD:refs/heads/" + CHANNEL)
-    report("published", "Опубликована версия " + expected["version_name"] + " в публичной ветке phone-builds. Постоянная подпись и SHA-256 проверены.\n\n"
-           + "[APK для телефона](https://github.com/" + repository + "/raw/refs/heads/phone-builds/" + APK_NAME + ")", True)
+    report("published", "Опубликована версия " + expected["version_name"] + " в публичной ветке family-builds. Постоянная подпись и SHA-256 проверены.\n\n"
+           + "[APK для телефона](https://github.com/" + repository + "/raw/refs/heads/family-builds/" + APK_NAME + ")", True)
 
 
 if __name__ == "__main__":

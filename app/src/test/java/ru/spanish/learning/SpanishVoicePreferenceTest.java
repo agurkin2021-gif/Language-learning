@@ -23,6 +23,22 @@ public class SpanishVoicePreferenceTest {
         assertTrue(mexico < argentina);
     }
 
+    @Test public void highestTtsQualityOutranksRegionForSpanishPronunciation() {
+        Locale argentina = Locale.forLanguageTag("es-AR");
+        Locale uruguay = Locale.forLanguageTag("es-UY");
+        Locale mexico = Locale.forLanguageTag("es-MX");
+        // An objectively higher Android TTS quality beats a preferred locale.
+        assertTrue(SpanishVoicePreference.compareQualityFirst(
+                100, mexico, 300, argentina) > 0);
+        assertTrue(SpanishVoicePreference.compareQualityFirst(
+                300, mexico, 100, uruguay) < 0);
+        // With equal quality, preserve the historical Latin-American fallback.
+        assertTrue(SpanishVoicePreference.compareQualityFirst(
+                300, uruguay, 300, mexico) < 0);
+        assertEquals(0, SpanishVoicePreference.compareQualityFirst(
+                300, argentina, 300, argentina));
+    }
+
     @Test public void rejectsSpainGenericAndNonSpanishVoices() {
         assertEquals(-1, SpanishVoicePreference.regionRank(Locale.forLanguageTag("es-ES")));
         assertEquals(-1, SpanishVoicePreference.regionRank(Locale.forLanguageTag("es")));
