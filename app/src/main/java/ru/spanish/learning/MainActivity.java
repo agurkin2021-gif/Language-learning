@@ -107,6 +107,9 @@ public final class MainActivity extends Activity {
     private Runnable pendingCardSpeech;
     private String screen = "cards";
     private long storyId = -1;
+    private final Map<String, Integer> recentStoryPositions = new HashMap<>();
+    private String currentStoryBody = "";
+    private boolean loadingStory;
     private Map<Integer, List<Integer>> manualStoryMarks = new HashMap<>();
     private String manualStoryKey = "";
     private int manualPauseMillis = 700;
@@ -354,7 +357,16 @@ public final class MainActivity extends Activity {
                 .putInt(prefKey("pause"), player.pauseMs)
                 .putBoolean(prefKey("sentenceMode"), player.sentenceMode).apply();
         new BackupManager(this).dataChanged();
-        if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
+        saveStoryPosition();
+    }
+
+    private void saveStoryPosition() {
+        if (loadingStory || storyId < 0 || player.state.count <= 0) return;
+        int position = player.state.index;
+        Integer saved = recentStoryPositions.get(manualStoryKey);
+        if (saved != null && saved == position) return;
+        recentStoryPositions.put(manualStoryKey, position);
+        store.positionAsync(storyId, position, currentStoryBody);
     }
     private void navigate(String next) {
         if (imageRepairRunning) {
@@ -1009,6 +1021,8 @@ public final class MainActivity extends Activity {
         player.pause();
         clearCardDraft();
         storyId = -1;
+        String prefix = "manual-story-pauses:" + activeProfile + ":" + studyLanguage + ":";
+        recentStoryPositions.keySet().removeIf(key -> key.startsWith(prefix));
         reviewIndex = 0;
         reviewStep = 0;
         kind = 0;
@@ -2343,40 +2357,47 @@ public final class MainActivity extends Activity {
     private void openStory(Store.Story story) {
         player.pause();
         remember();
-        storyId = story.id();
-        manualStoryKey = "manual-story-pauses:" + activeProfile + ":" + studyLanguage
-                + ":" + story.id() + ":" + story.body().hashCode();
-        storyOriginalSentences = Sentences.split(story.body());
-        manualStoryMarks = ManualStoryPauses.decode(
-                prefs.getString(manualStoryKey, ""), storyOriginalSentences);
-        player.setManualPauseStoryKey(manualStoryKey);
-        player.setManualPauses(manualStoryMarks, manualPauseMillis);
-        bibleRedChunks = BibleStoryHighlight.appliesTo(story.title())
-                ? BibleStoryHighlight.mark(story.body()) : new boolean[0];
-        screen = "player";
-        storyOriginalSentences = Sentences.split(story.body());
-        storyTranslations = Sentences.split(story.translation());
-        // Never try to read a missing or non-aligned translation.
-        storyReadRussian = prefs.getBoolean(prefKey("storyReadRussian"), false)
-                && storyTranslations.size() == storyOriginalSentences.size()
-                && !storyTranslations.isEmpty();
-        player.setLearningLanguage(storyReadRussian ? "ru" : studyLanguage);
-        boolean shortSpeech = ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian,
-                player.shortWordSpeed);
-        HumanStoryAudio recorded = new HumanStoryAudio(this, activeProfile, studyLanguage,
-                story.id(), story.body());
-        GoogleStoryAudio google = new GoogleStoryAudio(this, activeProfile, studyLanguage,
-                story.id(), story.body());
-        String source = prefs.getString(prefKey("narrationSource"),
-                prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
-        boolean manualTts = !storyReadRussian && player.manualPausesActive();
-        player.attachHumanStory(recorded, !storyReadRussian && !shortSpeech
-                && !manualTts && "human".equals(source));
-        player.attachGoogleStory(google, !storyReadRussian && !shortSpeech
-                && !manualTts && "google".equals(source));
-        player.setSlowArticles(shortSpeech);
-        player.load(storyReadRussian ? story.translation() : story.body(), story.position());
-        player.prepareWholeStory();
+        loadingStory = true;
+        try {
+            storyId = story.id();
+            currentStoryBody = story.body();
+            manualStoryKey = "manual-story-pauses:" + activeProfile + ":" + studyLanguage
+                    + ":" + story.id() + ":" + story.body().hashCode();
+            storyOriginalSentences = Sentences.split(story.body());
+            manualStoryMarks = ManualStoryPauses.decode(
+                    prefs.getString(manualStoryKey, ""), storyOriginalSentences);
+            player.setManualPauseStoryKey(manualStoryKey);
+            player.setManualPauses(manualStoryMarks, manualPauseMillis);
+            bibleRedChunks = BibleStoryHighlight.appliesTo(story.title())
+                    ? BibleStoryHighlight.mark(story.body()) : new boolean[0];
+            screen = "player";
+            storyOriginalSentences = Sentences.split(story.body());
+            storyTranslations = Sentences.split(story.translation());
+            // Never try to read a missing or non-aligned translation.
+            storyReadRussian = prefs.getBoolean(prefKey("storyReadRussian"), false)
+                    && storyTranslations.size() == storyOriginalSentences.size()
+                    && !storyTranslations.isEmpty();
+            player.setLearningLanguage(storyReadRussian ? "ru" : studyLanguage);
+            boolean shortSpeech = ArticleSlowSpeech.appliesTo(studyLanguage, storyReadRussian,
+                    player.shortWordSpeed);
+            HumanStoryAudio recorded = new HumanStoryAudio(this, activeProfile, studyLanguage,
+                    story.id(), story.body());
+            GoogleStoryAudio google = new GoogleStoryAudio(this, activeProfile, studyLanguage,
+                    story.id(), story.body());
+            String source = prefs.getString(prefKey("narrationSource"),
+                    prefs.getBoolean(prefKey("humanVoice"), false) ? "human" : "tts");
+            boolean manualTts = !storyReadRussian && player.manualPausesActive();
+            player.attachHumanStory(recorded, !storyReadRussian && !shortSpeech
+                    && !manualTts && "human".equals(source));
+            player.attachGoogleStory(google, !storyReadRussian && !shortSpeech
+                    && !manualTts && "google".equals(source));
+            player.setSlowArticles(shortSpeech);
+            player.load(storyReadRussian ? story.translation() : story.body(),
+                    recentStoryPositions.getOrDefault(manualStoryKey, story.position()));
+            player.prepareWholeStory();
+        } finally {
+            loadingStory = false;
+        }
         render();
     }
 
@@ -2727,12 +2748,11 @@ public final class MainActivity extends Activity {
                 try { session.stop(false); } catch (Exception ignored) {}
             }
             if (humanRecording == session) {
-                if (!storyReadRussian && session.complete()) {
-                    player.useHumanVoice(true);
+                boolean useRecording = !storyReadRussian && session.complete();
+                player.attachHumanStory(session, useRecording);
+                if (useRecording) {
                     prefs.edit().putString(prefKey("narrationSource"), "human")
                             .putBoolean(prefKey("humanVoice"), true).apply();
-                } else if (player.humanSelected()) {
-                    player.useHumanVoice(false);
                 }
                 humanRecording = null;
                 humanRecordDialog = null;
@@ -2963,9 +2983,9 @@ public final class MainActivity extends Activity {
     }
 
     private void updatePlayer() {
-        if (player == null || rendering) return;
+        if (player == null || rendering || loadingStory) return;
         if (cardVoiceStatus != null) cardVoiceStatus.setText(player.voiceDescription);
-        if (storyId >= 0 && player.state.count > 0) store.position(storyId, player.state.index);
+        saveStoryPosition();
         if (sentence == null) return;
         sentence.setText(markedSentenceText(currentOriginalSentence(), player.state.index));
         sentence.setTextColor(storyReadingTextColor(player.state.index));
@@ -2974,7 +2994,8 @@ public final class MainActivity extends Activity {
         toggle.setText(player.preparingTextPauses() ? "Подготовка всего рассказа…"
                 : active ? "Ⅱ Пауза"
                 : player.state.phase == PlaybackState.Phase.FINISHED ? "Слушать сначала" : "▶ Продолжить");
-        toggle.setEnabled(player.canPlay()); repeat.setEnabled(player.canPlay());
+        boolean playable = player.canPlay();
+        toggle.setEnabled(playable); repeat.setEnabled(playable);
         if (storyAudioRetry != null)
             storyAudioRetry.setVisibility(player.storyAudioFailed() ? View.VISIBLE : View.GONE);
         if (humanVoiceButton != null)
@@ -2984,7 +3005,7 @@ public final class MainActivity extends Activity {
         playbackStatus.setText((player.state.index + 1) + " / " + player.state.count + " • " + status
                 + (player.storyAudioStatus().isEmpty() ? "" : "\n" + player.storyAudioStatus())
                 + (player.error.isEmpty() ? "" : "\n" + player.error)
-                + (!player.canPlay() ? "\n" + player.voiceDescription : ""));
+                + (!playable ? "\n" + player.voiceDescription : ""));
     }
     private void syncContent() {
         if (personalStorySync == null || syncingContent) return;

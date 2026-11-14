@@ -43,6 +43,11 @@ public final class SpeechPlayer {
     private GoogleStoryAudio googleAudio;
     private boolean googleSelected;
     private boolean humanSelected;
+    private boolean googleAvailable, humanAvailable;
+    private boolean checkingGoogleAudio, checkingHumanAudio;
+    private int googleAudioGeneration, humanAudioGeneration;
+    private final ExecutorService recordingChecks = Executors.newSingleThreadExecutor();
+    private java.util.concurrent.Future<?> humanCheck, googleCheck;
     private MediaPlayer humanPlayer;
     private int humanResumeMs;
     private int humanResumeIndex = -1;
@@ -352,24 +357,58 @@ public final class SpeechPlayer {
     public void attachHumanStory(HumanStoryAudio recordings, boolean preferHuman) {
         pause();
         humanAudio = recordings;
-        humanSelected = preferHuman && recordings != null && recordings.complete();
+        humanAvailable = false;
+        humanSelected = preferHuman && recordings != null;
+        checkingHumanAudio = recordings != null;
         if (humanSelected) googleSelected = false;
         humanResumeMs = 0;
         humanResumeIndex = -1;
+        final int generation = ++humanAudioGeneration;
+        if (humanCheck != null) humanCheck.cancel(false);
+        if (recordings != null) humanCheck = recordingChecks.submit(() -> {
+            boolean found;
+            try { found = recordings.complete(); }
+            catch (RuntimeException problem) { found = false; }
+            final boolean available = found;
+            handler.post(() -> {
+                if (closed || generation != humanAudioGeneration) return;
+                humanAvailable = available;
+                checkingHumanAudio = false;
+                humanSelected = humanSelected && available;
+                listener.changed();
+            });
+        });
         listener.changed();
     }
 
     public void attachGoogleStory(GoogleStoryAudio recordings, boolean preferGoogle) {
         pause();
         googleAudio = recordings;
-        googleSelected = preferGoogle && recordings != null && recordings.complete();
+        googleAvailable = false;
+        googleSelected = preferGoogle && recordings != null;
+        checkingGoogleAudio = recordings != null;
         if (googleSelected) humanSelected = false;
         humanResumeMs = 0;
         humanResumeIndex = -1;
+        final int generation = ++googleAudioGeneration;
+        if (googleCheck != null) googleCheck.cancel(false);
+        if (recordings != null) googleCheck = recordingChecks.submit(() -> {
+            boolean found;
+            try { found = recordings.complete(); }
+            catch (RuntimeException problem) { found = false; }
+            final boolean available = found;
+            handler.post(() -> {
+                if (closed || generation != googleAudioGeneration) return;
+                googleAvailable = available;
+                checkingGoogleAudio = false;
+                googleSelected = googleSelected && available;
+                listener.changed();
+            });
+        });
         listener.changed();
     }
 
-    public boolean googleAvailable() { return googleAudio != null && googleAudio.complete(); }
+    public boolean googleAvailable() { return googleAvailable; }
     public boolean googleSelected() { return googleSelected && googleAvailable(); }
 
     public void useGoogleVoice(boolean enabled) {
@@ -382,9 +421,11 @@ public final class SpeechPlayer {
         listener.changed();
     }
 
-    public boolean humanAvailable() { return humanAudio != null && humanAudio.complete(); }
+    public boolean humanAvailable() { return humanAvailable; }
     public boolean humanSelected() { return humanSelected && humanAvailable(); }
     public boolean canPlay() {
+        if ((humanSelected && checkingHumanAudio) || (googleSelected && checkingGoogleAudio))
+            return false;
         return manualPausesActive() ? ready && storyPreparation.isReady()
                 : humanSelected() || googleSelected() || ready;
     }
@@ -437,7 +478,11 @@ public final class SpeechPlayer {
         return !manualPausesActive() || storyPreparation.isReady();
     }
 
-    public String storyAudioStatus() { return storyPreparation.status(); }
+    public String storyAudioStatus() {
+        if ((humanSelected && checkingHumanAudio) || (googleSelected && checkingGoogleAudio))
+            return "Проверка сохранённой озвучки…";
+        return storyPreparation.status();
+    }
     public boolean storyAudioFailed() { return storyPreparation.hasError(); }
 
     /** Leaving the story cancels its muted pre-generation immediately. */
@@ -1023,6 +1068,7 @@ public final class SpeechPlayer {
     public void close() {
         pause(); closed = true;
         storyPreparation.close();
+        recordingChecks.shutdownNow();
         if (tts != null) tts.stop();
         prosodyFiles.shutdownNow();
         if (tts != null) tts.shutdown();

@@ -81,7 +81,9 @@ final class StoryAudioPreparer {
     }
     File audioAt(int index) {
         File wav = prepared.get(index);
-        return isReady() && wav != null && wav.isFile() && wav.length() > 44 ? wav : null;
+        // Validated by the disk worker before entering prepared. Playback
+        // errors still go through MediaPlayer's normal error handler.
+        return isReady() ? wav : null;
     }
 
     void cancel() {
@@ -106,6 +108,11 @@ final class StoryAudioPreparer {
     void start(TextToSpeech engine, List<String> all,
                Map<Integer, List<Integer>> positions, int durationMs,
                String key, String lang, float rate, String voiceName) {
+        if (required && error.isEmpty() && (preparing || ready) && tts == engine
+                && sentences.equals(all) && markers.equals(positions)
+                && pauseMs == durationMs && storyKey.equals(key == null ? "" : key)
+                && language.equals(lang) && Float.compare(speed, rate) == 0
+                && voice.equals(voiceName == null ? "" : voiceName)) return;
         cancel();
         if (durationMs <= 0 || "ru".equals(lang)
                 || positions == null || positions.isEmpty()) return;
@@ -126,11 +133,9 @@ final class StoryAudioPreparer {
         voice = voiceName == null ? "" : voiceName;
         pauseMs = durationMs;
         preparing = true;
-        if (!folder.exists() && !folder.mkdirs()) {
-            fail("Не удалось создать папку аудио");
-            return;
-        }
-        prepareNext(generation);
+        final int run = generation;
+        // Let the story screen render before checking a potentially long cache.
+        main.post(() -> prepareNext(run));
         listener.changed();
     }
 
@@ -170,19 +175,49 @@ final class StoryAudioPreparer {
                     : SpokenGapMapper.map(sentences.get(index), spoken, originalGaps, language);
             original = sourceAt(index, spoken);
             result = outputAt(original, gaps);
-            if (result.isFile() && result.length() > 44) {
-                finishedOne(run, index, result);
+            final File source = original, target = result;
+            final String text = spoken;
+            final List<Integer> positions = gaps;
+            disk.execute(() -> checkCachedSentence(run, index, source, target, text, positions));
+        } catch (RuntimeException e) {
+            fail("Предложение " + (index + 1) + ": " + e.getMessage());
+        }
+    }
+
+    private void checkCachedSentence(int run, int index, File source, File target,
+                                     String text, List<Integer> positions) {
+        if (run != generation) return;
+        try {
+            if (!folder.isDirectory() && !folder.mkdirs())
+                throw new IOException("Не удалось создать папку аудио");
+            if (target.isFile() && target.length() > 44) {
+                main.post(() -> finishedOne(run, index, target));
                 return;
             }
-            if (original.isFile() && original.length() > 44) {
+            if (source.isFile() && source.length() > 44) {
                 List<ProsodyPauseAudio.WordTiming> cached = ProsodyTimingCache.decode(
-                        prefs.getString(rangeKey(original), ""), spoken);
-                if (gaps.isEmpty() || ProsodyTimingCache.covers(spoken, gaps, cached)) {
-                    finalizeWav(run, index, original, result, spoken, gaps, cached);
+                        prefs.getString(rangeKey(source), ""), text);
+                if (positions.isEmpty() || ProsodyTimingCache.covers(text, positions, cached)) {
+                    main.post(() -> {
+                        if (run == generation)
+                            finalizeWav(run, index, source, target, text, positions, cached);
+                    });
                     return;
                 }
             }
-            // Synthesize the ENTIRE sentence ahead of time; never at playback.
+            main.post(() -> synthesizeSentence(run, index));
+        } catch (Exception problem) {
+            main.post(() -> {
+                if (run == generation)
+                    fail("Предложение " + (index + 1) + ": " + problem.getMessage());
+            });
+        }
+    }
+
+    private void synthesizeSentence(int run, int index) {
+        if (run != generation || !preparing || index != nextIndex) return;
+        try {
+            // Preserve exact word-frame coordinates from the same natural utterance.
             utterance = PREFIX + run + ":" + index + ":" + System.nanoTime();
             capture = new TimedStoryCapture(utterance);
             tts.setSpeechRate(speed);
@@ -191,8 +226,8 @@ final class StoryAudioPreparer {
             if (tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, muted, utterance)
                     == TextToSpeech.ERROR)
                 fail("Голос не смог подготовить предложение " + (index + 1));
-        } catch (RuntimeException e) {
-            fail("Предложение " + (index + 1) + ": " + e.getMessage());
+        } catch (RuntimeException problem) {
+            fail("Предложение " + (index + 1) + ": " + problem.getMessage());
         }
     }
 
@@ -245,10 +280,10 @@ final class StoryAudioPreparer {
                     temp.delete();
                 }
                 if (run != generation) return;
+                prefs.edit().putString(rangeKey(source),
+                        ProsodyTimingCache.encode(ranges)).apply();
                 main.post(() -> {
                     if (run != generation) return;
-                    prefs.edit().putString(rangeKey(source),
-                            ProsodyTimingCache.encode(ranges)).apply();
                     finalizeWav(run, index, source, target, text, chosenGaps, ranges);
                 });
             } catch (Exception e) {
@@ -271,16 +306,19 @@ final class StoryAudioPreparer {
             finishedOne(run, index, source);
             return;
         }
+        final int duration = pauseMs;
         disk.execute(() -> {
             try {
                 if (run != generation) return;
                 File temp = File.createTempFile("marked-story-", ".wav", folder);
                 try {
                     ProsodyPauseAudio.insertSilenceExact(
-                            source, temp, text, positions, ranges, pauseMs);
+                            source, temp, text, positions, ranges, duration);
                     if (run != generation) return;
                     Files.move(temp.toPath(), target.toPath(),
                             StandardCopyOption.REPLACE_EXISTING);
+                    if (!target.isFile() || target.length() <= 44)
+                        throw new IOException("Не удалось сохранить предложение " + (index + 1));
                 } finally {
                     temp.delete();
                 }
@@ -296,10 +334,6 @@ final class StoryAudioPreparer {
 
     private void finishedOne(int run, int index, File file) {
         if (run != generation || !preparing || index != nextIndex) return;
-        if (!file.isFile() || file.length() <= 44) {
-            fail("Не удалось сохранить предложение " + (index + 1));
-            return;
-        }
         prepared.put(index, file);
         completed++;
         nextIndex++;

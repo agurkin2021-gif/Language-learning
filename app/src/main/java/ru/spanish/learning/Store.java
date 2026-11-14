@@ -15,6 +15,12 @@ import java.util.UUID;
 import java.text.Normalizer;
 
 public final class Store extends SQLiteOpenHelper {
+    private static final java.util.concurrent.ExecutorService PROGRESS_WRITES =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread thread = new Thread(r, "story-progress");
+                thread.setDaemon(true);
+                return thread;
+            });
     private final Context context;
     private final boolean english;
     private final String profileId;
@@ -987,9 +993,39 @@ public final class Store extends SQLiteOpenHelper {
     }
 
     public void position(long id, int position) {
+        position(id, position, null);
+    }
+
+    private void position(long id, int position, String expectedBody) {
         ContentValues v = new ContentValues();
         v.put("position", position);
-        getWritableDatabase().update("stories", v, "id=?", new String[]{Long.toString(id)});
-        changed();
+        String selection = "id=? AND position<>?";
+        String[] args = {Long.toString(id), Integer.toString(position)};
+        if (expectedBody != null) {
+            // An old queued write must not change a replacement story after reset/import.
+            selection += " AND body=?";
+            args = new String[]{Long.toString(id), Integer.toString(position), expectedBody};
+        }
+        int updated = getWritableDatabase().update("stories", v, selection, args);
+        // Reading progress does not change vocabulary. Do not restart its
+        // network synchronization on Play/Pause or preparation callbacks.
+        if (updated > 0) new BackupManager(context).dataChanged();
+    }
+
+    /** Own helper on a serial worker: activity/profile stores may close meanwhile. */
+    java.util.concurrent.Future<?> positionAsync(long id, int position) {
+        return positionAsync(id, position, null);
+    }
+
+    java.util.concurrent.Future<?> positionAsync(long id, int position, String expectedBody) {
+        String database = getDatabaseName();
+        return PROGRESS_WRITES.submit(() -> {
+            try (Store writer = new Store(context, database, english, profileId)) {
+                writer.position(id, position, expectedBody);
+            } catch (RuntimeException problem) {
+                android.util.Log.e("StoryProgress", "Could not save reading position", problem);
+                throw problem;
+            }
+        });
     }
 }
